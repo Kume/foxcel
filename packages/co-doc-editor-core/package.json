@@ -6,5 +6,8 @@
   "types": "dist/index.d.ts",
   "author": "makoto.kume",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "lodash.pick": "^4.4.0"
+  }
 }

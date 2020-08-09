@@ -1,0 +1,107 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Unit tests for parseUISchemaConfig For form With DataSchema Nested without keyFlatten 1`] = `
+Object {
+  "contents": Array [
+    Object {
+      "dataSchema": Object {
+        "t": 2,
+      },
+      "key": "test_text",
+      "type": "text",
+    },
+    Object {
+      "contents": Array [
+        Object {
+          "dataSchema": Object {
+            "t": 0,
+          },
+          "key": "test_number",
+          "type": "number",
+        },
+      ],
+      "dataSchema": Object {
+        "items": Object {
+          "test_number": Object {
+            "t": 0,
+          },
+        },
+        "t": 4,
+      },
+      "key": "test_form",
+      "type": "form",
+    },
+  ],
+  "dataSchema": Object {
+    "items": Object {
+      "test_form": Object {
+        "items": Object {
+          "test_number": Object {
+            "t": 0,
+          },
+        },
+        "t": 4,
+      },
+      "test_text": Object {
+        "t": 2,
+      },
+    },
+    "t": 4,
+  },
+  "key": undefined,
+  "type": "form",
+}
+`;
+
+exports[`Unit tests for parseUISchemaConfig For form Without DataSchema Nested without keyFlatten 1`] = `
+Object {
+  "contents": Array [
+    Object {
+      "dataSchema": Object {
+        "t": 2,
+      },
+      "key": "test_text",
+      "type": "text",
+    },
+    Object {
+      "contents": Array [
+        Object {
+          "dataSchema": Object {
+            "t": 0,
+          },
+          "key": "test_number",
+          "type": "number",
+        },
+      ],
+      "dataSchema": Object {
+        "items": Object {
+          "test_number": Object {
+            "t": 0,
+          },
+        },
+        "t": 4,
+      },
+      "key": "test_form",
+      "type": "form",
+    },
+  ],
+  "dataSchema": Object {
+    "items": Object {
+      "test_form": Object {
+        "items": Object {
+          "test_number": Object {
+            "t": 0,
+          },
+        },
+        "t": 4,
+      },
+      "test_text": Object {
+        "t": 2,
+      },
+    },
+    "t": 4,
+  },
+  "key": undefined,
+  "type": "form",
+}
+`;

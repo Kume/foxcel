@@ -1,7 +1,22 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
-import {sampleFunction1} from 'co-doc-editor-core';
+import {NativeFileSystemDataStorage} from './Models/NativeFileSystemDataStorage';
+import {loadFile} from 'co-doc-editor-core/dist/FileLoader';
+import YamlDataFormatter from 'co-doc-editor-core/dist/Storage/YamlDataFormatter';
+
+async function testLoad() {
+  const storage = new NativeFileSystemDataStorage();
+  await storage.init();
+  try {
+    const uiSchema = await loadFile(storage, [storage.rootSchemaFiles[0]], new YamlDataFormatter());
+    console.log(uiSchema);
+    alert('読み込み完了');
+  } catch (error) {
+    alert('読み込み…失敗…')
+    console.error(error);
+  }
+}
 
 function App() {
   return (
@@ -13,11 +28,9 @@ function App() {
         </p>
         <a
           className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+          onClick={testLoad}
         >
-          {sampleFunction1()}
+          ロード
         </a>
       </header>
     </div>
