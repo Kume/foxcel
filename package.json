@@ -4,9 +4,27 @@
   "author": "makoto.kume",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "web": "yarn workspace co-doc-editor-web",
+    "uir": "yarn workspace co-doc-editor-ui-react",
+    "core": "yarn workspace co-doc-editor-core",
+    "core:lint": "eslint --fix --ext .jsx,.js,.tsx,.ts ./packages/co-doc-editor-core/src"
+  },
   "workspaces": {
     "packages": [
       "packages/*"
     ]
+  },
+  "devDependencies": {
+    "@types/jest": "^26.0.9",
+    "@typescript-eslint/eslint-plugin": "^3.8.0",
+    "@typescript-eslint/parser": "^3.8.0",
+    "eslint": "^7.6.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "jest": "^26.2.2",
+    "prettier": "^2.0.5",
+    "ts-jest": "^26.1.4",
+    "typescript": "^3.9.7"
   }
 }
