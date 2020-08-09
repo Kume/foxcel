@@ -1,0 +1,12 @@
+{
+  "name": "co-doc-editor",
+  "version": "0.0.1",
+  "author": "makoto.kume",
+  "license": "MIT",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ]
+  }
+}
