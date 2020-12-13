@@ -2,6 +2,7 @@ import {
   createRootUiSchemaParsingContext,
   getUiSchemaUniqueKeyOrUndefined,
   parseUISchemaConfig2,
+  TabUISchema,
   UISchema,
 } from '../UISchema';
 import {UISchemaConfig} from '../..';
@@ -34,7 +35,7 @@ const testDataCreator = {
     } as const;
     const uiSchema = {
       type: 'form',
-      key: param.key || undefined,
+      key: param.key!,
       contents: children.map((child) => child.uiSchema),
       dataSchema,
     } as const;
@@ -48,9 +49,9 @@ const testDataCreator = {
         return key ? [key, child.dataSchema] : undefined;
       }),
     } as const;
-    const uiSchema = {
+    const uiSchema: TabUISchema = {
       type: 'tab',
-      key: param.key || undefined,
+      key: param.key!,
       contents: children.map((child) => child.uiSchema),
       dataSchema,
     } as const;

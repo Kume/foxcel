@@ -36,6 +36,7 @@ export enum DataSchemaType {
   Reference,
   Conditional,
   Recursive,
+  Key,
 }
 
 export type DataSchema =
@@ -46,7 +47,8 @@ export type DataSchema =
   | FixedMapDataSchema
   | ListDataSchema
   | ConditionalDataSchema
-  | RecursiveDataSchema;
+  | RecursiveDataSchema
+  | KeyDataSchema;
 
 export type DataSchemaExcludeRecursive<T = DataSchema> = T extends RecursiveDataSchema ? never : T;
 
@@ -91,7 +93,7 @@ export interface StringDataSchema extends DataSchemaBase<string> {
   readonly in?: readonly SelectOptionSchema<string>[];
 }
 
-export interface MapDataSchema extends DataSchemaBase<object> {
+export interface MapDataSchema extends DataSchemaBase<unknown> {
   readonly t: DataSchemaType.Map;
   readonly contextKey?: string;
   readonly sourcePath?: DataPath;
@@ -127,6 +129,10 @@ export interface ConditionalDataSchema {
   readonly filePath?: readonly string[];
 }
 
+export interface KeyDataSchema {
+  readonly t: DataSchemaType.Key;
+}
+
 export class DataSchemaContext {
   public static createRootContext(rootSchema: DataSchemaExcludeRecursive | undefined): DataSchemaContext | undefined {
     return rootSchema && new DataSchemaContext(rootSchema, rootSchema, []);
@@ -138,7 +144,7 @@ export class DataSchemaContext {
     private readonly path: readonly DataSchemaExcludeRecursive[],
   ) {}
 
-  public dig(key: string | number | undefined | null): DataSchemaContext | undefined {
+  public dig(key: symbol | string | number | undefined | null): DataSchemaContext | undefined {
     switch (this.currentSchema.t) {
       case DataSchemaType.Map:
       case DataSchemaType.List:
@@ -256,10 +262,6 @@ function parseDynamicOptionConfigItem(config: SelectDynamicOptionConfig): Select
     labelPath: (config.labelPath && parsePath(config.labelPath)) || undefined,
     valuePath: (config.valuePath && parsePath(config.valuePath)) || undefined,
   };
-}
-
-export function copyKeyOrKeyFlatten(source: KeyOrKeyFlatten): KeyOrKeyFlatten {
-  return source.keyFlatten ? {keyFlatten: true} : {key: source.key};
 }
 
 export function parseCondition(source: ConditionConfig): ConditionConfig<DataPath> {

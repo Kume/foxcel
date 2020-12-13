@@ -1,6 +1,7 @@
 import ObjectDataStorage from '../ObjectDataStorage';
-import DataMapper, {DataMapperConfig, FileDataMapNode} from '../DataMapper';
+import DataMapper, {FileDataMapNode} from '../DataMapper';
 import {RawStorageDataModelManager} from '../StorageDataModelManager';
+import {DataMapperConfig} from '../../common/ConfigTypes';
 
 describe('Unit Test for DataMapper', () => {
   describe('Common save and load test', () => {

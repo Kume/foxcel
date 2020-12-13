@@ -1,4 +1,5 @@
 import type {KeySymbolType} from '../DataModel/DataPath';
+import {keySymbol} from '../DataModel/DataPath';
 import {
   CollectionDataModelTypeString,
   ConditionalUISchemaConfig,
@@ -10,7 +11,6 @@ import {
   dataPathComponentToMapKey,
   ForwardDataPathComponent,
   KeyOrKeyFlatten,
-  keySymbol,
   MappingTableUISchemaConfig,
   parsePath,
   RootSchemaConfig,
@@ -28,7 +28,6 @@ import {LoadedSchemaPath, PathConfigMap, resolveConfigOrRecursive} from '../comm
 import {
   BooleanDataSchema,
   ConditionalDataSchema,
-  copyKeyOrKeyFlatten,
   DataSchema,
   DataSchemaContext,
   DataSchemaExcludeRecursive,
@@ -36,6 +35,7 @@ import {
   DataSchemaType,
   FixedMapDataSchema,
   getByKeyForFixedMapDataSchema,
+  KeyDataSchema,
   ListDataSchema,
   MapDataSchema,
   NumberDataSchema,
@@ -62,10 +62,16 @@ type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema ? neve
 
 export type UISchemaType = UISchema['type'];
 
+export type UISchemaKey = string | KeySymbolType;
+
 interface UISchemaBase {
   readonly label?: string;
-  readonly key?: string | KeySymbolType;
+  readonly key?: UISchemaKey;
 }
+
+type FlattenableUISchemaCommon =
+  | {keyFlatten: true; key: UISchemaKey; flatKeys: ReadonlyMap<UISchemaKey, readonly UISchemaKey[]>}
+  | {keyFlatten?: false; key: UISchemaKey};
 
 export interface MappingTableUISchema extends UISchemaBase {
   readonly type: 'mappingTable';
@@ -76,15 +82,15 @@ export interface MappingTableUISchema extends UISchemaBase {
 
 export interface TextUISchema extends UISchemaBase {
   readonly type: 'text';
-  readonly dataSchema: StringDataSchema;
+  readonly dataSchema: StringDataSchema | KeyDataSchema;
 }
 
-export interface TabUISchema extends UISchemaBase {
+export type TabUISchema = {
   readonly type: 'tab';
   readonly dataSchema: FixedMapDataSchema;
-  readonly keyFlatten?: boolean;
   readonly contents: ReadonlyArray<UISchema>;
-}
+} & UISchemaBase &
+  FlattenableUISchemaCommon;
 
 export interface TableUISchema extends UISchemaBase {
   readonly type: 'table';
@@ -114,12 +120,13 @@ export interface NumberUISchema extends UISchemaBase {
   readonly dataSchema: NumberDataSchema;
 }
 
-export interface FormUISchema extends UISchemaBase {
+export type FormUISchema = {
   readonly type: 'form';
   readonly dataSchema: FixedMapDataSchema;
   readonly keyFlatten?: boolean;
   readonly contents: ReadonlyArray<UISchema>;
-}
+} & UISchemaBase &
+  FlattenableUISchemaCommon;
 
 export interface ContentListUISchema extends UISchemaBase {
   readonly type: 'contentList';
@@ -153,9 +160,7 @@ export interface RecursiveUISchema {
 
 export interface UISchemaParsingContext {
   readonly uiPath: ReadonlyArray<{key?: string; type: UISchemaType}>;
-  readonly dataPath: ReadonlyArray<{key: string | number | null; type: DataSchemaType}> | undefined;
-  // readonly namespace: readonly string[]; TODO 消す
-  // readonly namedKeyMap: NamedItemManager<KeyOrKeyFlatten>;
+  // readonly dataPath: ReadonlyArray<{key: string | number | null; type: DataSchemaType}> | undefined;
   readonly dataSchemaContext: DataSchemaContext | undefined;
   readonly loadedPath: LoadedSchemaPath<DataSchema>;
   readonly filePath: readonly string[];
@@ -165,7 +170,7 @@ export const createRootUiSchemaParsingContext = (
   dataSchema: DataSchemaExcludeRecursive | undefined,
 ): UISchemaParsingContext => ({
   uiPath: [],
-  dataPath: [],
+  // dataPath: [],
   dataSchemaContext: DataSchemaContext.createRootContext(dataSchema),
   loadedPath: [],
   filePath: [],
@@ -180,17 +185,12 @@ class UISchemaParseError extends Error {
 function pushToContext(
   context: UISchemaParsingContext,
   ui: {key?: string; type: UISchemaType} | undefined,
-  data: {key: string | number | null; type: DataSchemaType} | undefined,
-  // loadedPath?: LoadedSchemaPath<DataSchema>,
-  // filePath?: readonly string[],
+  data: {key: symbol | string | number | null; type: DataSchemaType} | undefined,
 ): UISchemaParsingContext {
   return {
     ...context,
     uiPath: ui ? [...context.uiPath, ui] : context.uiPath,
-    dataPath: data && context.dataPath && [...context.dataPath, data],
     dataSchemaContext: context?.dataSchemaContext?.dig(data?.key),
-    // loadedPath: loadedPath ?? context.loadedPath,
-    // filePath: filePath ?? context.filePath, // TODO この関数の呼び出し側でfilePathを適切にセットする
   };
 }
 
@@ -241,6 +241,17 @@ export class UISchemaContext {
     public readonly dataSchemaContext: DataSchemaContext,
     private readonly path: readonly UISchemaExcludeRecursive[],
   ) {}
+
+  public resolve(schema: UISchema): UISchemaExcludeRecursive {
+    if (schema.type === 'recursive') {
+      if (schema.depth >= this.path.length) {
+        throw new Error('Invalid ui schema depth');
+      }
+      return this.path[this.path.length - schema.depth - 1];
+    } else {
+      return schema;
+    }
+  }
 }
 
 function createConditionMap(dataSchema: ConditionalDataSchema | undefined, config: ConditionalUISchemaConfig) {
@@ -328,7 +339,8 @@ function parseSelectUISchemaConfig(
       throw new UISchemaParseError('options config not found.', context);
     }
     return {
-      ...pick(config, 'type', 'key', 'label', 'emptyToNull'),
+      ...pick(config, 'type', 'label', 'emptyToNull'),
+      key: parseKey(config.key),
       isMulti: true,
       dataSchema: overwriteObject<ListDataSchema>(dataSchema, {t: DataSchemaType.List, label: config.label}),
       options,
@@ -340,7 +352,8 @@ function parseSelectUISchemaConfig(
       throw new UISchemaParseError('options config not found.', context);
     }
     return {
-      ...pick(config, 'type', 'key', 'label'),
+      ...pick(config, 'type', 'label'),
+      key: parseKey(config.key),
       isMulti: false,
       dataSchema: overwriteObject<StringDataSchema>(dataSchema, {label: config.label}),
       options,
@@ -391,25 +404,78 @@ function overwriteObject<T>(...items: readonly (Partial<T> | undefined)[]): T {
   return ret as T;
 }
 
+function isFlattenableUISchema(schema: UISchema): schema is FormUISchema | TabUISchema {
+  return schema.type === 'form' || schema.type === 'tab';
+}
+
+function makeKeyFlattenable(config: KeyOrKeyFlatten, contents: readonly UISchema[]): FlattenableUISchemaCommon {
+  if (config.keyFlatten) {
+    const flatKeys: Map<UISchemaKey, UISchemaKey[]> = new Map();
+    if (contents.length === 0) {
+      throw new Error('key flatten config must have contents'); // TODO
+    }
+    const firstContent = contents[0];
+    if (firstContent.type === 'recursive') {
+      throw new Error('flatten config cannot have recursive content'); // TODO
+    }
+    if (!firstContent.key) {
+      throw new Error('flatten content must have key'); // TODO
+    }
+    const firstContentKey = firstContent.key;
+    for (const content of contents) {
+      if (isFlattenableUISchema(content) && content.keyFlatten) {
+        content.flatKeys.forEach((keyPath, key) => {
+          flatKeys.set(key, [firstContentKey, ...keyPath]);
+        });
+      } else {
+        if (content.type !== 'recursive') {
+          if (!content.key) {
+            throw new Error('flatten content must have key'); // TODO
+          }
+          flatKeys.set(content.key, [content.key]);
+        }
+      }
+    }
+    return {keyFlatten: true, key: firstContentKey, flatKeys};
+  } else if (config.key) {
+    return {key: parseKey(config.key)};
+  } else {
+    throw new Error('no key or flattenKeys'); // TODO
+  }
+}
+
+function parseKey(key: string): UISchemaKey;
+function parseKey(key: string | undefined): UISchemaKey | undefined;
+function parseKey(key: string | undefined): UISchemaKey | undefined {
+  if (key === undefined) {
+    return undefined;
+  }
+  if (key === '$key') {
+    return keySymbol;
+  }
+  return key;
+}
+
 function parseContentListUISchemaConfig(
   config: ContentListUISchemaConfig,
   pathConfigMap: PathConfigMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: MapDataSchema | ListDataSchema | undefined,
 ): ContentListUISchema {
-  const nextContext = pushToContext(
-    context,
-    {type: config.type},
-    dataSchema && {key: config.key || null, type: dataSchema.t},
-  );
+  const key = parseKey(config.key) || null;
+  const nextContext = pushToContext(context, {type: config.type}, dataSchema && {key, type: dataSchema.t});
   const content = parseConfigOrReference(
     config.content,
     pathConfigMap,
     nextContext,
     nextContext.dataSchemaContext?.resolveRecursive(dataSchema?.item),
   );
+  if (content.dataSchema.t === DataSchemaType.Key) {
+    throw new Error('ContentListの要素としてkeyに$keyを持つ要素を直接持つことはできません。');
+  }
   return {
-    ...pick(config, 'type', 'key', 'label'),
+    ...pick(config, 'type', 'label'),
+    key: parseKey(config.key),
     dataSchema: overwriteObject<MapDataSchema | ListDataSchema>(
       {t: collectionTypeToDataSchemaType(config.dataType || 'list')},
       dataSchema,
@@ -446,7 +512,14 @@ function parseChildrenDataSchema(
   const dataSchema = overwriteObject<FixedMapDataSchema>({t: DataSchemaType.FixedMap}, childDataSchema, {
     items: mapToObject(
       itemKeys,
-      (key) => [key, contentsByKey.get(key)?.dataSchema || childDataSchema?.items?.[key]],
+      (key) => {
+        const dataSchema = contentsByKey.get(key)?.dataSchema;
+        if (dataSchema?.t === DataSchemaType.Key) {
+          return [key, undefined];
+        } else {
+          return [key, dataSchema || childDataSchema?.items?.[key]];
+        }
+      },
       true,
     ),
   });
@@ -463,7 +536,7 @@ function parseTableUISchemaConfig(
   const rowContext = pushToContext(
     context,
     {type: config.type},
-    dataSchema && {key: config.key || null, type: dataSchema.t},
+    dataSchema && {key: parseKey(config.key) || null, type: dataSchema.t},
   );
   const {dataSchema: childDataSchema, contents} = parseChildrenDataSchema(
     config.contents,
@@ -476,7 +549,7 @@ function parseTableUISchemaConfig(
     dataSchema,
     {label: config.label, item: childDataSchema},
   );
-  return {...pick(config, 'type', 'key', 'label'), dataSchema: fixedDataSchema, contents};
+  return {...pick(config, 'type', 'label'), key: parseKey(config.key), dataSchema: fixedDataSchema, contents};
 }
 
 function parseMappingTableUISchemaConfig(
@@ -489,7 +562,7 @@ function parseMappingTableUISchemaConfig(
   const rowContext = pushToContext(
     context,
     {type: config.type},
-    dataSchema && {key: config.key || null, type: dataSchema.t},
+    dataSchema && {key: parseKey(config.key) || null, type: dataSchema.t},
   );
   const {dataSchema: childDataSchema, contents} = parseChildrenDataSchema(
     config.contents,
@@ -502,7 +575,8 @@ function parseMappingTableUISchemaConfig(
     item: childDataSchema,
   });
   return {
-    ...pick(config, 'type', 'key', 'label'),
+    ...pick(config, 'type', 'label'),
+    key: parseKey(config.key),
     sourcePath: parsePath(config.sourcePath, 'single'),
     contents,
     dataSchema: fixedSchema,
@@ -531,11 +605,16 @@ function nextChildDataSchema(
     } else {
       let dataPathComponent: {key: string; type: DataSchemaType} | undefined;
       let childDataSchema: DataSchema | undefined;
+      if (!resolved.config.key) {
+        throw new Error('key is undefined');
+      }
       if (dataSchema) {
-        childDataSchema = context.dataSchemaContext?.resolveRecursive(
-          getByKeyForFixedMapDataSchema(dataSchema, resolved.config.key!),
-        );
-        dataPathComponent = childDataSchema && {key: resolved.config.key!, type: childDataSchema.t};
+        const key = parseKey(resolved.config.key);
+        if (key !== keySymbol) {
+          childDataSchema = context.dataSchemaContext?.resolveRecursive(getByKeyForFixedMapDataSchema(dataSchema, key));
+          dataPathComponent = childDataSchema && {key, type: childDataSchema.t};
+        }
+        // TODO else節が不要か考える
       }
       return [pushToContext(context, undefined, dataPathComponent), childDataSchema];
     }
@@ -553,7 +632,8 @@ export function parseUISchemaConfig2(
     case 'checkbox':
       assertDataSchemaType(resolvedDataSchema, context, DataSchemaType.Boolean);
       return {
-        ...pick(config, 'type', 'key', 'label'),
+        ...pick(config, 'type', 'label'),
+        key: parseKey(config.key),
         dataSchema: overwriteObject<BooleanDataSchema>({t: DataSchemaType.Boolean}, resolvedDataSchema, {
           label: config.label,
         }),
@@ -562,7 +642,8 @@ export function parseUISchemaConfig2(
     case 'number':
       assertDataSchemaType(resolvedDataSchema, context, DataSchemaType.Number);
       return {
-        ...pick(config, 'type', 'key', 'label'),
+        ...pick(config, 'type', 'label'),
+        key: parseKey(config.key),
         dataSchema: overwriteObject<NumberDataSchema>({t: DataSchemaType.Number}, resolvedDataSchema, {
           label: config.label,
         }),
@@ -571,7 +652,8 @@ export function parseUISchemaConfig2(
     case 'text':
       assertDataSchemaType(resolvedDataSchema, context, DataSchemaType.String);
       return {
-        ...pick(config, 'type', 'key', 'label'),
+        ...pick(config, 'type', 'label'),
+        key: parseKey(config.key),
         dataSchema: overwriteObject<StringDataSchema>({t: DataSchemaType.String}, resolvedDataSchema, {
           label: config.label,
         }),
@@ -596,9 +678,10 @@ export function parseUISchemaConfig2(
         return parseConfigOrReference(childConfig, pathConfigMap, nextContext, schema);
       });
       return {
-        ...pick(config, 'type', 'key', 'label'),
+        ...pick(config, 'type', 'label'),
+        key: parseKey(config.key),
         contents,
-        dataSchema: resolvedDataSchema!, // TODO
+        dataSchema: resolvedDataSchema!,
       };
     }
 
@@ -612,7 +695,7 @@ export function parseUISchemaConfig2(
       );
       return {
         ...pick(config, 'type', 'label'),
-        ...copyKeyOrKeyFlatten(config),
+        ...makeKeyFlattenable(config, contents),
         contents,
         dataSchema: childDataSchema,
       };
@@ -628,7 +711,7 @@ export function parseUISchemaConfig2(
       );
       return {
         ...pick(config, 'type', 'label'),
-        ...copyKeyOrKeyFlatten(config),
+        ...makeKeyFlattenable(config, contents),
         contents,
         dataSchema: childDataSchema,
       };
@@ -700,28 +783,27 @@ export async function buildUISchema(
   return parseUISchemaConfig2(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
 }
 
-// TODO
-// export function uiSchemaHasFlattenDataPathComponent(
-//   schema: UISchema,
-//   pathComponent: ForwardDataPathComponent,
-//   manager: NamedUISchemaManager,
-// ): boolean {
-//   const resolved = manager.resolve(schema);
-//   switch (resolved.type) {
-//     case 'form':
-//     case 'tab': {
-//       if (resolved.keyFlatten) {
-//         return resolved.contents.some((content) =>
-//           uiSchemaHasFlattenDataPathComponent(content, pathComponent, manager),
-//         );
-//       }
-//     }
-//   }
-//   return uiSchemaKeyAndPathComponentIsMatch(resolved.key, pathComponent);
-// }
+export function uiSchemaHasFlattenDataPathComponent(
+  schema: UISchema,
+  pathComponent: ForwardDataPathComponent,
+  context: UISchemaContext,
+): boolean {
+  const resolved = context.resolve(schema);
+  switch (resolved.type) {
+    case 'form':
+    case 'tab': {
+      if (resolved.keyFlatten) {
+        return resolved.contents.some((content) =>
+          uiSchemaHasFlattenDataPathComponent(content, pathComponent, context),
+        );
+      }
+    }
+  }
+  return uiSchemaKeyAndPathComponentIsMatch(resolved.key, pathComponent);
+}
 
 export function uiSchemaKeyAndPathComponentIsMatch(
-  key: string | KeySymbolType | undefined,
+  key: UISchemaKey | undefined,
   pathComponent: ForwardDataPathComponent,
 ): boolean {
   if (key === undefined) {

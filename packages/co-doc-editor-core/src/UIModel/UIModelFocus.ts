@@ -1,11 +1,5 @@
 import {UIModelPathComponent} from './UIModelCommon';
-import {
-  ReferenceUISchema,
-  UISchema,
-  UISchemaContext,
-  uiSchemaHasFlattenDataPathComponent,
-  uiSchemaKeyAndPathComponentIsMatch,
-} from './UISchema';
+import {UISchemaContext, uiSchemaKeyAndPathComponentIsMatch} from './UISchema';
 import {
   DataModel,
   dataPathFirstComponent,
@@ -26,7 +20,7 @@ export interface UIModelFocusNode {
 }
 
 function mapMap<K, T, R>(origin: Map<K, T>, mapper: (value: T, key: K) => R): Map<K, R> {
-  const map = new Map();
+  const map = new Map<K, R>();
   for (const [key, value] of origin) {
     map.set(key, mapper(value, key));
   }
@@ -36,6 +30,7 @@ function mapMap<K, T, R>(origin: Map<K, T>, mapper: (value: T, key: K) => R): Ma
 export function focusForUIModel(
   origin: UIModelFocusNode | undefined,
   targetPath: ForwardDataPath,
+  dataModel: DataModel | undefined,
   uiSchemaContext: UISchemaContext,
   collectDataForPath: undefined | ((path: MultiDataPath) => DataCollectionItem[]),
   currentPath: ForwardDataPath = emptyDataPath,
@@ -44,8 +39,8 @@ export function focusForUIModel(
     return {};
   }
   const firstPathComponent = dataPathFirstComponent(targetPath);
-  const resolvedSchema = uiManager.resolve(schema);
-  switch (resolvedSchema.type) {
+  const {currentSchema} = uiSchemaContext;
+  switch (currentSchema.type) {
     case 'text':
     case 'checkbox':
     case 'number':
@@ -54,28 +49,27 @@ export function focusForUIModel(
     }
     case 'tab':
     case 'form': {
-      let childUiSchemaIndex = resolvedSchema.contents.findIndex((content) =>
-        uiSchemaKeyAndPathComponentIsMatch(uiManager.resolve(content).key, firstPathComponent),
+      let childUiSchemaIndex = currentSchema.contents.findIndex((content) =>
+        uiSchemaKeyAndPathComponentIsMatch(uiSchemaContext.resolve(content).key, firstPathComponent),
       );
       const childOrigin = origin?.children?.get(childUiSchemaIndex);
-      const childModel = dataModel && getFromDataModelForPathComponent(dataModel, firstPathComponent);
+      const childModel = getFromDataModelForPathComponent(dataModel, firstPathComponent);
       if (childUiSchemaIndex >= 0) {
-        const childUiSchema = resolvedSchema.contents[childUiSchemaIndex];
+        const childUiSchema = currentSchema.contents[childUiSchemaIndex];
         return {
           active: childUiSchemaIndex,
           children:
             dataPathLength(targetPath) === 1
               ? undefined
               : new Map([
-                  ...(origin?.children ? origin.children : []),
+                  ...(origin?.children ?? []),
                   [
                     childUiSchemaIndex,
                     focusForUIModel(
                       childOrigin,
                       shiftDataPath(targetPath),
                       childModel,
-                      childUiSchema,
-                      uiManager,
+                      uiSchemaContext, // TODO push
                       collectDataForPath,
                       pushDataPath(currentPath, firstPathComponent),
                     ),
@@ -83,7 +77,7 @@ export function focusForUIModel(
                 ]),
         };
       } else {
-        childUiSchemaIndex = resolvedSchema.contents.findIndex((content) =>
+        childUiSchemaIndex = currentSchema.contents.findIndex((content) =>
           uiSchemaHasFlattenDataPathComponent(content, firstPathComponent, uiManager),
         );
         if (childUiSchemaIndex >= 0) {
