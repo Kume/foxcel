@@ -15,6 +15,7 @@ import {
 import {UISchemaContext} from './UISchemaContext';
 import {UIModel} from './UIModelTypes';
 import {Writable} from '../common/utilTypes';
+import {UISchema} from './UISchemaTypes';
 
 export interface ContentListUIFocusNode {
   readonly type: 'contentList';
@@ -72,7 +73,58 @@ export interface UISchemaFocusLogNode {
   /**
    * children by index
    */
-  readonly c: {readonly [index: number]: UISchemaFocusLogNode};
+  readonly c: {readonly [index: number]: UISchemaFocusLogNode | undefined};
+}
+
+type MatchedModel<Schema extends UISchema, Model extends UIModel> = Model extends {type: Schema['type']}
+  ? Model
+  : never;
+
+type SchemaModelPair<Schema extends UISchema = UISchema, Model extends UIModel = UIModel> = Schema extends UISchema
+  ? {type: Schema['type']; schema: Schema; model: MatchedModel<Schema, Model>}
+  : never;
+
+function assertModelTypeForSchema<Schema extends UISchema>(
+  schema: Schema,
+  model: UIModel,
+): asserts model is MatchedModel<Schema, UIModel> {
+  if (schema.type !== model.type) {
+    throw new Error('ui model is not match to schema');
+  }
+}
+
+export function logSchemaFocus(
+  model: UIModel,
+  uiSchemaContext: UISchemaContext,
+  lastFocus: UISchemaFocusLogNode | undefined,
+): UISchemaFocusLogNode | undefined {
+  const {currentSchema} = uiSchemaContext;
+  const currentFocus: Writable<UISchemaFocusLogNode> = {c: {...lastFocus?.c}};
+  switch (currentSchema.type) {
+    case 'tab': {
+      assertModelTypeForSchema(currentSchema, model);
+      if (!model.currentChild) {
+        currentFocus.a = lastFocus?.a;
+        return currentFocus;
+      }
+      const index = model.currentTabIndex;
+      currentFocus.a = index;
+      const childContext = uiSchemaContext.digForIndex(index);
+      currentFocus.c[index] = logSchemaFocus(model.currentChild, childContext, lastFocus?.c[index]);
+      return currentFocus;
+    }
+    case 'form': {
+      assertModelTypeForSchema(currentSchema, model);
+      model.contents.forEach(({model}, index) => {
+        const contentFocus = logSchemaFocus(model, uiSchemaContext.digForIndex(index), lastFocus?.c[index]);
+        if (currentFocus.c[index] || contentFocus) {
+          currentFocus.c[index] = contentFocus;
+        }
+      });
+      return currentFocus;
+    }
+  }
+  return undefined;
 }
 
 export function logFocus(
@@ -112,6 +164,13 @@ export function logFocus(
         lastSchemaFocusLog?.c[model.currentTabIndex],
       );
       schemaFocus.c[model.currentTabIndex] = childFocus.schemaFocus;
+      break;
+    }
+
+    case 'form': {
+      if (model.type !== 'form') {
+        throw new Error('ui model is not match to schema');
+      }
     }
   }
   return {dataFocus, schemaFocus};

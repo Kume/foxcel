@@ -1,20 +1,13 @@
-import React, {useState} from 'react';
+import React, {useReducer} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
 import {UIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {
-  DataModel,
-  DataSchemaConfig,
-  emptyDataPath,
-  ForwardDataPath,
-  RootSchemaConfig,
-  unknownToDataModel,
-} from 'co-doc-editor-core';
-import {buildSimpleUISchema, parseUISchemaConfig} from 'co-doc-editor-core/dist/UIModel/UISchema';
-import {buildDataSchema, buildSimpleDataSchema, DataSchemaContext} from 'co-doc-editor-core/dist/DataModel/DataSchema';
-import {NamedItemNode} from 'co-doc-editor-core/dist/common/commonTypes';
+import {DataModel, emptyDataPath, ForwardDataPath, RootSchemaConfig, unknownToDataModel} from 'co-doc-editor-core';
+import {buildSimpleUISchema} from 'co-doc-editor-core/dist/UIModel/UISchema';
+import {buildSimpleDataSchema, DataSchemaContext} from 'co-doc-editor-core/dist/DataModel/DataSchema';
 import {buildUIModel} from 'co-doc-editor-core/dist/UIModel/UIModel';
 import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
 import {DataModelAction, execDataModelAction} from 'co-doc-editor-core/dist/DataModel/DataModelAction';
+import {logSchemaFocus, UIDataFocusLogNode, UISchemaFocusLogNode} from 'co-doc-editor-core/dist/UIModel/UIModelFocus';
 
 const config: RootSchemaConfig = {
   dataSchema: {
@@ -125,25 +118,91 @@ const initialDataModel = unknownToDataModel({
   testB: {},
 });
 
+interface FocusAction {
+  readonly type: 'focus';
+  readonly path: ForwardDataPath;
+}
+
+interface DataAction {
+  readonly type: 'data';
+  readonly action: DataModelAction;
+}
+
+type Action = FocusAction | DataAction;
+
+interface AppState {
+  data: DataModel;
+  uiModel: UIModel;
+  focus?: ForwardDataPath;
+  schemaFocusLog?: UISchemaFocusLogNode;
+  dataFocusLog?: UIDataFocusLogNode;
+}
+
+function reducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case 'focus': {
+      const uiModel = buildUIModel(
+        rootSchemaContext,
+        state.data,
+        emptyDataPath,
+        action.path,
+        state.dataFocusLog,
+        state.schemaFocusLog,
+      );
+      return {
+        ...state,
+        focus: action.path,
+        uiModel,
+        schemaFocusLog: logSchemaFocus(uiModel, rootSchemaContext, state.schemaFocusLog),
+      };
+    }
+    case 'data': {
+      const data = execDataModelAction(state.data, dataSchema, action.action);
+      if (!data) {
+        return state;
+      }
+      const uiModel = buildUIModel(
+        rootSchemaContext,
+        data,
+        emptyDataPath,
+        undefined,
+        state.dataFocusLog,
+        state.schemaFocusLog,
+      );
+      return {
+        ...state,
+        data,
+        uiModel,
+        schemaFocusLog: logSchemaFocus(uiModel, rootSchemaContext, state.schemaFocusLog),
+      };
+    }
+  }
+}
+const rootSchemaContext = UISchemaContext.createRootContext(uiSchema, DataSchemaContext.createRootContext(dataSchema));
+
+function buildInitialState(data: DataModel): AppState {
+  const uiModel = buildUIModel(rootSchemaContext, data, emptyDataPath, undefined, undefined, undefined);
+  return {data, uiModel};
+}
+
 export const RootView: React.FC = () => {
-  const [dataModel, setDataModel] = useState<DataModel | undefined>(initialDataModel);
-  const [focus, setFocus] = useState<ForwardDataPath | undefined>();
+  const [state, dispatch] = useReducer(reducer, buildInitialState(initialDataModel));
   const uiModel = buildUIModel(
     UISchemaContext.createRootContext(uiSchema, DataSchemaContext.createRootContext(dataSchema)),
-    dataModel,
+    state.data,
     emptyDataPath,
-    focus,
-    undefined,
-    undefined,
+    state.focus,
+    state.dataFocusLog,
+    state.schemaFocusLog,
   );
-  console.log('xxxx RootView', {dataModel, focus, uiModel, uiSchema});
-  const onChangeData = (action: DataModelAction) => {
-    console.log('action', action);
-    setDataModel(execDataModelAction(dataModel, dataSchema, action));
-  };
+
   return (
     <div>
-      <UIView model={uiModel} onChangeData={onChangeData} onFocusByDataPath={setFocus} />
+      <UIView
+        model={uiModel}
+        onChangeData={(action) => dispatch({type: 'data', action})}
+        onFocusByDataPath={(path) => dispatch({type: 'focus', path})}
+      />
     </div>
   );
 };
