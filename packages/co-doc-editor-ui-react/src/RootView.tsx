@@ -27,16 +27,38 @@ const config: RootSchemaConfig = {
                 type: 'fixed_map',
                 label: 'テストA3a',
                 items: {
-                  testA3a1: {type: 'string', label: 'testA3a1'},
-                  testA3a2: {type: 'string', label: 'testA3a2'},
+                  testA3a1: {type: 'string', label: 'テストA3a1'},
+                  testA3a2: {type: 'string', label: 'テストA3a2'},
                 },
               },
               testA3b: {
                 type: 'fixed_map',
                 label: 'テストA3b',
                 items: {
-                  testA3b1: {type: 'string', label: 'testA3b1'},
-                  testA3b2: {type: 'string', label: 'testA3b2'},
+                  testA3b1: {type: 'string', label: 'テストA3b1'},
+                  testA3b2: {type: 'string', label: 'テストA3b2'},
+                },
+              },
+            },
+          },
+          testA4: {
+            type: 'fixed_map',
+            label: 'テストA4',
+            items: {
+              testA4a: {
+                type: 'fixed_map',
+                label: 'テストA4a',
+                items: {
+                  testA4a1: {type: 'string', label: 'テストA4a1'},
+                  testA4a2: {type: 'string', label: 'テストA4a2'},
+                },
+              },
+              testA4b: {
+                type: 'fixed_map',
+                label: 'テストA4b',
+                items: {
+                  testA4b1: {type: 'string', label: 'テストA4b1'},
+                  testA4b2: {type: 'string', label: 'テストA4b2'},
                 },
               },
             },
@@ -84,6 +106,28 @@ const config: RootSchemaConfig = {
                 contents: [
                   {type: 'text', key: 'testA3b1'},
                   {type: 'text', key: 'testA3b2'},
+                ],
+              },
+            ],
+          },
+          {
+            type: 'tab',
+            key: 'testA4',
+            contents: [
+              {
+                type: 'form',
+                key: 'testA4a',
+                contents: [
+                  {type: 'text', key: 'testA4a1'},
+                  {type: 'text', key: 'testA4a2'},
+                ],
+              },
+              {
+                type: 'form',
+                key: 'testA4b',
+                contents: [
+                  {type: 'text', key: 'testA4b1'},
+                  {type: 'text', key: 'testA4b2'},
                 ],
               },
             ],

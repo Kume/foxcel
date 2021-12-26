@@ -69,3 +69,7 @@ export function resolvePath(currentPath: readonly string[], targetPath: readonly
   }
   return path;
 }
+
+export function validIndexOrUndefined(index: number): number | undefined {
+  return index < 0 ? undefined : index;
+}

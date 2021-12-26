@@ -8,10 +8,10 @@ import {
   dataPathComponentToMapKey,
   ForwardDataPath,
   ForwardDataPathComponent,
-  pushDataPath,
 } from '../DataModel/DataPath';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {dataModelIsMap, getMapDataAt, getMapDataIndexForPointer, getMapKeyAtIndex} from '../DataModel/DataModel';
+import {validIndexOrUndefined} from '../common/utils';
 
 export class UISchemaContext {
   public static createRootContext(
@@ -77,7 +77,9 @@ export class UISchemaContext {
         return undefined;
     }
     if (dataPathComponentIsKey(dataPathComponent)) {
-      return contents.findIndex(({currentSchema: {key}}) => key !== undefined && uiSchemaKeyIsParentKey(key));
+      return validIndexOrUndefined(
+        contents.findIndex(({currentSchema: {key}}) => key !== undefined && uiSchemaKeyIsParentKey(key)),
+      );
     }
 
     let key: string;
@@ -100,7 +102,7 @@ export class UISchemaContext {
     } else {
       return undefined;
     }
-    return contents.findIndex(({currentSchema: {key: contentKey}}) => contentKey === key);
+    return validIndexOrUndefined(contents.findIndex(({currentSchema: {key: contentKey}}) => contentKey === key));
   }
 
   private _contents?: readonly UISchemaContext[];
