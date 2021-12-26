@@ -1,13 +1,8 @@
-import {
-  createRootUiSchemaParsingContext,
-  getUiSchemaUniqueKeyOrUndefined,
-  parseUISchemaConfig2,
-  TabUISchema,
-  UISchema,
-} from '../UISchema';
+import {createRootUiSchemaParsingContext, getUiSchemaUniqueKeyOrUndefined, parseUISchemaConfig} from '../UISchema';
 import {UISchemaConfig} from '../..';
 import {DataSchema, DataSchemaType} from '../../DataModel/DataSchema';
 import {mapToObject} from '../../common/utils';
+import {TabUISchema, UISchema} from '../UISchemaTypes';
 
 const emptyRootContext = createRootUiSchemaParsingContext(undefined);
 
@@ -62,7 +57,7 @@ const testDataCreator = {
 describe('Unit tests for parseUISchemaConfig', () => {
   describe('For text', () => {
     it('DataSchema is empty', () => {
-      const result = parseUISchemaConfig2({type: 'text'}, new Map(), emptyRootContext, undefined);
+      const result = parseUISchemaConfig({type: 'text'}, new Map(), emptyRootContext, undefined);
       expect(result.type).toBe('text');
       expect(result.dataSchema).toEqual({t: DataSchemaType.String});
     });
@@ -70,7 +65,7 @@ describe('Unit tests for parseUISchemaConfig', () => {
 
   describe('For number', () => {
     it('DataSchema is empty', () => {
-      const result = parseUISchemaConfig2({type: 'number'}, new Map(), emptyRootContext, undefined);
+      const result = parseUISchemaConfig({type: 'number'}, new Map(), emptyRootContext, undefined);
       expect(result.type).toBe('number');
       expect(result.dataSchema).toEqual({t: DataSchemaType.Number});
     });
@@ -78,7 +73,7 @@ describe('Unit tests for parseUISchemaConfig', () => {
 
   describe('For checkbox', () => {
     it('DataSchema is empty', () => {
-      const result = parseUISchemaConfig2({type: 'checkbox'}, new Map(), emptyRootContext, undefined);
+      const result = parseUISchemaConfig({type: 'checkbox'}, new Map(), emptyRootContext, undefined);
       expect(result.type).toBe('checkbox');
       expect(result.dataSchema).toEqual({t: DataSchemaType.Boolean});
     });
@@ -95,7 +90,7 @@ describe('Unit tests for parseUISchemaConfig', () => {
     describe('Without DataSchema', () => {
       it('Simple', () => {
         const uiSchemaConfig: UISchemaConfig = {type: 'form', contents: [{type: 'text', key: 'test_text'}]};
-        const result = parseUISchemaConfig2(uiSchemaConfig, new Map(), emptyRootContext, undefined);
+        const result = parseUISchemaConfig(uiSchemaConfig, new Map(), emptyRootContext, undefined);
         expect(result).toEqual({
           type: 'form',
           contents: [testDataCreator.text().uiSchema],
@@ -107,7 +102,7 @@ describe('Unit tests for parseUISchemaConfig', () => {
       });
 
       it('Nested without keyFlatten', () => {
-        const result = parseUISchemaConfig2(configWithKeyFlatten, new Map(), emptyRootContext, undefined);
+        const result = parseUISchemaConfig(configWithKeyFlatten, new Map(), emptyRootContext, undefined);
         const expected = testDataCreator.form({}, [
           testDataCreator.text(),
           testDataCreator.form({key: 'test_form'}, [testDataCreator.number()]),
@@ -123,7 +118,7 @@ describe('Unit tests for parseUISchemaConfig', () => {
           testDataCreator.text(),
           testDataCreator.form({key: 'test_form'}, [testDataCreator.number()]),
         ]);
-        const result = parseUISchemaConfig2(configWithKeyFlatten, new Map(), emptyRootContext, expected.dataSchema);
+        const result = parseUISchemaConfig(configWithKeyFlatten, new Map(), emptyRootContext, expected.dataSchema);
         expect(result).toEqual(expected.uiSchema);
         expect(result).toMatchSnapshot();
       });

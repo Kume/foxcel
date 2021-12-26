@@ -7,7 +7,27 @@
   "author": "makoto.kume",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "dev": "tsc -w",
+    "lint": "eslint --ext .jsx,.js,.tsx,.ts ./src"
+  },
   "dependencies": {
     "lodash.pick": "^4.4.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "./src/.+(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
   }
 }

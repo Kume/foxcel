@@ -29,15 +29,30 @@ export type BooleanDataModel = boolean;
 
 export type StringDataModel = string;
 
-export type ListDataModel = readonly DataModel[];
+export type ListDataModel = readonly (readonly [number, DataModel])[];
 
 export interface MapDataModel {
   readonly t: DataModelType.Map;
-  readonly v: ReadonlyArray<Readonly<[string | null, DataModel]>>;
+  readonly v: readonly MapDataModelItem[];
 }
+
+export type MapDataModelItem = readonly [string | null, number, DataModel];
 
 export interface DataCollectionItem {
   index?: string | number;
   path: ForwardDataPath;
   data: DataModel;
+}
+
+export interface DataPointer {
+  /**
+   * index
+   * 要素数に変化がない場合の高速検索のためのindex
+   */
+  readonly i: number;
+
+  /**
+   * id
+   */
+  readonly d: number;
 }

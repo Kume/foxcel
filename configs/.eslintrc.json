@@ -1,0 +1,50 @@
+{
+  "env": {
+    "browser": true,
+    "es6": true,
+    "node": true
+  },
+  "extends": [
+    "plugin:react/recommended",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:prettier/recommended",
+    "prettier/@typescript-eslint"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": ["@typescript-eslint", "react"],
+  "rules": {
+    "react/prop-types": "off",
+
+    // 基本的にconsole.logは使わない。cliで使いたい場合はそれぞれの設定で上書きする。
+    "no-console": "error",
+
+    // default exportは使わない方針。IDEの自動Importやリファクタリング機能を活用しやすくするため。
+    "import/prefer-default-export": "off",
+
+    // 好み
+    "operator-linebreak": ["error", "after", {"overrides": {"?": "before", ":": "before"}}],
+
+    // クラスのプライベートプロパティを並べるときに不便なのでoff
+    "lines-between-class-members": "off",
+
+    // any型をany型のまま扱うためにこれらはoffにしておく。
+    "@typescript-eslint/no-unsafe-assignment": "off",
+    "@typescript-eslint/no-unsafe-return": "off",
+    "@typescript-eslint/no-unsafe-call": "off",
+    "@typescript-eslint/no-unsafe-member-access": "off",
+
+    // 型が分かっているが厳密なチェックを行う必要がない場合などに as any を使いたい。
+    "@typescript-eslint/no-explicit-any": "off"
+
+    // "@typescript-eslint/no-inferrable-types": "off",
+    // "@typescript-eslint/no-namespace": ["error", {"allowDeclarations": true}],
+    // "@typescript-eslint/unbound-method": "off"
+  }
+}

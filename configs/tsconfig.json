@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es5",
     "lib": ["es2020"],
-    "module": "commonjs",
     "downlevelIteration": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
-    "rootDir": "src",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "declaration": true,
 
     "strict": true,
     "strictNullChecks": true,
@@ -16,6 +15,11 @@
     "strictBindCallApply": true,
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
-    "alwaysStrict": true
+    "noImplicitReturns": true,
+    "noImplicitAny": true,
+    "alwaysStrict": true,
+
+    "allowJs": true,
+    "resolveJsonModule": true
   }
 }

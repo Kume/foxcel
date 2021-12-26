@@ -1,70 +1,72 @@
-import {DataModel, dataModelIsString, ForwardDataPath, stringDataModelToString, unknownToDataModel} from '..';
-import {FormUISchema, TabUISchema, TextUISchema, UISchema} from './UISchema';
-import {UIModelPathComponent} from './UIModelCommon';
+import {UIModel} from './UIModelTypes';
+import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
+import {DataModel} from '../DataModel/DataModelTypes';
+import {dataPathFirstComponentOrUndefined, ForwardDataPath, pushDataPath, shiftDataPath} from '../DataModel/DataPath';
+import {UISchemaContext} from './UISchemaContext';
+import {dataModelIsString, stringDataModelToString} from '../DataModel/DataModel';
 
-export interface UIModelProps {
-  readonly data: DataModel | undefined;
-  readonly dataPath: ForwardDataPath;
-  readonly modelPath: readonly UIModelPathComponent[];
-  readonly key?: string | number;
-}
+export function buildUIModel(
+  uiSchemaContext: UISchemaContext,
+  dataModel: DataModel | undefined,
+  dataPath: ForwardDataPath,
+  dataPathFocus: ForwardDataPath | undefined,
+  dataFocusLog: UIDataFocusLogNode | undefined,
+  schemaFocusLog: UISchemaFocusLogNode | undefined,
+): UIModel {
+  const {currentSchema} = uiSchemaContext;
+  switch (currentSchema.type) {
+    case 'tab': {
+      const firstPathComponent = dataPathFirstComponentOrUndefined(dataPathFocus);
+      const currentContentIndex =
+        uiSchemaContext.contentIndexForDataPathComponent(firstPathComponent, dataModel) ?? schemaFocusLog?.a ?? 0;
+      const childContext = uiSchemaContext.digForIndex(currentContentIndex);
+      const {model, pathComponent} = childContext.getDataFromParentData(dataModel, dataPath);
+      return {
+        type: 'tab',
+        dataPath,
+        currentTabIndex: currentContentIndex,
+        tabs: uiSchemaContext.contents().map((content) => ({
+          label: content.currentSchema.dataSchema.label ?? '',
+          dataPath: pushDataPath(dataPath, content.currentSchema.key),
+        })),
+        // TODO dataFocus
+        currentChild: buildUIModel(
+          childContext,
+          model,
+          pathComponent ? pushDataPath(dataPath, pathComponent) : dataPath,
+          dataPathFocus && shiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
+          undefined,
+          schemaFocusLog?.c[currentContentIndex],
+        ),
+      };
+    }
 
-export interface UIModelInterface<T> {
-  readonly schema: T;
-  readonly props: UIModelProps;
-}
+    case 'text': {
+      const value = dataModel !== undefined && dataModelIsString(dataModel) && stringDataModelToString(dataModel);
+      return {type: 'text', dataPath, value: value || ''};
+    }
 
-export interface SetDataUIModelAction {
-  type: 'setData';
-  path: ForwardDataPath;
-  data: DataModel;
-}
-
-export interface DeleteDataUIModelAction {
-  type: 'deleteData';
-  path: ForwardDataPath;
-}
-
-export type UIModelAction = SetDataUIModelAction | DeleteDataUIModelAction;
-
-export function createUIModel(schema: UISchema, props: UIModelProps): UIModel {
-  switch (schema.type) {
-    case 'tab':
-      return new TabUIModel(schema, props);
-    case 'form':
-      return new FormUIModel(schema, props);
-    case 'text':
-      return new TextUIModel(schema, props);
-    default:
-      throw new Error(); // TODO defaultを書かなくても良いように
-  }
-}
-
-class TabUIModel implements UIModelInterface<TabUISchema> {
-  public constructor(public readonly schema: TabUISchema, public readonly props: UIModelProps) {}
-}
-
-class FormUIModel implements UIModelInterface<FormUISchema> {
-  public constructor(public readonly schema: FormUISchema, public readonly props: UIModelProps) {}
-}
-
-class TextUIModel implements UIModelInterface<TextUISchema> {
-  public constructor(public readonly schema: TextUISchema, public readonly props: UIModelProps) {}
-
-  public value(): string {
-    const {data} = this.props;
-    if (data !== undefined && dataModelIsString(data)) {
-      return stringDataModelToString(data);
-    } else {
-      return '';
+    case 'form': {
+      console.log('xxxx form', uiSchemaContext.contents());
+      return {
+        type: 'form',
+        dataPath,
+        contents: uiSchemaContext.contents().map((content, index) => {
+          const childDataModel = content.getDataFromParentData(dataModel, dataPath);
+          return {
+            model: buildUIModel(
+              content,
+              childDataModel.model,
+              childDataModel.pathComponent ? pushDataPath(dataPath, childDataModel.pathComponent) : dataPath,
+              dataPathFocus && shiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
+              // TODO フォーカス
+              undefined,
+              schemaFocusLog?.c[index],
+            ),
+            label: content.currentSchema.dataSchema.label ?? '',
+          };
+        }),
+      };
     }
   }
-
-  public input(value: string): readonly UIModelAction[] {
-    return value === this.value()
-      ? []
-      : [{type: 'setData', path: this.props.dataPath, data: unknownToDataModel(value)}];
-  }
 }
-
-export type UIModel = TabUIModel | FormUIModel | TextUIModel;

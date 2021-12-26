@@ -3,6 +3,7 @@ import {
   dataPathComponentIsListIndex,
   dataPathComponentIsListIndexLike,
   dataPathComponentIsMapKey,
+  dataPathComponentIsPointer,
   dataPathFirstComponent,
   dataPathLength,
   ForwardDataPath,
@@ -16,17 +17,25 @@ import {
   DataCollectionItem,
   DataModel,
   DataModelType,
+  DataPointer,
   ListDataModel,
   MapDataModel,
   StringDataModel,
 } from './DataModelTypes';
-import {DataSchemaContext} from './DataSchema';
+import {DataSchemaContext, dataSchemaIsFixedMap} from './DataSchema';
 import {DataModelOperationError} from './errors';
 import {ConditionConfig} from '..';
+
+let currentId = 0;
+export function generateDataModelId(): number {
+  return currentId++;
+}
 
 export function dataModelTypeToLabel(type: DataModelType): string {
   return DataModelType[type];
 }
+
+export const emptyMapModel: MapDataModel = {t: DataModelType.Map, v: []};
 
 export function dataModelType(model: DataModel): DataModelType {
   switch (typeof model) {
@@ -51,6 +60,10 @@ export function dataModelType(model: DataModel): DataModelType {
   }
 }
 
+export function stringToDataModel(value: string): StringDataModel {
+  return value;
+}
+
 export function unknownToDataModel(value: unknown): DataModel {
   if (value === null || value === undefined) {
     return null;
@@ -62,13 +75,13 @@ export function unknownToDataModel(value: unknown): DataModel {
       return value;
     case 'object':
       if (Array.isArray(value)) {
-        return value.map(unknownToDataModel);
+        return value.map((v) => [generateDataModelId(), unknownToDataModel(v)]);
       } else {
         return {
           t: DataModelType.Map,
           v: Object.keys(value!)
             .filter((k) => (value as any)[k] !== undefined)
-            .map((k) => [k, unknownToDataModel((value as any)[k])]),
+            .map((k) => [k, generateDataModelId(), unknownToDataModel((value as any)[k])]),
         };
       }
     default:
@@ -90,7 +103,7 @@ function dataModelEquals(a: DataModel, b: DataModel): boolean {
     if (a.length !== b.length) {
       return false;
     }
-    return a.every((aValue, index) => dataModelEquals(aValue, b[index]));
+    return a.every(([, aValue], index) => dataModelEquals(aValue, getListDataAt(b, index)!));
   } else {
     if (Array.isArray(b)) {
       return false;
@@ -98,7 +111,11 @@ function dataModelEquals(a: DataModel, b: DataModel): boolean {
     if (a.v.length !== b.v.length) {
       return false;
     }
-    return a.v.every((_, i) => a.v[i][0] === b.v[i][0] && dataModelEquals(a.v[i][1], b.v[i][1]));
+    return a.v.every(
+      (_, i) =>
+        getMapKeyAtIndex(a, i) === getMapKeyAtIndex(b, i) &&
+        dataModelEquals(getMapDataAtIndex(a, i)!, getMapDataAtIndex(b, i)!),
+    );
   }
 }
 
@@ -113,7 +130,7 @@ export function dataModelEqualsToUnknown(model: DataModel, value: unknown): bool
     if (model.length !== value.length) {
       return false;
     }
-    return model.every((modelChild, index) => dataModelEqualsToUnknown(modelChild, value[index]));
+    return model.every(([, modelChild], index) => dataModelEqualsToUnknown(modelChild, value[index]));
   }
   if (Array.isArray(value)) {
     return false;
@@ -131,7 +148,7 @@ export function dataModelToJson(model: DataModel): any {
     return model;
   }
   if (Array.isArray(model)) {
-    return model.map(dataModelToJson);
+    return model.map(([, v]) => dataModelToJson(v));
   }
   const map: {[key: string]: any} = {};
   model.v.forEach(([key, value]) => {
@@ -142,6 +159,9 @@ export function dataModelToJson(model: DataModel): any {
   return map;
 }
 
+/**
+ * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
+ */
 export function setToDataModel(
   path: ForwardDataPath,
   value: DataModel,
@@ -154,19 +174,32 @@ export function setToDataModel(
   if (!dataModelIsMapOrList(to)) {
     throw new DataModelOperationError(`Cannot set data to ${dataModelTypeToLabel(dataModelType(to))}`);
   }
-  if (Array.isArray(to)) {
+  if (dataModelIsList(to)) {
     return setToListDataItr(to, path, schema, (nextPath, childData, childSchema) =>
       setToDataModel(nextPath, value, childData, childSchema),
     );
   }
-  return setToMapDataItr(
+  return setToMapDataRecursive(
     to,
     path,
     schema,
     (nextPath, childData, childSchema) => setToDataModel(nextPath, value, childData, childSchema),
-    (key) => {
-      if (dataPathLength(path) === 1 && typeof key === 'string') {
+    (key, schema) => {
+      const pathLength = dataPathLength(path);
+      if (typeof key !== 'string') {
+        // TODO onKeyMissingコールバック呼び出し前で判定すべき?要調査
+        throw new DataModelOperationError('key is undefined');
+      }
+      if (pathLength === 1) {
         return forceAddToMapData(to, value, key);
+      }
+      if (pathLength > 1) {
+        // TODO fixedMap以外にも自動セットを行えるようにする
+        if (dataSchemaIsFixedMap(schema?.currentSchema)) {
+          // TODO DataSchemaに設定されたデフォルトデータを利用できるなら利用する
+          const newModel = setToDataModel(shiftDataPath(path), value, emptyMapModel, schema) ?? emptyMapModel;
+          return forceAddToMapData(to, newModel, key);
+        }
       }
       throw new DataModelOperationError('Cannot set data to empty value');
     },
@@ -184,7 +217,7 @@ export function pushToDataModel(
   if (!dataModelIsMapOrList(to)) {
     throw new DataModelOperationError(`Cannot push data to ${dataModelTypeToLabel(dataModelType(to))}`);
   }
-  if (Array.isArray(to)) {
+  if (dataModelIsList(to)) {
     if (pathLength === 0) {
       return pushToListData(to, value);
     } else {
@@ -196,7 +229,7 @@ export function pushToDataModel(
   if (pathLength === 0) {
     return pushToMapData(to, value);
   } else {
-    return setToMapDataItr(
+    return setToMapDataRecursive(
       to,
       path,
       schema,
@@ -226,10 +259,7 @@ export function getFromDataModelForPathComponent(
     return getListDataAt(model, index);
   }
   const {index} = getMapKeyAndIndex(model, pathComponent);
-  if (index === undefined) {
-    return undefined;
-  }
-  return model.v[index][1];
+  return index === undefined ? undefined : getMapDataAtIndex(model, index);
 }
 
 export function getFromDataModel(model: DataModel, path: ForwardDataPath): DataModel | undefined {
@@ -249,7 +279,11 @@ type CreateNextChildData = (
 
 //#region For ListDataModel
 export function getListDataAt(list: ListDataModel, at: number): DataModel | undefined {
-  return list[at];
+  return list[at][1];
+}
+
+export function getListDataPointerAt(list: ListDataModel, at: number): DataPointer | undefined {
+  return {i: at, d: list[at][0]};
 }
 
 export function setToListDataAt(list: ListDataModel, value: DataModel, at: number): ListDataModel {
@@ -262,12 +296,12 @@ export function setToListDataAt(list: ListDataModel, value: DataModel, at: numbe
 
 function forceSetToListData(list: ListDataModel, value: DataModel, index: number): ListDataModel {
   const v = [...list];
-  v[index] = value;
+  v[index] = [generateDataModelId(), value];
   return v;
 }
 
 function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
-  return [...list, value];
+  return [...list, [generateDataModelId(), value]];
 }
 
 function setToListDataItr(
@@ -290,63 +324,89 @@ function setToListDataItr(
 
 //#region For MapDataModel
 export function findMapDataIndexOfKey(map: MapDataModel, key: string): number | undefined {
-  for (let i = 0; i < map.v.length; i++) {
-    if (map.v[i][0] === key) {
+  for (let i = 0; i < mapDataSize(map); i++) {
+    if (getMapKeyAtIndex(map, i) === key) {
       return i;
     }
   }
+  return undefined;
 }
 
 export function getMapDataAt(map: MapDataModel, key: string): DataModel | undefined {
   const index = findMapDataIndexOfKey(map, key);
-  return index === undefined ? undefined : map.v[index][1];
+  return index === undefined ? undefined : map.v[index][2];
 }
 
 export function getMapDataAtIndex(map: MapDataModel, index: number): DataModel | undefined {
-  return index === undefined ? undefined : map.v[index][1];
+  return index === undefined ? undefined : map.v[index][2];
+}
+
+export function getMapDataIndexForId(map: MapDataModel, id: number): number | undefined {
+  return map.v.findIndex((v) => v[1] === id);
+}
+
+export function getMapDataIndexForPointer(map: MapDataModel, pointer: DataPointer): number | undefined {
+  const id = getMapDataIdAtIndex(map, pointer.i);
+  if (id === pointer.d) {
+    return pointer.i;
+  }
+  for (let i = 0; i < mapDataSize(map); i++) {
+    if (pointer.d === getMapDataIdAtIndex(map, i)) {
+      return i;
+    }
+  }
+  return undefined;
+}
+
+export function getMapDataAtPointer(map: MapDataModel, pointer: DataPointer): DataModel | undefined {
+  const index = getMapDataIndexForPointer(map, pointer);
+  return index === undefined ? undefined : getMapDataAtIndex(map, index);
+}
+
+export function getMapDataPointerAtIndex(map: MapDataModel, index: number): DataPointer | undefined {
+  const id = getMapDataIdAtIndex(map, index);
+  return id === undefined ? undefined : {i: index, d: id};
+}
+
+export function getMapDataIdAtIndex(map: MapDataModel, index: number): number | undefined {
+  return map.v[index][1];
 }
 
 export function getMapKeyAtIndex(map: MapDataModel, index: number): string | null | undefined {
   return index === undefined ? undefined : map.v[index][0];
 }
 
-export function getMapKeyValueAtIndex(
-  map: MapDataModel,
-  index: number,
-): readonly [string | null, DataModel] | undefined {
-  return index === undefined ? undefined : map.v[index];
-}
-
 function forceSetToMapDataForIndex(map: MapDataModel, value: DataModel, index: number, key?: string): MapDataModel {
   const v = [...map.v];
   const newKey = key === undefined ? v[index][0] : key;
-  v[index] = [newKey, value];
+  v[index] = [newKey, generateDataModelId(), value];
   return {t: DataModelType.Map, v};
 }
 
 function forceAddToMapData(map: MapDataModel, value: DataModel, key: string): MapDataModel {
-  return {t: DataModelType.Map, v: [...map.v, [key, value]]};
+  return {t: DataModelType.Map, v: [...map.v, [key, generateDataModelId(), value]]};
 }
 
 function pushToMapData(map: MapDataModel, value: DataModel): MapDataModel {
-  return {t: DataModelType.Map, v: [...map.v, [null, value]]};
+  return {t: DataModelType.Map, v: [...map.v, [null, generateDataModelId(), value]]};
 }
 
-function setToMapDataItr(
+function setToMapDataRecursive(
   map: MapDataModel,
   path: ForwardDataPath,
   schema: DataSchemaContext | undefined,
   createNextChildData: CreateNextChildData,
-  onKeyMissing: (key: string | undefined) => MapDataModel | undefined,
+  onKeyMissing: (key: string | undefined, schema: DataSchemaContext | undefined) => MapDataModel | undefined,
 ): MapDataModel | undefined {
-  const {key, index} = getMapKeyAndIndex(map, dataPathFirstComponent(path));
+  const firstPathComponent = dataPathFirstComponent(path);
+  const {key, index} = getMapKeyAndIndex(map, firstPathComponent);
+  const childSchema = schema?.digByPath(firstPathComponent);
   if (index !== undefined) {
-    const childData = map.v[index][1];
-    const childSchema = schema && schema.getListChild();
+    const childData = getMapDataAtIndex(map, index)!;
     const nextChildData = createNextChildData(shiftDataPath(path), childData, childSchema);
     return nextChildData === undefined ? undefined : forceSetToMapDataForIndex(map, nextChildData, index, key);
   } else {
-    return onKeyMissing(key);
+    return onKeyMissing(key, childSchema);
   }
 }
 
@@ -359,6 +419,8 @@ function getMapKeyAndIndex(map: MapDataModel, pathComponent: ForwardDataPathComp
   } else if (dataPathComponentIsIndexOrKey(pathComponent)) {
     const key = pathComponent.v.toString();
     return {index: findMapDataIndexOfKey(map, key), key};
+  } else if (dataPathComponentIsPointer(pathComponent)) {
+    const index = getMapDataIndexForPointer(map, pathComponent);
   }
   throw new DataModelOperationError('Invalid path component');
 }
@@ -380,11 +442,11 @@ export function mapDataModelRawValuesWithoutNullKey(map: MapDataModel): Array<[s
 }
 
 export function mapDataFirstElement(map: MapDataModel): DataModel | undefined {
-  return mapDataSize(map) > 0 ? map.v[0][1] : undefined;
+  return mapDataSize(map) > 0 ? getMapDataAtIndex(map, 0) : undefined;
 }
 
 export function mapDataLastElement(map: MapDataModel): DataModel | undefined {
-  return mapDataSize(map) > 0 ? map.v[map.v.length - 1][1] : undefined;
+  return mapDataSize(map) > 0 ? getMapDataAtIndex(map, mapDataSize(map) - 1) : undefined;
 }
 
 export function mapDataModelMapWithEmptyKey<T>(
@@ -443,11 +505,11 @@ export function dataModelIsMapOrList(model: DataModel): model is MapDataModel | 
   return typeof model === 'object' && model !== null;
 }
 
-export function dataModelIsMap(model: DataModel): model is MapDataModel {
+export function dataModelIsMap(model: DataModel | undefined): model is MapDataModel {
   return typeof model === 'object' && model !== null && !Array.isArray(model);
 }
 
-export function dataModelIsInteger(model: DataModel): model is number {
+export function dataModelIsInteger(model: DataModel | undefined): model is number {
   return typeof model === 'number' && Number.isInteger(model);
 }
 
@@ -481,4 +543,21 @@ export function conditionIsMatch(
   } else {
     throw new Error('Invalid condition');
   }
+}
+
+export function dataPointerForDataPath(
+  model: DataModel | undefined,
+  pathComponent: ForwardDataPathComponent | undefined,
+): DataPointer | undefined {
+  if (!model || pathComponent === undefined || !dataModelIsMapOrList(model)) {
+    return undefined;
+  }
+  if (Array.isArray(model)) {
+    if (!dataPathComponentIsListIndexLike(pathComponent)) {
+      return undefined;
+    }
+    return getListDataPointerAt(model, getListIndexFromDataPathElement(pathComponent));
+  }
+  const {index} = getMapKeyAndIndex(model, pathComponent);
+  return index === undefined ? undefined : getMapDataPointerAtIndex(model, index);
 }

@@ -8,6 +8,7 @@
     "web": "yarn workspace co-doc-editor-web",
     "uir": "yarn workspace co-doc-editor-ui-react",
     "core": "yarn workspace co-doc-editor-core",
+    "dev": "lerna run dev --parallel",
     "core:lint": "eslint --fix --ext .jsx,.js,.tsx,.ts ./packages/co-doc-editor-core/src"
   },
   "workspaces": {
@@ -24,7 +25,9 @@
     "eslint": "^6.6.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-prettier": "^3.1.4",
+    "eslint-plugin-react": "^7.23.2",
     "jest": "^24.9.0",
+    "lerna": "^4.0.0",
     "prettier": "^2.0.5",
     "ts-jest": "^26.1.4",
     "typescript": "^3.9.7"

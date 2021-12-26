@@ -1,7 +1,6 @@
 import {DataCollectionItem, DataModel} from './DataModelTypes';
 import {
   DataPathComponentType,
-  dataPathLastComponent,
   dataPathLength,
   ForwardDataPath,
   headDataPathComponent,
@@ -23,7 +22,8 @@ import {
   getFromDataModel,
   getListDataAt,
   getMapDataAt,
-  getMapKeyValueAtIndex,
+  getMapDataAtIndex,
+  getMapKeyAtIndex,
 } from './DataModel';
 import {
   DataSchema,
@@ -80,9 +80,6 @@ export class DataModelManager {
           : this._collect(gotData, shiftDataPath(path), pushDataPath(currentPath, head), head, origin);
       }
 
-      case 'symbol':
-        return index === undefined ? [] : [{data: index, path: currentPath, index}];
-
       case 'number': {
         if (dataModelIsList(model)) {
           const gotData = getListDataAt(model, head);
@@ -90,16 +87,12 @@ export class DataModelManager {
             ? []
             : this._collect(gotData, shiftDataPath(path), pushDataPath(currentPath, head), head, origin);
         } else if (dataModelIsMap(model)) {
-          const kayValue = getMapKeyValueAtIndex(model, head);
-          return kayValue === undefined
-            ? []
-            : this._collect(
-                kayValue[1],
-                shiftDataPath(path),
-                pushDataPath(currentPath, head),
-                kayValue[0] ?? undefined,
-                origin,
-              );
+          const key = getMapKeyAtIndex(model, head);
+          const value = getMapDataAtIndex(model, head);
+          if (key === undefined || value === undefined) {
+            return [];
+          }
+          return this._collect(value, shiftDataPath(path), pushDataPath(currentPath, head), key ?? undefined, origin);
         } else {
           return [];
         }
@@ -107,6 +100,10 @@ export class DataModelManager {
     }
 
     switch (head.t) {
+      case DataPathComponentType.Key: {
+        return index === undefined ? [] : [{data: index, path: currentPath, index}];
+      }
+
       case DataPathComponentType.Reverse: {
         let head_: undefined | MultiDataPathComponent;
         do {
@@ -155,7 +152,7 @@ export class DataModelManager {
       case DataPathComponentType.Nested: {
         if (dataModelIsList(model)) {
           const resolvedResults = this._collect(origin.model, head.v, origin.path, undefined, origin);
-          return resolvedResults.flatMap(({index, data}) => {
+          return resolvedResults.flatMap(({data}) => {
             return dataModelIsInteger(data)
               ? this._collect(
                   getListDataAt(model, data),
@@ -168,7 +165,7 @@ export class DataModelManager {
           });
         } else if (dataModelIsMap(model)) {
           const resolvedResults = this._collect(origin.model, head.v, origin.path, undefined, origin);
-          return resolvedResults.flatMap(({index, data}) => {
+          return resolvedResults.flatMap(({data}) => {
             return dataModelIsString(data)
               ? this._collect(
                   getMapDataAt(model, data),

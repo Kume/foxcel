@@ -11,12 +11,14 @@ import {
   DataSchemaConfigBase,
   ForwardDataPath,
   ForwardDataPathComponent,
-  KeyOrKeyFlatten,
   RootSchemaConfig,
   SelectDynamicOptionConfig,
   SelectOptionConfig,
   SelectOptionConfigItem,
   SelectStaticOptionConfig,
+  forwardDataPathComponentToString,
+  dataPathComponentIsKey,
+  dataPathComponentIsPointer,
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
 import {CommonReferenceSchema, NamedItemNode} from '../common/commonTypes';
@@ -123,6 +125,7 @@ export interface RecursiveDataSchema {
 
 export interface ConditionalDataSchema {
   readonly t: DataSchemaType.Conditional;
+  readonly label: string | undefined;
   readonly items: {
     readonly [key: string]: ConditionalSchemaItem<DataSchema, DataPath>;
   };
@@ -131,6 +134,7 @@ export interface ConditionalDataSchema {
 
 export interface KeyDataSchema {
   readonly t: DataSchemaType.Key;
+  readonly label: string | undefined;
 }
 
 export class DataSchemaContext {
@@ -144,10 +148,16 @@ export class DataSchemaContext {
     private readonly path: readonly DataSchemaExcludeRecursive[],
   ) {}
 
-  public dig(key: symbol | string | number | undefined | null): DataSchemaContext | undefined {
+  public dig(key: {t: 'key'} | string | number | undefined | null): DataSchemaContext | undefined {
+    if (key !== null && typeof key === 'object') {
+      // TODO DataSchemaContextをkeyまで対応させるなら何かしら実装が必要
+      return undefined;
+    }
+
     switch (this.currentSchema.t) {
       case DataSchemaType.Map:
       case DataSchemaType.List:
+        // MapとListはキー(インデックス)に関わらず子のスキーマは一つであるため、そのまま子を返す。
         return this.currentSchema.item && this.createFromNext(this.currentSchema.item);
       case DataSchemaType.FixedMap:
         if (typeof key === 'string') {
@@ -161,6 +171,33 @@ export class DataSchemaContext {
         } else {
           return undefined;
         }
+      default:
+        return undefined;
+    }
+  }
+
+  public digByPath(pathComponent: ForwardDataPathComponent): DataSchemaContext | undefined {
+    if (dataPathComponentIsKey(pathComponent)) {
+      // TODO DataSchemaContextをkeyまで対応させるなら何かしら実装が必要
+      return undefined;
+    }
+    switch (this.currentSchema.t) {
+      case DataSchemaType.Map:
+      case DataSchemaType.List:
+        // MapとListはキー(インデックス)に関わらず子のスキーマは一つであるため、そのまま子を返す。
+        return this.currentSchema.item && this.createFromNext(this.currentSchema.item);
+      case DataSchemaType.FixedMap: {
+        if (dataPathComponentIsPointer(pathComponent)) {
+          // pointerタイプのpathはfixedMapの子を指すためのポインターとしては利用されない想定
+          return undefined;
+        }
+        const key = forwardDataPathComponentToString(pathComponent);
+        return this.currentSchema.items[key] && this.createFromNext(this.currentSchema.items[key]);
+      }
+      case DataSchemaType.Conditional:
+        // TODO ここでconditionalを下降するためには実データがないと条件が定まらないので不可能?をもそもdataPathでdigするのが間違い?
+        //  現状わからないので一旦undefinedを返す
+        return undefined;
       default:
         return undefined;
     }
@@ -372,6 +409,12 @@ export async function buildDataSchema(
   return parseDataSchemaConfig(rootSchemaConfig.dataSchema, loadedDataSchema) as DataSchemaExcludeRecursive; // TODO
 }
 
+export function buildSimpleDataSchema(rootSchemaConfig: RootSchemaConfig): DataSchemaExcludeRecursive {
+  const namedDataSchema: NamedItemNode<DataSchemaConfig> = {filePath: []};
+  const loadedDataSchema = new Map<string, NamedItemNode<DataSchemaConfig>>([['', namedDataSchema]]);
+  return parseDataSchemaConfig(rootSchemaConfig.dataSchema, loadedDataSchema) as DataSchemaExcludeRecursive; // TODO
+}
+
 export function getByKeyForFixedMapDataSchema(map: FixedMapDataSchema, key: string): DataSchema | undefined {
   return map.items[key];
 }
@@ -475,4 +518,12 @@ export function dataSchemaContextKeyDepth(
     }
   }
   return undefined;
+}
+
+export function dataSchemaIsFixedMap(schema: DataSchema | undefined): schema is FixedMapDataSchema {
+  return schema?.t === DataSchemaType.FixedMap;
+}
+
+export function dataSchemaIsMap(schema: DataSchema | undefined): schema is MapDataSchema {
+  return schema?.t === DataSchemaType.Map;
 }

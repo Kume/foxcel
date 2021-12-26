@@ -2,7 +2,8 @@ import DataStorage from './Storage/DataStorage';
 import {DataFormatter} from './Storage/DataFormatter';
 import {RootSchemaConfig} from './common/ConfigTypes';
 import {buildDataSchema} from './DataModel/DataSchema';
-import {buildUISchema, UISchema} from './UIModel/UISchema';
+import {buildUISchema} from './UIModel/UISchema';
+import {UISchema} from './UIModel/UISchemaTypes';
 
 export async function loadFile(
   storage: DataStorage,

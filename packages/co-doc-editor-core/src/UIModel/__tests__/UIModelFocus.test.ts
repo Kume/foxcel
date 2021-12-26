@@ -1,6 +1,7 @@
-import {NamedUISchemaManager, UISchema} from '../UISchema';
+import {NamedUISchemaManager} from '../UISchema';
 import {focusForUIModel} from '../UIModelFocus';
 import {NestedNamedItem} from '../../common/NestedNamedItem';
+import {UISchema} from '../UISchemaTypes';
 
 const schema: UISchema = {
   type: 'tab',
@@ -9,6 +10,7 @@ const schema: UISchema = {
       type: 'tab',
       // key: 'tab1',
       keyFlatten: true,
+      flatKeys: {},
       contents: [
         {
           type: 'text',

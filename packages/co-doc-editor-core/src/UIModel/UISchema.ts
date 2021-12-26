@@ -1,14 +1,14 @@
-import type {KeySymbolType} from '../DataModel/DataPath';
-import {keySymbol} from '../DataModel/DataPath';
 import {
   CollectionDataModelTypeString,
   ConditionalUISchemaConfig,
   ConditionConfig,
   ContentListUISchemaConfig,
+  DataModel,
   DataPath,
   dataPathComponentIsKey,
   dataPathComponentIsMapKeyLike,
   dataPathComponentToMapKey,
+  DataPathComponentType,
   ForwardDataPathComponent,
   KeyOrKeyFlatten,
   MappingTableUISchemaConfig,
@@ -35,7 +35,6 @@ import {
   DataSchemaType,
   FixedMapDataSchema,
   getByKeyForFixedMapDataSchema,
-  KeyDataSchema,
   ListDataSchema,
   MapDataSchema,
   NumberDataSchema,
@@ -44,119 +43,30 @@ import {
   SelectOptionSchema,
   StringDataSchema,
 } from '../DataModel/DataSchema';
+import {UISchemaContext} from './UISchemaContext';
+import {
+  ContentListUISchema,
+  FlattenableUISchemaCommon,
+  FormUISchema,
+  MappingTableUISchema,
+  RecursiveUISchema,
+  SelectUISchema,
+  TableUISchema,
+  TabUISchema,
+  UISchema,
+} from './UISchemaTypes';
 
-export type UISchema =
-  | MappingTableUISchema
-  | CheckBoxUISchema
-  | ContentListUISchema
-  | FormUISchema
-  | NumberUISchema
-  | SelectUISchema
-  | TableUISchema
-  | TabUISchema
-  | TextUISchema
-  | ConditionalUISchema
-  | RecursiveUISchema;
-
-type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema ? never : E;
+export type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema ? never : E;
 
 export type UISchemaType = UISchema['type'];
 
-export type UISchemaKey = string | KeySymbolType;
+/**
+ * $keyを表すシンボル
+ * exportしない
+ */
+const uiSchemaParentKey = Symbol('uiSchemaMapKey');
 
-interface UISchemaBase {
-  readonly label?: string;
-  readonly key?: UISchemaKey;
-}
-
-type FlattenableUISchemaCommon =
-  | {keyFlatten: true; key: UISchemaKey; flatKeys: ReadonlyMap<UISchemaKey, readonly UISchemaKey[]>}
-  | {keyFlatten?: false; key: UISchemaKey};
-
-export interface MappingTableUISchema extends UISchemaBase {
-  readonly type: 'mappingTable';
-  readonly dataSchema: MapDataSchema;
-  readonly sourcePath: DataPath;
-  readonly contents: ReadonlyArray<UISchema>;
-}
-
-export interface TextUISchema extends UISchemaBase {
-  readonly type: 'text';
-  readonly dataSchema: StringDataSchema | KeyDataSchema;
-}
-
-export type TabUISchema = {
-  readonly type: 'tab';
-  readonly dataSchema: FixedMapDataSchema;
-  readonly contents: ReadonlyArray<UISchema>;
-} & UISchemaBase &
-  FlattenableUISchemaCommon;
-
-export interface TableUISchema extends UISchemaBase {
-  readonly type: 'table';
-  readonly dataSchema: ListDataSchema | MapDataSchema;
-  readonly contents: ReadonlyArray<UISchema>;
-}
-
-export type SelectUISchema = SingleSelectUISchema | MultiSelectUISchema;
-
-interface SelectUISchemaBase extends UISchemaBase {
-  readonly type: 'select';
-  readonly options: readonly SelectOptionSchema<string | number>[];
-}
-
-interface SingleSelectUISchema extends SelectUISchemaBase {
-  readonly dataSchema: StringDataSchema;
-  readonly isMulti: false;
-}
-
-interface MultiSelectUISchema extends SelectUISchemaBase {
-  readonly dataSchema: ListDataSchema;
-  readonly isMulti: true;
-}
-
-export interface NumberUISchema extends UISchemaBase {
-  readonly type: 'number';
-  readonly dataSchema: NumberDataSchema;
-}
-
-export type FormUISchema = {
-  readonly type: 'form';
-  readonly dataSchema: FixedMapDataSchema;
-  readonly keyFlatten?: boolean;
-  readonly contents: ReadonlyArray<UISchema>;
-} & UISchemaBase &
-  FlattenableUISchemaCommon;
-
-export interface ContentListUISchema extends UISchemaBase {
-  readonly type: 'contentList';
-  readonly dataSchema: ListDataSchema | MapDataSchema;
-  readonly content: UISchema;
-}
-
-export interface CheckBoxUISchema extends UISchemaBase {
-  readonly type: 'checkbox';
-  readonly dataSchema: BooleanDataSchema;
-}
-
-export interface ConditionalUISchema extends UISchemaBase {
-  readonly type: 'conditional';
-  readonly dataSchema: ConditionalDataSchema;
-  readonly contents: {readonly [key: string]: UISchema};
-}
-
-export interface ReferenceUISchema {
-  readonly type: 'reference';
-  readonly ref: string;
-  readonly namespaceRef?: string;
-  readonly namespace: readonly string[];
-}
-
-export interface RecursiveUISchema {
-  readonly type: 'recursive';
-  readonly dataSchema: DataSchema;
-  readonly depth: number;
-}
+export type UISchemaKey = string | typeof uiSchemaParentKey;
 
 export interface UISchemaParsingContext {
   readonly uiPath: ReadonlyArray<{key?: string; type: UISchemaType}>;
@@ -185,12 +95,12 @@ class UISchemaParseError extends Error {
 function pushToContext(
   context: UISchemaParsingContext,
   ui: {key?: string; type: UISchemaType} | undefined,
-  data: {key: symbol | string | number | null; type: DataSchemaType} | undefined,
+  data: {key: typeof uiSchemaParentKey | string | number | null; type: DataSchemaType} | undefined,
 ): UISchemaParsingContext {
   return {
     ...context,
     uiPath: ui ? [...context.uiPath, ui] : context.uiPath,
-    dataSchemaContext: context?.dataSchemaContext?.dig(data?.key),
+    dataSchemaContext: context?.dataSchemaContext?.dig(data?.key === uiSchemaParentKey ? {t: 'key'} : data?.key),
   };
 }
 
@@ -224,33 +134,6 @@ function pushToDataSchemaContext(
     case DataSchemaType.Conditional: // TODO
     default:
       return undefined;
-  }
-}
-
-export class UISchemaContext {
-  public static createRootContext(
-    rootSchema: UISchemaExcludeRecursive,
-    dataSchemaContext: DataSchemaContext,
-  ): UISchemaContext {
-    return new UISchemaContext(rootSchema, rootSchema, dataSchemaContext, []);
-  }
-
-  private constructor(
-    public readonly rootSchema: UISchemaExcludeRecursive,
-    public readonly currentSchema: UISchemaExcludeRecursive,
-    public readonly dataSchemaContext: DataSchemaContext,
-    private readonly path: readonly UISchemaExcludeRecursive[],
-  ) {}
-
-  public resolve(schema: UISchema): UISchemaExcludeRecursive {
-    if (schema.type === 'recursive') {
-      if (schema.depth >= this.path.length) {
-        throw new Error('Invalid ui schema depth');
-      }
-      return this.path[this.path.length - schema.depth - 1];
-    } else {
-      return schema;
-    }
   }
 }
 
@@ -451,7 +334,7 @@ function parseKey(key: string | undefined): UISchemaKey | undefined {
     return undefined;
   }
   if (key === '$key') {
-    return keySymbol;
+    return uiSchemaParentKey;
   }
   return key;
 }
@@ -489,7 +372,7 @@ export function getUiSchemaUniqueKeyOrUndefined(schema: UISchema): string | unde
   if (schema.type === 'recursive') {
     throw new Error('Not implemented');
   } else {
-    return typeof schema.key === 'symbol' ? undefined : schema.key;
+    return schema.key === uiSchemaParentKey ? undefined : schema.key;
   }
 }
 
@@ -610,7 +493,7 @@ function nextChildDataSchema(
       }
       if (dataSchema) {
         const key = parseKey(resolved.config.key);
-        if (key !== keySymbol) {
+        if (typeof key === 'string') {
           childDataSchema = context.dataSchemaContext?.resolveRecursive(getByKeyForFixedMapDataSchema(dataSchema, key));
           dataPathComponent = childDataSchema && {key, type: childDataSchema.t};
         }
@@ -621,7 +504,7 @@ function nextChildDataSchema(
   }
 }
 
-export function parseUISchemaConfig2(
+export function parseUISchemaConfig(
   config: UISchemaConfig,
   pathConfigMap: PathConfigMap<UISchemaConfig>,
   context: UISchemaParsingContext,
@@ -651,6 +534,7 @@ export function parseUISchemaConfig2(
 
     case 'text':
       assertDataSchemaType(resolvedDataSchema, context, DataSchemaType.String);
+      console.log('xxxx UISchema text', {context, resolvedDataSchema});
       return {
         ...pick(config, 'type', 'label'),
         key: parseKey(config.key),
@@ -693,6 +577,7 @@ export function parseUISchemaConfig2(
         context,
         resolvedDataSchema,
       );
+      console.log('xxxx form', {config, context, resolvedDataSchema, contents, dataSchema});
       return {
         ...pick(config, 'type', 'label'),
         ...makeKeyFlattenable(config, contents),
@@ -756,7 +641,7 @@ function parseConfigOrReference(
     // return {type: 'recursive', depth: resolved.depth, dataSchema:};
   } else {
     const nextContext = setFilePathToContext(context, resolved.loadedPath, resolved.filePath);
-    return parseUISchemaConfig2(resolved.config, pathConfigMap, nextContext, dataSchema);
+    return parseUISchemaConfig(resolved.config, pathConfigMap, nextContext, dataSchema);
   }
 }
 
@@ -780,7 +665,19 @@ export async function buildUISchema(
     formatter,
   );
   const context = createRootUiSchemaParsingContext(rootDataSchema);
-  return parseUISchemaConfig2(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
+  return parseUISchemaConfig(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
+}
+
+export function buildSimpleUISchema(
+  rootSchemaConfig: RootSchemaConfig,
+  rootDataSchema: DataSchemaExcludeRecursive,
+): UISchemaExcludeRecursive {
+  type InternalSchema = NamedItemNode<UISchemaConfig>;
+  const rootUiSchemaConfig = 'uiSchema' in rootSchemaConfig ? rootSchemaConfig.uiSchema : rootSchemaConfig.uiRoot;
+  const namedUiSchemaConfig: InternalSchema = {filePath: []};
+  const loadedUISchemaConfig = new Map<string, InternalSchema>([['', namedUiSchemaConfig]]);
+  const context = createRootUiSchemaParsingContext(rootDataSchema);
+  return parseUISchemaConfig(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
 }
 
 export function uiSchemaHasFlattenDataPathComponent(
@@ -810,10 +707,49 @@ export function uiSchemaKeyAndPathComponentIsMatch(
     return false;
   }
   if (dataPathComponentIsKey(pathComponent)) {
-    return key === keySymbol;
+    return key === uiSchemaParentKey;
   } else if (dataPathComponentIsMapKeyLike(pathComponent)) {
     return key === dataPathComponentToMapKey(pathComponent);
   } else {
     return false;
+  }
+}
+
+export function uiSchemaKeyToDataPathComponent(key: UISchemaKey): ForwardDataPathComponent {
+  if (key === uiSchemaParentKey) {
+    return {t: DataPathComponentType.Key};
+  }
+  return key;
+}
+
+export function uiSchemaKeyIsParentKey(key: UISchemaKey): boolean {
+  return key === uiSchemaParentKey;
+}
+
+export function uiSchemaChildIndexForDataPath(
+  schema: TabUISchema | FormUISchema,
+  context: UISchemaContext,
+  pathComponent: ForwardDataPathComponent | undefined,
+): number | undefined {
+  if (pathComponent === undefined) {
+    return undefined;
+  }
+  if (schema.keyFlatten) {
+    schema.flatKeys;
+  } else {
+    const index = schema.contents.findIndex((content) =>
+      uiSchemaKeyAndPathComponentIsMatch(context.resolve(content).key, pathComponent),
+    );
+    return index < 0 ? undefined : index;
+  }
+}
+
+export function childDataModelForTabContentIndex(
+  dataModel: DataModel,
+  uiSchema: TabUISchema,
+  index: number,
+): DataModel | undefined {
+  if (dataModel === undefined) {
+    return undefined;
   }
 }
