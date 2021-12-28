@@ -1,5 +1,6 @@
 import {DataModelOperationError} from './errors';
-import parser, {ParsedPath} from './DataPath/DataPathParser';
+import type {ParsedPath} from './DataPath/DataPathParser';
+import parser = require('./DataPath/DataPathParser');
 import {ShallowWritable} from '../common/utilTypes';
 import {DataPointer} from './DataModelTypes';
 

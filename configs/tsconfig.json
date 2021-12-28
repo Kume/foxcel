@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es5",
     "lib": ["es2020"],
+    "module": "ESNext",
     "downlevelIteration": true,
     "esModuleInterop": true,
     "moduleResolution": "node",
@@ -18,8 +19,5 @@
     "noImplicitReturns": true,
     "noImplicitAny": true,
     "alwaysStrict": true,
-
-    "allowJs": true,
-    "resolveJsonModule": true
   }
 }

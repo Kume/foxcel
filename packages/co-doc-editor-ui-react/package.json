@@ -2,7 +2,7 @@
   "name": "co-doc-editor-ui-react",
   "version": "0.0.1",
   "description": "React UI for co-doc-editor",
-  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "author": "makoto.kume",
   "license": "MIT",
