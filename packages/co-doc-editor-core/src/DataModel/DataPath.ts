@@ -1,6 +1,7 @@
 import {DataModelOperationError} from './errors';
 import parser, {ParsedPath} from './DataPath/DataPathParser';
 import {ShallowWritable} from '../common/utilTypes';
+import {DataPointer} from './DataModelTypes';
 
 export enum DataPathComponentType {
   IndexOrKey,
@@ -95,10 +96,6 @@ export function dataPathComponentIsListIndexLike(
   return typeof component === 'number' || dataPathComponentIsIndexOrKey(component);
 }
 
-export function pathComponentToListIndex(component: IndexOrKeyDataPathComponent | number): number {
-  return typeof component === 'number' ? component : component.v;
-}
-
 export function dataPathComponentIsMapKey(key: ForwardDataPathComponent): key is string {
   return typeof key === 'string';
 }
@@ -109,6 +106,18 @@ export function dataPathComponentToMapKey(key: string | IndexOrKeyDataPathCompon
 
 export function dataPathComponentIsListIndex(key: ForwardDataPathComponent): key is number {
   return typeof key === 'number';
+}
+
+export function dataPathComponentToListIndex(component: number | IndexOrKeyDataPathComponent): number {
+  return typeof component === 'number' ? component : component.v;
+}
+
+export function dataPathComponentToListIndexOrFail(component: ForwardDataPathComponent): number {
+  if (dataPathComponentIsListIndexLike(component)) {
+    return dataPathComponentToListIndex(component);
+  } else {
+    throw new DataModelOperationError('Only can get value from list by index like path component.');
+  }
 }
 
 export function dataPathComponentIsMapKeyLike(
@@ -152,18 +161,6 @@ export function forwardDataPathComponentToString(component: ForwardDataPathCompo
 
 export function dataPathComponentIsKey(component: MultiDataPathComponent): component is KeyPathComponent {
   return typeof component === 'object' && component.t === DataPathComponentType.Key;
-}
-
-export function getListIndexFromDataPathElement(component: number | IndexOrKeyDataPathComponent): number {
-  return typeof component === 'number' ? component : component.v;
-}
-
-export function getListIndexFromDataPathElementOrFail(component: ForwardDataPathComponent): number {
-  if (dataPathComponentIsListIndexLike(component)) {
-    return getListIndexFromDataPathElement(component);
-  } else {
-    throw new DataModelOperationError('Only can get value from list by index like path component.');
-  }
 }
 
 export function getMapKeyFromDataPathElement(component: string | IndexOrKeyDataPathComponent): string {
@@ -240,6 +237,13 @@ export function shiftDataPath(path: MultiDataPath): MultiDataPath;
 export function shiftDataPath(path: AnyDataPath): AnyDataPath {
   // Don't copy isAbsolute.
   return {components: path.components.slice(1, path.components.length)};
+}
+
+export function safeShiftDataPath(path: ForwardDataPath | undefined): ForwardDataPath | undefined;
+export function safeShiftDataPath(path: DataPath | undefined): DataPath | undefined;
+export function safeShiftDataPath(path: MultiDataPath | undefined): MultiDataPath | undefined;
+export function safeShiftDataPath(path: AnyDataPath | undefined): AnyDataPath | undefined {
+  return path === undefined || path.components.length === 0 ? undefined : shiftDataPath(path);
 }
 
 export function unshiftDataPath(path: ForwardDataPath, component: ForwardDataPathComponent): ForwardDataPath;
@@ -356,4 +360,8 @@ export function parsePath(source: string, pathType?: 'forward' | 'single'): Mult
   }
 
   return parsedPathToDataPath(parsed, pathType);
+}
+
+export function toPointerPathComponent(pointer: DataPointer): PointerPathComponent {
+  return {t: DataPathComponentType.Pointer, ...pointer};
 }

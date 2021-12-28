@@ -30,4 +30,26 @@ export interface TextUIModel {
   readonly value: string;
 }
 
-export type UIModel = TabUIModel | FormUIModel | TextUIModel;
+interface ContentListUIModelBase {
+  readonly type: 'contentList';
+  readonly dataPath: ForwardDataPath;
+  readonly indexes: readonly ContentListIndex[];
+}
+
+interface EmptyContentListUIModel extends ContentListUIModelBase {
+  readonly currentIndex?: undefined;
+  readonly content?: undefined;
+}
+
+interface NonEmptyContentListUIModel extends ContentListUIModelBase {
+  readonly currentIndex: number;
+  readonly content: UIModel;
+}
+
+export type ContentListUIModel = EmptyContentListUIModel | NonEmptyContentListUIModel;
+
+export interface ContentListIndex {
+  readonly label: string;
+}
+
+export type UIModel = TabUIModel | FormUIModel | TextUIModel | ContentListUIModel;

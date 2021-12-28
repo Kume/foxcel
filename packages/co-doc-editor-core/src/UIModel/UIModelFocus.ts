@@ -58,10 +58,10 @@ export interface UIDataFocusLogNode {
    */
   readonly c: {readonly [id: number]: UIDataFocusLogNode};
 
-  // /**
-  //  * children by schema index
-  //  */
-  // readonly s: {readonly [id: number]: UIDataFocusLogNode};
+  /**
+   * children by schema index
+   */
+  readonly s: {readonly [id: number]: UIDataFocusLogNode};
 }
 
 export interface UISchemaFocusLogNode {

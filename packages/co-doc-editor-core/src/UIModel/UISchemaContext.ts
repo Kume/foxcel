@@ -6,11 +6,18 @@ import {
   dataPathComponentIsMapKeyLike,
   dataPathComponentIsPointer,
   dataPathComponentToMapKey,
+  dataPathLastComponent,
   ForwardDataPath,
   ForwardDataPathComponent,
 } from '../DataModel/DataPath';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {dataModelIsMap, getMapDataAt, getMapDataIndexForPointer, getMapKeyAtIndex} from '../DataModel/DataModel';
+import {
+  dataModelIsMap,
+  dataPathComponentToStringDataModel,
+  getMapDataAt,
+  getMapDataIndexForPointer,
+  getMapKeyAtIndex,
+} from '../DataModel/DataModel';
 import {validIndexOrUndefined} from '../common/utils';
 
 export class UISchemaContext {
@@ -45,6 +52,9 @@ export class UISchemaContext {
       case 'form': {
         if (index >= this.currentSchema.contents.length) {
           throw new Error('Invalid content index');
+        }
+        if (this._contents?.[index]) {
+          return this._contents[index];
         }
         const content = this.resolve(this.currentSchema.contents[index]);
         let dataSchemaContext: DataSchemaContext;
@@ -124,11 +134,32 @@ export class UISchemaContext {
     return this._contents;
   }
 
+  private _content?: UISchemaContext;
+  public content(): UISchemaContext {
+    if (this._content) {
+      return this._content;
+    }
+    switch (this.currentSchema.type) {
+      case 'contentList': {
+        const content = this.resolve(this.currentSchema.content);
+        let dataSchemaContext: DataSchemaContext;
+        // TODO dataSchemaContextをdigする必要がある。ただ、そもそもdataSchemaContext不要かも？
+        dataSchemaContext = this.dataSchemaContext;
+        return new UISchemaContext(this.rootSchema, content, dataSchemaContext, [...this.path, this.currentSchema]);
+      }
+
+      default:
+        throw new Error(`cannot get content from ${this.currentSchema.type} ui schema`);
+    }
+  }
+
   public getDataFromParentData(
     parentData: DataModel | undefined,
     dataPath: ForwardDataPath,
   ): {model: DataModel | undefined; pathComponent?: ForwardDataPathComponent} {
-    if ('keyFlatten' in this.currentSchema && this.currentSchema.keyFlatten) {
+    // TODO tabやformなどのfixedMapのみで利用できるメソッドであるため、それと分かる様な名前にするべきかも
+
+    if (this.currentSchema.keyFlatten) {
       return {model: parentData};
     } else {
       const key = this.currentSchema.key;
@@ -137,11 +168,18 @@ export class UISchemaContext {
       }
 
       const nextPathComponent = uiSchemaKeyToDataPathComponent(key);
-      if (!dataModelIsMap(parentData)) {
-        return {model: undefined, pathComponent: nextPathComponent};
+      if (dataModelIsMap(parentData)) {
+        if (uiSchemaKeyIsParentKey(key)) {
+          return {
+            model: dataPathComponentToStringDataModel(dataPathLastComponent(dataPath)),
+            pathComponent: nextPathComponent,
+          };
+        } else {
+          return {model: getMapDataAt(parentData, key), pathComponent: nextPathComponent};
+        }
       }
-      const childModel = getMapDataAt(parentData, key); // TODO keyがsymbolだったときの対応
-      return {model: childModel, pathComponent: nextPathComponent};
+
+      return {model: undefined, pathComponent: nextPathComponent};
     }
   }
 

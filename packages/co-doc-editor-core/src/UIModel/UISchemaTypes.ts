@@ -16,6 +16,7 @@ import type {UISchemaKey} from './UISchema';
 interface UISchemaBase {
   readonly label?: string;
   readonly key?: UISchemaKey;
+  readonly keyFlatten?: undefined;
 }
 
 export type FlattenableUISchemaCommon =

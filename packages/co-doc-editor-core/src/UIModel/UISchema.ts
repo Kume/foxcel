@@ -722,7 +722,7 @@ export function uiSchemaKeyToDataPathComponent(key: UISchemaKey): ForwardDataPat
   return key;
 }
 
-export function uiSchemaKeyIsParentKey(key: UISchemaKey): boolean {
+export function uiSchemaKeyIsParentKey(key: UISchemaKey): key is typeof uiSchemaParentKey {
   return key === uiSchemaParentKey;
 }
 

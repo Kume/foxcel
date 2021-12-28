@@ -1,15 +1,19 @@
 import {
   dataPathComponentIsIndexOrKey,
+  dataPathComponentIsKey,
   dataPathComponentIsListIndex,
   dataPathComponentIsListIndexLike,
   dataPathComponentIsMapKey,
+  dataPathComponentIsMapKeyLike,
   dataPathComponentIsPointer,
+  dataPathComponentToListIndex,
+  dataPathComponentToMapKey,
   dataPathFirstComponent,
   dataPathLength,
   ForwardDataPath,
   ForwardDataPathComponent,
-  getListIndexFromDataPathElement,
-  getListIndexFromDataPathElementOrFail,
+  dataPathComponentToListIndex,
+  dataPathComponentToListIndexOrFail,
   MultiDataPath,
   shiftDataPath,
 } from './DataPath';
@@ -18,6 +22,7 @@ import {
   DataModel,
   DataModelType,
   DataPointer,
+  IntegerDataModel,
   ListDataModel,
   MapDataModel,
   StringDataModel,
@@ -25,6 +30,7 @@ import {
 import {DataSchemaContext, dataSchemaIsFixedMap} from './DataSchema';
 import {DataModelOperationError} from './errors';
 import {ConditionConfig} from '..';
+import * as path from 'path';
 
 let currentId = 0;
 export function generateDataModelId(): number {
@@ -61,6 +67,10 @@ export function dataModelType(model: DataModel): DataModelType {
 }
 
 export function stringToDataModel(value: string): StringDataModel {
+  return value;
+}
+
+export function numberToIntegerDataModel(value: number): IntegerDataModel {
   return value;
 }
 
@@ -251,15 +261,16 @@ export function getFromDataModelForPathComponent(
   if (!dataModelIsMapOrList(model)) {
     return undefined;
   }
-  if (Array.isArray(model)) {
+  if (dataModelIsList(model)) {
     if (!dataPathComponentIsListIndexLike(pathComponent)) {
       return undefined;
     }
-    const index = getListIndexFromDataPathElement(pathComponent);
+    const index = dataPathComponentToListIndex(pathComponent);
     return getListDataAt(model, index);
+  } else {
+    const {index} = getMapKeyAndIndex(model, pathComponent);
+    return index === undefined ? undefined : getMapDataAtIndex(model, index);
   }
-  const {index} = getMapKeyAndIndex(model, pathComponent);
-  return index === undefined ? undefined : getMapDataAtIndex(model, index);
 }
 
 export function getFromDataModel(model: DataModel, path: ForwardDataPath): DataModel | undefined {
@@ -282,8 +293,45 @@ export function getListDataAt(list: ListDataModel, at: number): DataModel | unde
   return list[at][1];
 }
 
-export function getListDataPointerAt(list: ListDataModel, at: number): DataPointer | undefined {
-  return {i: at, d: list[at][0]};
+export function getListDataPointerAt(list: ListDataModel, index: number): DataPointer | undefined {
+  const id = getListDataIdAtIndex(list, index);
+  return id === undefined ? undefined : {i: index, d: id};
+}
+
+export function getListDataIdAtIndex(list: ListDataModel, index: number): number | undefined {
+  return list[index]?.[0];
+}
+
+export function getListDataPointerByPathComponent(
+  list: ListDataModel,
+  pathComponent: ForwardDataPathComponent,
+): DataPointer | undefined {
+  const index = getListDataIndexByPathComponent(list, pathComponent);
+  return index === undefined ? undefined : getListDataPointerAt(list, index);
+}
+
+export function getListDataIndexByPathComponent(
+  list: ListDataModel,
+  pathComponent: ForwardDataPathComponent,
+): number | undefined {
+  if (dataPathComponentIsListIndexLike(pathComponent)) {
+    return dataPathComponentToListIndex(pathComponent);
+  } else if (dataPathComponentIsPointer(pathComponent)) {
+    return pathComponent.i;
+  } else {
+    return undefined;
+  }
+}
+
+export function getListDataIndexForPointer(list: ListDataModel, pointer: DataPointer): number | undefined {
+  if (list[pointer.i][0] === pointer.d) {
+    return pointer.i;
+  }
+  return list.findIndex((id) => pointer.d);
+}
+
+export function listDataSize(list: ListDataModel): number {
+  return list.length;
 }
 
 export function setToListDataAt(list: ListDataModel, value: DataModel, at: number): ListDataModel {
@@ -310,7 +358,7 @@ function setToListDataItr(
   schema: DataSchemaContext | undefined,
   createNextChildData: CreateNextChildData,
 ): ListDataModel | undefined {
-  const index = getListIndexFromDataPathElementOrFail(dataPathFirstComponent(path));
+  const index = dataPathComponentToListIndexOrFail(dataPathFirstComponent(path));
   const childData = getListDataAt(list, index);
   const childSchema = schema && schema.getListChild();
   if (!childData) {
@@ -318,6 +366,10 @@ function setToListDataItr(
   }
   const nextChildData = createNextChildData(shiftDataPath(path), childData, childSchema);
   return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, index);
+}
+
+export function mapListDataModel<T>(list: ListDataModel, mapper: (item: DataModel, index: number) => T): T[] {
+  return list.map(([_id, item], index) => mapper(item, index));
 }
 
 //#endregion For ListDataModel
@@ -369,11 +421,32 @@ export function getMapDataPointerAtIndex(map: MapDataModel, index: number): Data
 }
 
 export function getMapDataIdAtIndex(map: MapDataModel, index: number): number | undefined {
-  return map.v[index][1];
+  return map.v[index]?.[1];
 }
 
 export function getMapKeyAtIndex(map: MapDataModel, index: number): string | null | undefined {
   return index === undefined ? undefined : map.v[index][0];
+}
+
+export function getMapDataPointerByPathComponent(
+  map: MapDataModel,
+  pathComponent: ForwardDataPathComponent,
+): DataPointer | undefined {
+  const index = getMapDataIndexByPathComponent(map, pathComponent);
+  return index === undefined ? undefined : getMapDataPointerAtIndex(map, index);
+}
+
+export function getMapDataIndexByPathComponent(
+  map: MapDataModel,
+  pathComponent: ForwardDataPathComponent,
+): number | undefined {
+  if (dataPathComponentIsMapKeyLike(pathComponent)) {
+    return findMapDataIndexOfKey(map, dataPathComponentToMapKey(pathComponent));
+  } else if (dataPathComponentIsPointer(pathComponent)) {
+    return getMapDataIndexForPointer(map, pathComponent);
+  } else {
+    return undefined;
+  }
 }
 
 function forceSetToMapDataForIndex(map: MapDataModel, value: DataModel, index: number, key?: string): MapDataModel {
@@ -414,7 +487,8 @@ function getMapKeyAndIndex(map: MapDataModel, pathComponent: ForwardDataPathComp
   if (dataPathComponentIsMapKey(pathComponent)) {
     return {index: findMapDataIndexOfKey(map, pathComponent), key: pathComponent};
   } else if (dataPathComponentIsListIndex(pathComponent)) {
-    const index = pathComponent >= mapDataSize(map) ? undefined : pathComponent;
+    const listIndex = dataPathComponentToListIndex(pathComponent);
+    const index = listIndex >= mapDataSize(map) ? undefined : listIndex;
     return {index, key: undefined};
   } else if (dataPathComponentIsIndexOrKey(pathComponent)) {
     const key = pathComponent.v.toString();
@@ -464,7 +538,7 @@ export function mapDataModelMapWithEmptyKey<T>(
   return results;
 }
 
-export function mapDataModelMap<T>(
+export function mapMapDataModel<T>(
   model: MapDataModel,
   mapper: (value: DataModel, key: string | null, index: number) => T,
 ): T[] {
@@ -495,11 +569,37 @@ export function dataModelMap<T, Model extends DataModel, WithEmptyKey extends bo
   if (Array.isArray(model)) {
     return model.map(mapper as any);
   } else {
-    return withEmptyKey ? mapDataModelMapWithEmptyKey(model, mapper as any) : mapDataModelMap(model, mapper as any);
+    return withEmptyKey ? mapDataModelMapWithEmptyKey(model, mapper as any) : mapMapDataModel(model, mapper as any);
+  }
+}
+
+export function getDataPointerByPathComponent(
+  data: DataModel,
+  pathComponent: ForwardDataPathComponent,
+): DataPointer | undefined {
+  if (dataModelIsList(data)) {
+    return getListDataPointerByPathComponent(data, pathComponent);
+  } else if (dataModelIsMap(data)) {
+    return getMapDataPointerByPathComponent(data, pathComponent);
+  } else {
+    return undefined;
   }
 }
 
 //#endregion For CollectionDataModel
+
+//#region For DataPointer
+// Don't create this function. Because the index is cache, so it should not be referenced by other file.
+// export function getIndexFromDataPointer(pointer: DataPointer | undefined): number | undefined {
+//   return pointer?.i;
+// }
+
+export function getIdFromDataPointer(pointer: DataPointer | undefined): number;
+export function getIdFromDataPointer(pointer: DataPointer | undefined): number | undefined;
+export function getIdFromDataPointer(pointer: DataPointer | undefined): number | undefined {
+  return pointer?.d;
+}
+//#endregion For DataPointer
 
 export function dataModelIsMapOrList(model: DataModel): model is MapDataModel | ListDataModel {
   return typeof model === 'object' && model !== null;
@@ -517,7 +617,7 @@ export function dataModelIsString(model: DataModel): model is StringDataModel {
   return typeof model === 'string';
 }
 
-export function dataModelIsList(model: DataModel): model is ListDataModel {
+export function dataModelIsList(model: DataModel | undefined): model is ListDataModel {
   return typeof model === 'object' && model !== null && Array.isArray(model);
 }
 
@@ -556,8 +656,29 @@ export function dataPointerForDataPath(
     if (!dataPathComponentIsListIndexLike(pathComponent)) {
       return undefined;
     }
-    return getListDataPointerAt(model, getListIndexFromDataPathElement(pathComponent));
+    return getListDataPointerAt(model, dataPathComponentToListIndex(pathComponent));
   }
   const {index} = getMapKeyAndIndex(model, pathComponent);
   return index === undefined ? undefined : getMapDataPointerAtIndex(model, index);
+}
+
+export function dataPathComponentToStringDataModel(
+  pathComponent: ForwardDataPathComponent,
+): StringDataModel | undefined {
+  if (dataPathComponentIsMapKeyLike(pathComponent)) {
+    return stringToDataModel(dataPathComponentToMapKey(pathComponent));
+  } else if (dataPathComponentIsListIndex(pathComponent)) {
+    return stringToDataModel(dataPathComponentToListIndex(pathComponent).toString());
+  }
+  // TODO pathComponentがpointerだった場合の考慮は必要?
+  return undefined;
+}
+
+export function dataPathComponentToNumberDataModel(
+  pathComponent: ForwardDataPathComponent,
+): IntegerDataModel | undefined {
+  if (dataPathComponentIsListIndexLike(pathComponent)) {
+    return numberToIntegerDataModel(dataPathComponentToListIndex(pathComponent));
+  }
+  return undefined;
 }
