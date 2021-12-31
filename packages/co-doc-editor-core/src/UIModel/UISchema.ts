@@ -163,7 +163,7 @@ function createConditionMap(dataSchema: ConditionalDataSchema | undefined, confi
 type ConfirmedKeyFlatten<T extends KeyOrKeyFlatten> = T extends {keyFlatten: boolean} ? T : never;
 
 export function isKeyFlatten<T extends KeyOrKeyFlatten>(config: T): config is ConfirmedKeyFlatten<T> {
-  return Boolean('keyFlatten' in config && config.keyFlatten);
+  return Boolean(config.keyFlatten);
 }
 
 function assertDataSchemaType<T extends DataSchemaType>(
@@ -206,6 +206,7 @@ function optionsFromDataSchema(
   if (dataSchema && dataSchema.t === DataSchemaType.String) {
     return dataSchema.in;
   }
+  return undefined;
 }
 
 function parseSelectUISchemaConfig(
@@ -291,7 +292,10 @@ function isFlattenableUISchema(schema: UISchema): schema is FormUISchema | TabUI
   return schema.type === 'form' || schema.type === 'tab';
 }
 
-function makeKeyFlattenable(config: KeyOrKeyFlatten, contents: readonly UISchema[]): FlattenableUISchemaCommon {
+function makeKeyFlattenable(
+  config: KeyOrKeyFlatten,
+  contents: readonly UISchema[],
+): FlattenableUISchemaCommon & {key?: UISchemaKey} {
   if (config.keyFlatten) {
     const flatKeys: Map<UISchemaKey, UISchemaKey[]> = new Map();
     if (contents.length === 0) {
@@ -320,10 +324,8 @@ function makeKeyFlattenable(config: KeyOrKeyFlatten, contents: readonly UISchema
       }
     }
     return {keyFlatten: true, key: firstContentKey, flatKeys};
-  } else if (config.key) {
-    return {key: parseKey(config.key)};
   } else {
-    throw new Error('no key or flattenKeys'); // TODO
+    return {key: parseKey(config.key)};
   }
 }
 
@@ -577,7 +579,6 @@ export function parseUISchemaConfig(
         context,
         resolvedDataSchema,
       );
-      console.log('xxxx form', {config, context, resolvedDataSchema, contents, dataSchema});
       return {
         ...pick(config, 'type', 'label'),
         ...makeKeyFlattenable(config, contents),

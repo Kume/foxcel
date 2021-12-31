@@ -2,12 +2,10 @@ import {ContentListIndex, UIModel} from './UIModelTypes';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {
-  dataPathFirstComponentOrUndefined,
-  dataPathLastComponent,
   ForwardDataPath,
+  headDataPathComponentOrUndefined,
   pushDataPath,
   safeShiftDataPath,
-  shiftDataPath,
   toPointerPathComponent,
 } from '../DataModel/DataPath';
 import {UISchemaContext} from './UISchemaContext';
@@ -26,8 +24,8 @@ import {
   getMapDataPointerAtIndex,
   listDataSize,
   mapDataSize,
-  mapListDataModel,
-  mapMapDataModel,
+  mapListDataModelWithPointer,
+  mapMapDataModelWithPointer,
   stringDataModelToString,
 } from '../DataModel/DataModel';
 import {dataSchemaIsMap} from '../DataModel/DataSchema';
@@ -43,7 +41,7 @@ export function buildUIModel(
   const {currentSchema} = uiSchemaContext;
   switch (currentSchema.type) {
     case 'tab': {
-      const firstPathComponent = dataPathFirstComponentOrUndefined(dataPathFocus);
+      const firstPathComponent = headDataPathComponentOrUndefined(dataPathFocus);
       const currentContentIndex =
         uiSchemaContext.contentIndexForDataPathComponent(firstPathComponent, dataModel) ?? schemaFocusLog?.a ?? 0;
       const childContext = uiSchemaContext.digForIndex(currentContentIndex);
@@ -61,8 +59,8 @@ export function buildUIModel(
           childContext,
           model,
           pathComponent ? pushDataPath(dataPath, pathComponent) : dataPath,
-          dataPathFocus && shiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
-          undefined,
+          safeShiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
+          dataFocusLog?.c[currentContentIndex],
           schemaFocusLog?.c[currentContentIndex],
         ),
       };
@@ -84,9 +82,8 @@ export function buildUIModel(
               content,
               childDataModel.model,
               childDataModel.pathComponent ? pushDataPath(dataPath, childDataModel.pathComponent) : dataPath,
-              dataPathFocus && shiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
-              // TODO フォーカス
-              undefined,
+              safeShiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
+              dataFocusLog?.c[index],
               schemaFocusLog?.c[index],
             ),
             label: content.currentSchema.dataSchema.label ?? '',
@@ -98,13 +95,15 @@ export function buildUIModel(
     case 'contentList': {
       const contentContext = uiSchemaContext.content();
       let indexes: ContentListIndex[];
-      const focusPathComponent = dataPathFocus && dataPathLastComponent(dataPathFocus);
+      const focusPathComponent = dataPathFocus && headDataPathComponentOrUndefined(dataPathFocus);
       const modelBase = {type: 'contentList', dataPath} as const;
       if (dataSchemaIsMap(currentSchema.dataSchema)) {
         const mapDataModel = dataModelIsMap(dataModel) ? dataModel : undefined;
         if (mapDataModel) {
-          indexes = mapMapDataModel(mapDataModel, (item, key) => ({
+          indexes = mapMapDataModelWithPointer(mapDataModel, (item, pointer, key) => ({
             label: key ?? '---', // TODO スキーマ定義から表示するラベルを決定
+            pointer,
+            dataPath: pushDataPath(dataPath, toPointerPathComponent(pointer)),
           }));
 
           let currentIndex =
@@ -136,8 +135,10 @@ export function buildUIModel(
       } else {
         const listDataModel = dataModelIsList(dataModel) ? dataModel : undefined;
         if (dataModelIsList(listDataModel)) {
-          indexes = mapListDataModel(listDataModel, (item, key) => ({
-            label: key.toString() ?? '---', // TODO スキーマ定義から表示するラベルを決定
+          indexes = mapListDataModelWithPointer(listDataModel, (item, pointer, index) => ({
+            label: index.toString() ?? '---', // TODO スキーマ定義から表示するラベルを決定
+            pointer,
+            dataPath: pushDataPath(dataPath, toPointerPathComponent(pointer)),
           }));
 
           let currentIndex =
@@ -157,7 +158,7 @@ export function buildUIModel(
                 contentData,
                 pushDataPath(dataPath, toPointerPathComponent(pointer)),
                 safeShiftDataPath(dataPathFocus),
-                dataFocusLog?.c[getIdFromDataPointer(pointer)],
+                dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
                 schemaFocusLog,
               );
               return {...modelBase, indexes, currentIndex, content};

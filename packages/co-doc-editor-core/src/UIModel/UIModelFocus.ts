@@ -1,17 +1,4 @@
-import {
-  DataCollectionItem,
-  DataModel,
-  dataModelIsMap,
-  dataPathFirstComponent,
-  DataPointer,
-  dataPointerForDataPath,
-  ForwardDataPath,
-  getFromDataModelForPathComponent,
-  getMapDataAtPointer,
-  MultiDataPath,
-  pushDataPath,
-  shiftDataPath,
-} from '..';
+import {DataPointer, getIdFromDataPointer} from '..';
 import {UISchemaContext} from './UISchemaContext';
 import {UIModel} from './UIModelTypes';
 import {Writable} from '../common/utilTypes';
@@ -54,14 +41,9 @@ export interface UIDataFocusLogNode {
   readonly a?: DataPointer;
 
   /**
-   * children by id
+   * children by id or by schema index
    */
-  readonly c: {readonly [id: number]: UIDataFocusLogNode};
-
-  /**
-   * children by schema index
-   */
-  readonly s: {readonly [id: number]: UIDataFocusLogNode};
+  readonly c: {readonly [id: number]: UIDataFocusLogNode | undefined};
 }
 
 export interface UISchemaFocusLogNode {
@@ -80,10 +62,6 @@ type MatchedModel<Schema extends UISchema, Model extends UIModel> = Model extend
   ? Model
   : never;
 
-type SchemaModelPair<Schema extends UISchema = UISchema, Model extends UIModel = UIModel> = Schema extends UISchema
-  ? {type: Schema['type']; schema: Schema; model: MatchedModel<Schema, Model>}
-  : never;
-
 function assertModelTypeForSchema<Schema extends UISchema>(
   schema: Schema,
   model: UIModel,
@@ -99,184 +77,78 @@ export function logSchemaFocus(
   lastFocus: UISchemaFocusLogNode | undefined,
 ): UISchemaFocusLogNode | undefined {
   const {currentSchema} = uiSchemaContext;
-  const currentFocus: Writable<UISchemaFocusLogNode> = {c: {...lastFocus?.c}};
   switch (currentSchema.type) {
     case 'tab': {
       assertModelTypeForSchema(currentSchema, model);
       if (!model.currentChild) {
-        currentFocus.a = lastFocus?.a;
-        return currentFocus;
+        return lastFocus;
       }
       const index = model.currentTabIndex;
-      currentFocus.a = index;
       const childContext = uiSchemaContext.digForIndex(index);
-      currentFocus.c[index] = logSchemaFocus(model.currentChild, childContext, lastFocus?.c[index]);
-      return currentFocus;
+      return {
+        a: index,
+        c: {...lastFocus?.c, [index]: logSchemaFocus(model.currentChild, childContext, lastFocus?.c[index])},
+      };
     }
     case 'form': {
       assertModelTypeForSchema(currentSchema, model);
+      const children: Writable<UISchemaFocusLogNode['c']> = {...lastFocus?.c};
       model.contents.forEach(({model}, index) => {
         const contentFocus = logSchemaFocus(model, uiSchemaContext.digForIndex(index), lastFocus?.c[index]);
-        if (currentFocus.c[index] || contentFocus) {
-          currentFocus.c[index] = contentFocus;
+        if (children[index] || contentFocus) {
+          children[index] = contentFocus;
         }
       });
-      return currentFocus;
+      // 今の所aプロパティは必ず空とする
+      return {c: children};
+    }
+    case 'contentList': {
+      assertModelTypeForSchema(currentSchema, model);
+      return model.content ? logSchemaFocus(model.content, uiSchemaContext.content(), lastFocus) : lastFocus;
     }
   }
   return undefined;
 }
 
-export function logFocus(
+export function logDataFocus(
   model: UIModel,
-  dataModel: DataModel | undefined,
-  dataPath: ForwardDataPath,
   uiSchemaContext: UISchemaContext,
-  lastDataFocusLog: UIDataFocusLogNode | undefined,
-  lastSchemaFocusLog: UISchemaFocusLogNode | undefined,
-): {readonly dataFocus: UIDataFocusLogNode; readonly schemaFocus: UISchemaFocusLogNode} {
+  lastFocus: UIDataFocusLogNode | undefined,
+): UIDataFocusLogNode | undefined {
   const {currentSchema} = uiSchemaContext;
-  const dataFocus: Writable<UIDataFocusLogNode> = {c: {...lastDataFocusLog?.c}};
-  const schemaFocus: Writable<UISchemaFocusLogNode> = {c: {...lastSchemaFocusLog?.c}};
   switch (currentSchema.type) {
     case 'tab': {
-      if (model.type !== 'tab') {
-        throw new Error('ui model is not match to schema');
-      }
+      assertModelTypeForSchema(currentSchema, model);
       if (!model.currentChild) {
-        dataFocus.a = lastDataFocusLog?.a;
-        schemaFocus.a = lastSchemaFocusLog?.a;
-        break;
+        return lastFocus;
       }
-      schemaFocus.a = model.currentTabIndex;
-      const childContext = uiSchemaContext.digForIndex(model.currentTabIndex);
-      const {model: childDataModel, pathComponent: childPathComponent} = childContext.getDataFromParentData(
-        dataModel,
-        dataPath,
-      );
-
-      const childFocus = logFocus(
-        model.currentChild,
-        childDataModel,
-        childPathComponent ? pushDataPath(dataPath, childPathComponent) : dataPath,
-        childContext,
-        undefined, // TODO
-        lastSchemaFocusLog?.c[model.currentTabIndex],
-      );
-      schemaFocus.c[model.currentTabIndex] = childFocus.schemaFocus;
-      break;
+      const index = model.currentTabIndex;
+      const childContext = uiSchemaContext.digForIndex(index);
+      const currentChild = logDataFocus(model.currentChild, childContext, lastFocus?.c[index]);
+      return lastFocus?.c[index] === currentChild ? lastFocus : {c: {...lastFocus?.c, [index]: currentChild}};
     }
-
     case 'form': {
-      if (model.type !== 'form') {
-        throw new Error('ui model is not match to schema');
-      }
-    }
-  }
-  return {dataFocus, schemaFocus};
-}
-
-export function focusUIModel(
-  targetPath: ForwardDataPath | undefined,
-  dataModel: DataModel | undefined,
-  uiSchemaContext: UISchemaContext,
-  collectDataForPath: undefined | ((path: MultiDataPath) => DataCollectionItem[]),
-  dataFocusLog: UIDataFocusLogNode | undefined,
-  schemaFocusLog: UISchemaFocusLogNode | undefined,
-  // currentPath: ForwardDataPath = emptyDataPath,
-): UIFocusNode | undefined {
-  const firstPathComponent = targetPath && dataPathFirstComponent(targetPath);
-  const {currentSchema} = uiSchemaContext;
-  let isPrimary = true;
-  switch (currentSchema.type) {
-    case 'text':
-    case 'checkbox':
-    case 'number':
-    case 'select': {
-      return undefined;
-    }
-    case 'tab': {
-      let activeIndex = uiSchemaIndexForDataPath(currentSchema.contents, uiSchemaContext, firstPathComponent);
-      if (activeIndex === undefined) {
-        // dataPathで直接フォーカスされない場合にはログを元にフォーカスをする。それも無いなら最初の要素にフォーカスする
-        activeIndex = schemaFocusLog?.a ?? 0;
-      } else {
-        isPrimary = false;
-        targetPath = undefined;
-      }
-      const childSchema = currentSchema.contents[activeIndex];
-      if (!childSchema) {
-        // 対処の子が存在しない = 子要素が0か指定された対象が存在しないならフォーカス不可
-        return undefined;
-      }
-
-      const activeChildModel =
-        firstPathComponent === undefined ? undefined : getFromDataModelForPathComponent(dataModel, firstPathComponent);
-      const child = focusUIModel(
-        targetPath && shiftDataPath(targetPath),
-        activeChildModel,
-        uiSchemaContext, // TODO push
-        collectDataForPath,
-        dataFocusLog?.s[activeIndex],
-        schemaFocusLog?.c[activeIndex],
-      );
-
-      return {type: 'tab', isPrimary, active: activeIndex, child};
-    }
-
-    case 'form': {
-      const activeIndex = uiSchemaIndexForDataPath(currentSchema.contents, uiSchemaContext, firstPathComponent);
-      // formにおいては、データを元にしたフォーカスが存在しないならログを元にactiveを決める必要はない
-
-      const children: {[id: number]: UIFocusNode} = {};
-      currentSchema.contents.forEach((content, index) => {
-        // contentに対応したdataModelを取得
-        const childFocus = focusUIModel(
-          undefined, // TODO 何かしらがマッチした子にのみtargetPathをshiftして渡す
-          undefined, // TODO contentに対応したdataModelを取得
-          uiSchemaContext, // TODO push
-          collectDataForPath,
-          dataFocusLog?.s[index],
-          schemaFocusLog?.c[index],
-        );
-        if (childFocus) {
-          children[index] = childFocus;
+      assertModelTypeForSchema(currentSchema, model);
+      const children: Writable<UIDataFocusLogNode['c']> = {...lastFocus?.c};
+      model.contents.forEach(({model}, index) => {
+        const contentFocus = logDataFocus(model, uiSchemaContext.digForIndex(index), lastFocus?.c[index]);
+        if (children[index] || contentFocus) {
+          children[index] = contentFocus;
         }
       });
-
-      return {type: 'form', isPrimary: activeIndex !== undefined, active: activeIndex, children};
+      return {c: children};
     }
-
     case 'contentList': {
-      let active = dataPointerForDataPath(dataModel, firstPathComponent);
-      if (active === undefined) {
-        active = dataFocusLog?.a;
-      } else {
-        isPrimary = false;
-        targetPath = undefined;
+      assertModelTypeForSchema(currentSchema, model);
+      if (!model.content) {
+        return lastFocus;
       }
-
-      const childModel = dataModelIsMap(dataModel) && active ? getMapDataAtPointer(dataModel, active) : undefined;
-
-      const child = focusUIModel(
-        targetPath && shiftDataPath(targetPath),
-        childModel,
-        uiSchemaContext, // TODO push
-        collectDataForPath,
-        active && dataFocusLog?.c[active.d],
-        schemaFocusLog,
-      );
-
-      return {type: 'contentList', isPrimary, active, child};
+      const pointer = model.indexes[model.currentIndex].pointer;
+      const id = getIdFromDataPointer(pointer);
+      const currentChildFocus = logDataFocus(model.content, uiSchemaContext.content(), lastFocus?.c[id]);
+      return {a: pointer, c: {...lastFocus?.c, [id]: currentChildFocus}};
     }
-
-    case 'table':
-      return undefined; // TODO
-
-    case 'conditional':
-      return undefined; // TODO
-
-    case 'mappingTable':
-      return undefined; // TODO
+    default:
+      return undefined;
   }
 }

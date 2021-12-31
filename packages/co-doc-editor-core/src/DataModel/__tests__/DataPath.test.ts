@@ -1,4 +1,4 @@
-import {DataPathComponentType, dataPathLastComponent, popDataPath, shiftDataPath} from '../DataPath';
+import {DataPathComponentType, popDataPath, shiftDataPath, tailDataPathComponent} from '../DataPath';
 
 describe('Unit tests for DataPath', () => {
   describe('Unit tests for popDataPath', () => {
@@ -25,9 +25,9 @@ describe('Unit tests for DataPath', () => {
     });
   });
 
-  describe('Unit tests for dataPathLastElement', () => {
+  describe('Unit tests for tailDataPathComponent', () => {
     it('Can get last element', () => {
-      expect(dataPathLastComponent({components: ['a', 6, 'd']})).toBe('d');
+      expect(tailDataPathComponent({components: ['a', 6, 'd']})).toBe('d');
     });
   });
 });

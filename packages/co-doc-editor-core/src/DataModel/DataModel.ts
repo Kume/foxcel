@@ -1,14 +1,11 @@
 import {
   dataPathComponentIsIndexOrKey,
-  dataPathComponentIsKey,
   dataPathComponentIsListIndex,
   dataPathComponentIsListIndexLike,
   dataPathComponentIsMapKey,
   dataPathComponentIsMapKeyLike,
   dataPathComponentIsPointer,
-  dataPathComponentToListIndex,
   dataPathComponentToMapKey,
-  dataPathFirstComponent,
   dataPathLength,
   ForwardDataPath,
   ForwardDataPathComponent,
@@ -16,6 +13,7 @@ import {
   dataPathComponentToListIndexOrFail,
   MultiDataPath,
   shiftDataPath,
+  headDataPathComponent,
 } from './DataPath';
 import {
   DataCollectionItem,
@@ -30,7 +28,6 @@ import {
 import {DataSchemaContext, dataSchemaIsFixedMap} from './DataSchema';
 import {DataModelOperationError} from './errors';
 import {ConditionConfig} from '..';
-import * as path from 'path';
 
 let currentId = 0;
 export function generateDataModelId(): number {
@@ -178,6 +175,7 @@ export function setToDataModel(
   to: DataModel,
   schema?: DataSchemaContext,
 ): DataModel | undefined {
+  // TODO データスキーマが存在していて、現在のデータがスキーマと不一致だったらスキーマを優先して置き換えるように修正すべき
   if (dataPathLength(path) === 0) {
     return dataModelEquals(value, to) ? undefined : value;
   }
@@ -277,8 +275,8 @@ export function getFromDataModel(model: DataModel, path: ForwardDataPath): DataM
   if (dataPathLength(path) === 0) {
     return model;
   }
-  const firstPathComponent = dataPathFirstComponent(path);
-  const childModel = getFromDataModelForPathComponent(model, firstPathComponent);
+  const headPathComponent = headDataPathComponent(path);
+  const childModel = getFromDataModelForPathComponent(model, headPathComponent);
   return childModel && getFromDataModel(childModel, shiftDataPath(path));
 }
 
@@ -344,7 +342,7 @@ export function setToListDataAt(list: ListDataModel, value: DataModel, at: numbe
 
 function forceSetToListData(list: ListDataModel, value: DataModel, index: number): ListDataModel {
   const v = [...list];
-  v[index] = [generateDataModelId(), value];
+  v[index] = [v[index][0], value];
   return v;
 }
 
@@ -358,7 +356,7 @@ function setToListDataItr(
   schema: DataSchemaContext | undefined,
   createNextChildData: CreateNextChildData,
 ): ListDataModel | undefined {
-  const index = dataPathComponentToListIndexOrFail(dataPathFirstComponent(path));
+  const index = dataPathComponentToListIndexOrFail(headDataPathComponent(path));
   const childData = getListDataAt(list, index);
   const childSchema = schema && schema.getListChild();
   if (!childData) {
@@ -368,8 +366,18 @@ function setToListDataItr(
   return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, index);
 }
 
-export function mapListDataModel<T>(list: ListDataModel, mapper: (item: DataModel, index: number) => T): T[] {
-  return list.map(([_id, item], index) => mapper(item, index));
+export function mapListDataModel<T>(
+  list: ListDataModel,
+  mapper: (item: DataModel, index: number, id: number) => T,
+): T[] {
+  return list.map(([id, item], index) => mapper(item, index, id));
+}
+
+export function mapListDataModelWithPointer<T>(
+  list: ListDataModel,
+  mapper: (item: DataModel, pointer: DataPointer, index: number) => T,
+): T[] {
+  return list.map(([id, item], index) => mapper(item, {i: index, d: id}, index));
 }
 
 //#endregion For ListDataModel
@@ -452,7 +460,7 @@ export function getMapDataIndexByPathComponent(
 function forceSetToMapDataForIndex(map: MapDataModel, value: DataModel, index: number, key?: string): MapDataModel {
   const v = [...map.v];
   const newKey = key === undefined ? v[index][0] : key;
-  v[index] = [newKey, generateDataModelId(), value];
+  v[index] = [newKey, v[index][1], value];
   return {t: DataModelType.Map, v};
 }
 
@@ -469,9 +477,9 @@ function setToMapDataRecursive(
   path: ForwardDataPath,
   schema: DataSchemaContext | undefined,
   createNextChildData: CreateNextChildData,
-  onKeyMissing: (key: string | undefined, schema: DataSchemaContext | undefined) => MapDataModel | undefined,
+  onKeyMissing: (key: string | null | undefined, schema: DataSchemaContext | undefined) => MapDataModel | undefined,
 ): MapDataModel | undefined {
-  const firstPathComponent = dataPathFirstComponent(path);
+  const firstPathComponent = headDataPathComponent(path);
   const {key, index} = getMapKeyAndIndex(map, firstPathComponent);
   const childSchema = schema?.digByPath(firstPathComponent);
   if (index !== undefined) {
@@ -483,7 +491,10 @@ function setToMapDataRecursive(
   }
 }
 
-function getMapKeyAndIndex(map: MapDataModel, pathComponent: ForwardDataPathComponent): {index?: number; key?: string} {
+function getMapKeyAndIndex(
+  map: MapDataModel,
+  pathComponent: ForwardDataPathComponent,
+): {index?: number; key?: string | null} {
   if (dataPathComponentIsMapKey(pathComponent)) {
     return {index: findMapDataIndexOfKey(map, pathComponent), key: pathComponent};
   } else if (dataPathComponentIsListIndex(pathComponent)) {
@@ -495,6 +506,7 @@ function getMapKeyAndIndex(map: MapDataModel, pathComponent: ForwardDataPathComp
     return {index: findMapDataIndexOfKey(map, key), key};
   } else if (dataPathComponentIsPointer(pathComponent)) {
     const index = getMapDataIndexForPointer(map, pathComponent);
+    return {index, key: index === undefined ? undefined : getMapKeyAtIndex(map, index)};
   }
   throw new DataModelOperationError('Invalid path component');
 }
@@ -542,7 +554,14 @@ export function mapMapDataModel<T>(
   model: MapDataModel,
   mapper: (value: DataModel, key: string | null, index: number) => T,
 ): T[] {
-  return model.v.map(([key, value], index) => mapper(value, key, index));
+  return model.v.map(([key, id, value], index) => mapper(value, key, index));
+}
+
+export function mapMapDataModelWithPointer<T>(
+  model: MapDataModel,
+  mapper: (value: DataModel, pointer: DataPointer, key: string | null, index: number) => T,
+): T[] {
+  return model.v.map(([key, id, value], index) => mapper(value, {i: index, d: id}, key, index));
 }
 
 //#endregion For MapDataModel

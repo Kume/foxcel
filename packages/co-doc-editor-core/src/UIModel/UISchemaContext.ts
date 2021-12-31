@@ -6,9 +6,9 @@ import {
   dataPathComponentIsMapKeyLike,
   dataPathComponentIsPointer,
   dataPathComponentToMapKey,
-  dataPathLastComponent,
   ForwardDataPath,
   ForwardDataPathComponent,
+  tailDataPathComponent,
 } from '../DataModel/DataPath';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {
@@ -171,7 +171,7 @@ export class UISchemaContext {
       if (dataModelIsMap(parentData)) {
         if (uiSchemaKeyIsParentKey(key)) {
           return {
-            model: dataPathComponentToStringDataModel(dataPathLastComponent(dataPath)),
+            model: dataPathComponentToStringDataModel(tailDataPathComponent(dataPath)),
             pathComponent: nextPathComponent,
           };
         } else {

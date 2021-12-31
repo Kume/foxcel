@@ -16,12 +16,11 @@ import type {UISchemaKey} from './UISchema';
 interface UISchemaBase {
   readonly label?: string;
   readonly key?: UISchemaKey;
-  readonly keyFlatten?: undefined;
 }
 
 export type FlattenableUISchemaCommon =
-  | {keyFlatten: true; key: UISchemaKey; flatKeys: ReadonlyMap<UISchemaKey, readonly UISchemaKey[]>}
-  | {keyFlatten?: false; key: UISchemaKey};
+  | {keyFlatten: true; flatKeys: ReadonlyMap<UISchemaKey, readonly UISchemaKey[]>}
+  | {keyFlatten?: false};
 
 export type UISchema =
   | MappingTableUISchema
@@ -38,6 +37,7 @@ export type UISchema =
 
 export interface MappingTableUISchema extends UISchemaBase {
   readonly type: 'mappingTable';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: MapDataSchema;
   readonly sourcePath: DataPath;
   readonly contents: ReadonlyArray<UISchema>;
@@ -45,6 +45,7 @@ export interface MappingTableUISchema extends UISchemaBase {
 
 export interface TextUISchema extends UISchemaBase {
   readonly type: 'text';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: StringDataSchema | KeyDataSchema;
 }
 
@@ -57,6 +58,7 @@ export type TabUISchema = {
 
 export interface TableUISchema extends UISchemaBase {
   readonly type: 'table';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: ListDataSchema | MapDataSchema;
   readonly contents: ReadonlyArray<UISchema>;
 }
@@ -65,6 +67,7 @@ export type SelectUISchema = SingleSelectUISchema | MultiSelectUISchema;
 
 interface SelectUISchemaBase extends UISchemaBase {
   readonly type: 'select';
+  readonly keyFlatten?: undefined;
   readonly options: readonly SelectOptionSchema<string | number>[];
 }
 
@@ -80,30 +83,33 @@ interface MultiSelectUISchema extends SelectUISchemaBase {
 
 export interface NumberUISchema extends UISchemaBase {
   readonly type: 'number';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: NumberDataSchema;
 }
 
 export type FormUISchema = {
   readonly type: 'form';
   readonly dataSchema: FixedMapDataSchema;
-  readonly keyFlatten?: boolean;
   readonly contents: ReadonlyArray<UISchema>;
 } & UISchemaBase &
   FlattenableUISchemaCommon;
 
 export interface ContentListUISchema extends UISchemaBase {
   readonly type: 'contentList';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: ListDataSchema | MapDataSchema;
   readonly content: UISchema;
 }
 
 export interface CheckBoxUISchema extends UISchemaBase {
   readonly type: 'checkbox';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: BooleanDataSchema;
 }
 
 export interface ConditionalUISchema extends UISchemaBase {
   readonly type: 'conditional';
+  readonly keyFlatten?: undefined;
   readonly dataSchema: ConditionalDataSchema;
   readonly contents: {readonly [key: string]: UISchema};
 }
