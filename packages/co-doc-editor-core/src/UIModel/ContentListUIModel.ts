@@ -38,3 +38,14 @@ export function contentListAddAfterAction(model: ContentListUIModel, index: numb
     },
   };
 }
+
+export function contentListRemoveAtAction(model: ContentListUIModel, index: number): AppAction {
+  return {
+    type: 'data',
+    action: {
+      type: 'delete',
+      path: model.dataPath,
+      at: model.indexes[index].pointer,
+    },
+  };
+}

@@ -343,6 +343,46 @@ export function pushToDataModel(
   }
 }
 
+/**
+ * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
+ */
+export function deleteFromDataModel(
+  path: ForwardDataPath,
+  at: DataPointer,
+  from: DataModel,
+  schema: DataSchemaContext | undefined,
+): DataModel | undefined {
+  if (dataPathLength(path) === 0) {
+    if (dataModelIsMap(from)) {
+      const index = getMapDataIndexForPointer(from, at);
+      if (index === undefined) {
+        return undefined;
+      }
+      return forceDeleteFromMapDataAt(from, index);
+    } else if (dataModelIsList(from)) {
+      const index = getListDataIndexForPointer(from, at);
+      if (index === undefined) {
+        return undefined;
+      }
+      return forceDeleteFromListDataAt(from, index);
+    } else {
+      return undefined;
+    }
+  } else {
+    if (dataModelIsList(from)) {
+      return setToListDataRecursive(from, path, schema, (nextPath, childData, childSchema) =>
+        deleteFromDataModel(nextPath, at, childData, childSchema),
+      );
+    } else if (dataModelIsMap(from)) {
+      return setToMapDataRecursive(from, path, schema, (nextPath, childData, childSchema) =>
+        deleteFromDataModel(nextPath, at, childData, childSchema),
+      );
+    } else {
+      return undefined;
+    }
+  }
+}
+
 export function getFromDataModelForPathComponent(
   model: DataModel | undefined,
   pathComponent: ForwardDataPathComponent,
@@ -446,6 +486,10 @@ function forceInsertToListData(list: ListDataModel, value: DataModel, index: num
 
 function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
   return [...list, [generateDataModelId(), value]];
+}
+
+function forceDeleteFromListDataAt(list: ListDataModel, index: number): ListDataModel {
+  return [...list.slice(0, index), ...list.slice(index + 1)];
 }
 
 function setToListDataRecursive(
@@ -580,6 +624,10 @@ function forceAddToMapData(map: MapDataModel, value: DataModel, key: string): Ma
 
 function pushToMapData(map: MapDataModel, value: DataModel): MapDataModel {
   return {t: DataModelType.Map, v: [...map.v, [null, generateDataModelId(), value]]};
+}
+
+function forceDeleteFromMapDataAt(map: MapDataModel, index: number): MapDataModel {
+  return {t: DataModelType.Map, v: [...map.v.slice(0, index), ...map.v.slice(index + 1)]};
 }
 
 function setToMapDataRecursive(

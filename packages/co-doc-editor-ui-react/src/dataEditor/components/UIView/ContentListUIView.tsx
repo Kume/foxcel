@@ -7,6 +7,7 @@ import {getIdFromDataPointer} from 'co-doc-editor-core';
 import {
   contentListAddAfterAction,
   contentListAddBeforeAction,
+  contentListRemoveAtAction,
 } from 'co-doc-editor-core/dist/UIModel/ContentListUIModel';
 
 const LayoutRoot = styled.div`
@@ -43,12 +44,12 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction}) => {
         items: [
           {label: '上に追加', onClick: () => onAction(contentListAddBeforeAction(model, index))},
           {label: '下に追加', onClick: () => onAction(contentListAddAfterAction(model, index))},
-          {label: '削除', onClick: () => console.log('xxxx 削除')},
+          {label: '削除', onClick: () => onAction(contentListRemoveAtAction(model, index))},
         ],
       });
       event.preventDefault();
     },
-    [model],
+    [model, onAction],
   );
 
   return (

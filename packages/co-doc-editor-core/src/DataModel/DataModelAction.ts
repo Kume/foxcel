@@ -1,6 +1,6 @@
 import {dataPathLength, ForwardDataPath} from './DataPath';
 import {DataModel, DataPointer} from './DataModelTypes';
-import {insertToDataModel, pushToDataModel, setKeyToDataModel, setToDataModel} from './DataModel';
+import {deleteFromDataModel, insertToDataModel, pushToDataModel, setKeyToDataModel, setToDataModel} from './DataModel';
 import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
 
 export interface PushDataModelAction {
@@ -33,7 +33,18 @@ export interface InsertDataModelAction {
   readonly after: DataPointer | undefined;
 }
 
-export type DataModelAction = PushDataModelAction | SetDataModelAction | SetKeyDataModelAction | InsertDataModelAction;
+export interface DeleteDataModelAction {
+  readonly type: 'delete';
+  readonly at: DataPointer;
+  readonly path: ForwardDataPath;
+}
+
+export type DataModelAction =
+  | PushDataModelAction
+  | SetDataModelAction
+  | SetKeyDataModelAction
+  | InsertDataModelAction
+  | DeleteDataModelAction;
 
 export function applyDataModelAction(
   model: DataModel | undefined,
@@ -62,5 +73,8 @@ export function applyDataModelAction(
 
     case 'push':
       return model === undefined ? undefined : pushToDataModel(action.path, action.data, model, schemaContext);
+
+    case 'delete':
+      return model === undefined ? undefined : deleteFromDataModel(action.path, action.at, model, schemaContext);
   }
 }
