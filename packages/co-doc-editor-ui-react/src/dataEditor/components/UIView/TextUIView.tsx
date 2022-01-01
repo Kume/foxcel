@@ -7,11 +7,13 @@ export interface TextUIViewProps extends UIViewProps {
   readonly model: TextUIModel;
 }
 
-export const TextUIView: React.FC<TextUIViewProps> = ({model, onChangeData}) => {
+export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
   return (
     <input
       value={model.value}
-      onChange={(e) => onChangeData({type: 'set', path: model.dataPath, data: stringToDataModel(e.target.value)})}
+      onChange={(e) =>
+        onAction({type: 'data', action: {type: 'set', path: model.dataPath, data: stringToDataModel(e.target.value)}})
+      }
     />
   );
 };

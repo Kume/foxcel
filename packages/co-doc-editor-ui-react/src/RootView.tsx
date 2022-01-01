@@ -58,11 +58,7 @@ export const RootView: React.FC = () => {
 
   return (
     <div>
-      <UIView
-        model={state.uiModel}
-        onChangeData={(action) => dispatch({type: 'data', action})}
-        onFocusByDataPath={(path) => dispatch({type: 'focus', path})}
-      />
+      <UIView model={state.uiModel} onAction={dispatch} />
     </div>
   );
 };

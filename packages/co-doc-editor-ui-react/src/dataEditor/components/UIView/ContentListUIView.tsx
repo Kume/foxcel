@@ -41,7 +41,7 @@ export const ContentListUIView: React.FC<Props> = ({model, ...otherProps}) => {
               key={getIdFromDataPointer(pointer)}
               title={label}
               selected={model.currentIndex === index}
-              onClick={(e) => otherProps.onFocusByDataPath(dataPath)}
+              onClick={() => otherProps.onAction({type: 'focus', path: dataPath})}
               onContextMenu={(e) => {
                 setContextMenuProp({
                   anchorPoint: {x: e.pageX, y: e.pageY},
