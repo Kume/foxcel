@@ -32,9 +32,11 @@ export type ForwardDataPathComponent =
   | MapKeyDataPathComponent
   | ListIndexDataPathComponent
   | IndexOrKeyDataPathComponent
-  | KeyPathComponent
   | PointerPathComponent;
-export type ForwardDataPathComponentExcludingKey = string | number | IndexOrKeyDataPathComponent;
+export type ForwardDataPathComponentExcludingPointer =
+  | MapKeyDataPathComponent
+  | ListIndexDataPathComponent
+  | IndexOrKeyDataPathComponent;
 
 export type IndexOrKeyDataPathComponent = {
   readonly t: DataPathComponentType.IndexOrKey;
@@ -64,11 +66,13 @@ export type UnionPathComponent = {
 };
 export type DataPathComponent =
   | ForwardDataPathComponent
+  | KeyPathComponent
   | ReversePathComponent
   | ContextKeyPathComponent
   | NestedPathComponent;
 export type MultiDataPathComponent =
   | ForwardDataPathComponent
+  | KeyPathComponent
   | WildCardPathComponent
   | MultiNestedPathComponent
   | ReversePathComponent
@@ -151,19 +155,7 @@ export function dataPathComponentIsPointer(component: MultiDataPathComponent): c
   return typeof component === 'object' && component.t === DataPathComponentType.Pointer;
 }
 
-export function forwardDataPathComponentToNumberOrString(
-  component: ForwardDataPathComponentExcludingKey,
-): number | string {
-  switch (typeof component) {
-    case 'number':
-    case 'string':
-      return component;
-    default:
-      return component.v;
-  }
-}
-
-export function forwardDataPathComponentToString(component: ForwardDataPathComponentExcludingKey): string {
+export function forwardDataPathComponentToString(component: ForwardDataPathComponentExcludingPointer): string {
   switch (typeof component) {
     case 'number':
       return component.toString(10);

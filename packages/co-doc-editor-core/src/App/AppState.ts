@@ -2,7 +2,7 @@ import {UIModel} from '../UIModel/UIModelTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {emptyDataPath, ForwardDataPath} from '../DataModel/DataPath';
 import {logDataFocus, logSchemaFocus, UIDataFocusLogNode, UISchemaFocusLogNode} from '../UIModel/UIModelFocus';
-import {DataModelAction, execDataModelAction} from '../DataModel/DataModelAction';
+import {DataModelAction, applyDataModelAction} from '../DataModel/DataModelAction';
 import {buildUIModel} from '../UIModel/UIModel';
 import {UISchemaContext} from '../UIModel/UISchemaContext';
 import {UISchema} from '../UIModel/UISchemaTypes';
@@ -51,7 +51,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
       };
     }
     case 'data': {
-      const data = execDataModelAction(state.data, state.dataSchema, action.action);
+      const data = applyDataModelAction(state.data, state.dataSchema, action.action);
       if (!data) {
         return state;
       }

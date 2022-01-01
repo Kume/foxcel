@@ -96,7 +96,7 @@ export function buildUIModel(
       const contentContext = uiSchemaContext.content();
       let indexes: ContentListIndex[];
       const focusPathComponent = dataPathFocus && headDataPathComponentOrUndefined(dataPathFocus);
-      const modelBase = {type: 'contentList', dataPath} as const;
+      const modelBase = {type: 'contentList', dataPath, schema: currentSchema} as const;
       if (dataSchemaIsMap(currentSchema.dataSchema)) {
         const mapDataModel = dataModelIsMap(dataModel) ? dataModel : undefined;
         if (mapDataModel) {

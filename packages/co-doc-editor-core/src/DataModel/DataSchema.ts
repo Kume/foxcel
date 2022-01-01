@@ -527,3 +527,7 @@ export function dataSchemaIsFixedMap(schema: DataSchema | undefined): schema is 
 export function dataSchemaIsMap(schema: DataSchema | undefined): schema is MapDataSchema {
   return schema?.t === DataSchemaType.Map;
 }
+
+export function dataSchemaIsList(schema: DataSchema | undefined): schema is ListDataSchema {
+  return schema?.t === DataSchemaType.List;
+}

@@ -4,6 +4,10 @@ import {ContentListUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import styled from 'styled-components';
 import {ContextMenu, ContextMenuProps} from './ContextMenu';
 import {getIdFromDataPointer} from 'co-doc-editor-core';
+import {
+  contentListAddAfterAction,
+  contentListAddBeforeAction,
+} from 'co-doc-editor-core/dist/UIModel/ContentListUIModel';
 
 const LayoutRoot = styled.div`
   display: flex;
@@ -29,9 +33,24 @@ interface Props extends UIViewProps {
   readonly model: ContentListUIModel;
 }
 
-export const ContentListUIView: React.FC<Props> = ({model, ...otherProps}) => {
+export const ContentListUIView: React.FC<Props> = ({model, onAction}) => {
   const [contextMenuProp, setContextMenuProp] = useState<Omit<ContextMenuProps, 'onClose'>>();
   const closeContextMenu = useCallback(() => setContextMenuProp(undefined), []);
+  const openContextMenu = useCallback(
+    (index: number, event: React.MouseEvent<HTMLElement>) => {
+      setContextMenuProp({
+        anchorPoint: {x: event.pageX, y: event.pageY},
+        items: [
+          {label: '上に追加', onClick: () => onAction(contentListAddBeforeAction(model, index))},
+          {label: '下に追加', onClick: () => onAction(contentListAddAfterAction(model, index))},
+          {label: '削除', onClick: () => console.log('xxxx 削除')},
+        ],
+      });
+      event.preventDefault();
+    },
+    [model],
+  );
+
   return (
     <LayoutRoot>
       <ListArea>
@@ -41,18 +60,8 @@ export const ContentListUIView: React.FC<Props> = ({model, ...otherProps}) => {
               key={getIdFromDataPointer(pointer)}
               title={label}
               selected={model.currentIndex === index}
-              onClick={() => otherProps.onAction({type: 'focus', path: dataPath})}
-              onContextMenu={(e) => {
-                setContextMenuProp({
-                  anchorPoint: {x: e.pageX, y: e.pageY},
-                  items: [
-                    {label: '上に追加', onClick: () => console.log('xxxx 上に追加')},
-                    {label: '下に追加', onClick: () => console.log('xxxx 下に追加')},
-                    {label: '削除', onClick: () => console.log('xxxx 削除')},
-                  ],
-                });
-                e.preventDefault();
-              }}>
+              onClick={() => onAction({type: 'focus', path: dataPath})}
+              onContextMenu={(e) => openContextMenu(index, e)}>
               {label}
             </ListItem>
           ))}
@@ -61,7 +70,7 @@ export const ContentListUIView: React.FC<Props> = ({model, ...otherProps}) => {
       </ListArea>
       <ContentArea>
         {model.content ? (
-          <UIView model={model.content} {...otherProps} />
+          <UIView model={model.content} onAction={onAction} />
         ) : (
           <EmptyContentArea>リストが空です。</EmptyContentArea>
         )}

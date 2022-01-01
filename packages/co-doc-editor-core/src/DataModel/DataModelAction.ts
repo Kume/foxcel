@@ -1,7 +1,7 @@
 import {dataPathLength, ForwardDataPath} from './DataPath';
-import {DataModel} from './DataModelTypes';
-import {pushToDataModel, setToDataModel} from './DataModel';
-import {DataSchema, DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
+import {DataModel, DataPointer} from './DataModelTypes';
+import {insertToDataModel, pushToDataModel, setKeyToDataModel, setToDataModel} from './DataModel';
+import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
 
 export interface PushDataModelAction {
   readonly type: 'push';
@@ -15,9 +15,27 @@ export interface SetDataModelAction {
   readonly data: DataModel;
 }
 
-export type DataModelAction = PushDataModelAction | SetDataModelAction;
+export interface SetKeyDataModelAction {
+  readonly type: 'setKey';
+  readonly path: ForwardDataPath;
+  readonly key: string | null;
+  readonly sourceKeyPointer: DataPointer;
+}
 
-export function execDataModelAction(
+export interface InsertDataModelAction {
+  readonly type: 'insert';
+  readonly path: ForwardDataPath;
+  readonly data: DataModel;
+
+  /**
+   * undefinedの場合、先頭に要素を挿入する
+   */
+  readonly after: DataPointer | undefined;
+}
+
+export type DataModelAction = PushDataModelAction | SetDataModelAction | SetKeyDataModelAction | InsertDataModelAction;
+
+export function applyDataModelAction(
   model: DataModel | undefined,
   schema: DataSchemaExcludeRecursive | undefined,
   action: DataModelAction,
@@ -30,6 +48,17 @@ export function execDataModelAction(
       } else {
         return model === undefined ? undefined : setToDataModel(action.path, action.data, model, schemaContext);
       }
+
+    case 'setKey': {
+      return model === undefined
+        ? undefined
+        : setKeyToDataModel(action.path, action.sourceKeyPointer, action.key, model, schemaContext);
+    }
+
+    case 'insert':
+      return model === undefined
+        ? undefined
+        : insertToDataModel(action.path, action.after, action.data, model, schemaContext);
 
     case 'push':
       return model === undefined ? undefined : pushToDataModel(action.path, action.data, model, schemaContext);

@@ -1,5 +1,6 @@
 import {ForwardDataPath} from '../DataModel/DataPath';
 import {DataPointer} from '../DataModel/DataModelTypes';
+import {ContentListUISchema} from './UISchemaTypes';
 
 export interface TabUIModel {
   readonly type: 'tab';
@@ -33,6 +34,7 @@ export interface TextUIModel {
 
 interface ContentListUIModelBase {
   readonly type: 'contentList';
+  readonly schema: ContentListUISchema;
   readonly dataPath: ForwardDataPath;
   readonly indexes: readonly ContentListIndex[];
 }
