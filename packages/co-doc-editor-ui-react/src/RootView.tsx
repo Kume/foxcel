@@ -1,19 +1,12 @@
 import React, {useReducer} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {UIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {DataModel, emptyDataPath, ForwardDataPath, unknownToDataModel} from 'co-doc-editor-core';
+import {DataModel, emptyDataPath, unknownToDataModel} from 'co-doc-editor-core';
 import {buildSimpleUISchema} from 'co-doc-editor-core/dist/UIModel/UISchema';
 import {buildSimpleDataSchema, DataSchemaContext} from 'co-doc-editor-core/dist/DataModel/DataSchema';
 import {buildUIModel} from 'co-doc-editor-core/dist/UIModel/UIModel';
 import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
-import {DataModelAction, execDataModelAction} from 'co-doc-editor-core/dist/DataModel/DataModelAction';
-import {
-  logDataFocus,
-  logSchemaFocus,
-  UIDataFocusLogNode,
-  UISchemaFocusLogNode,
-} from 'co-doc-editor-core/dist/UIModel/UIModelFocus';
 import {sampleConfig} from './sample';
+import {applyAppActionToState, AppState} from 'co-doc-editor-core/dist/App/AppState';
 
 const dataSchema = buildSimpleDataSchema(sampleConfig);
 const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);
@@ -50,78 +43,16 @@ const initialDataModel = unknownToDataModel({
   testB: {},
 });
 
-interface FocusAction {
-  readonly type: 'focus';
-  readonly path: ForwardDataPath;
-}
-
-interface DataAction {
-  readonly type: 'data';
-  readonly action: DataModelAction;
-}
-
-type Action = FocusAction | DataAction;
-
-interface AppState {
-  data: DataModel;
-  uiModel: UIModel;
-  focus?: ForwardDataPath;
-  schemaFocusLog?: UISchemaFocusLogNode;
-  dataFocusLog?: UIDataFocusLogNode;
-}
-
-function reducer(state: AppState, action: Action): AppState {
-  switch (action.type) {
-    case 'focus': {
-      const uiModel = buildUIModel(
-        rootSchemaContext,
-        state.data,
-        emptyDataPath,
-        action.path,
-        state.dataFocusLog,
-        state.schemaFocusLog,
-      );
-      return {
-        ...state,
-        focus: action.path,
-        uiModel,
-        schemaFocusLog: logSchemaFocus(uiModel, rootSchemaContext, state.schemaFocusLog),
-        dataFocusLog: logDataFocus(uiModel, rootSchemaContext, state.dataFocusLog),
-      };
-    }
-    case 'data': {
-      const data = execDataModelAction(state.data, dataSchema, action.action);
-      if (!data) {
-        return state;
-      }
-      const uiModel = buildUIModel(
-        rootSchemaContext,
-        data,
-        emptyDataPath,
-        undefined,
-        state.dataFocusLog,
-        state.schemaFocusLog,
-      );
-      return {
-        data,
-        uiModel,
-        focus: undefined, // TODO actionからDataPathを取得してセットする
-        schemaFocusLog: logSchemaFocus(uiModel, rootSchemaContext, state.schemaFocusLog),
-        dataFocusLog: logDataFocus(uiModel, rootSchemaContext, state.dataFocusLog),
-      };
-    }
-  }
-}
 const rootSchemaContext = UISchemaContext.createRootContext(uiSchema, DataSchemaContext.createRootContext(dataSchema));
 
 function buildInitialState(data: DataModel): AppState {
   const uiModel = buildUIModel(rootSchemaContext, data, emptyDataPath, undefined, undefined, undefined);
-  return {data, uiModel};
+  return {data, dataSchema, uiSchema, rootUISchemaContext: rootSchemaContext, uiModel};
 }
 
 const initialState = buildInitialState(initialDataModel);
 export const RootView: React.FC = () => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(applyAppActionToState, initialState);
 
   console.log('root', state);
 
