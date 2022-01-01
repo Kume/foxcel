@@ -16,6 +16,7 @@ import {
   headDataPathComponent,
 } from './DataPath';
 import {
+  BooleanDataModel,
   DataCollectionItem,
   DataModel,
   DataModelType,
@@ -25,9 +26,10 @@ import {
   MapDataModel,
   StringDataModel,
 } from './DataModelTypes';
-import {DataSchemaContext, dataSchemaIsFixedMap} from './DataSchema';
+import {DataSchemaContext} from './DataSchema';
 import {DataModelOperationError} from './errors';
 import {ConditionConfig} from '..';
+import {defaultDataModelForSchema} from './DataModelWithSchema';
 
 let currentId = 0;
 export function generateDataModelId(): number {
@@ -70,6 +72,10 @@ export function stringToDataModel(value: string): StringDataModel {
 }
 
 export function numberToIntegerDataModel(value: number): IntegerDataModel {
+  return value;
+}
+
+export function booleanToDataModel(value: boolean): BooleanDataModel {
   return value;
 }
 
@@ -174,22 +180,29 @@ export function dataModelToJson(model: DataModel): any {
 export function setToDataModel(
   path: ForwardDataPath,
   value: DataModel,
-  to: DataModel,
+  _to: DataModel,
   schema: DataSchemaContext | undefined,
 ): DataModel | undefined {
   // TODO データスキーマが存在していて、現在のデータがスキーマと不一致だったらスキーマを優先して置き換えるように修正すべき
 
   if (dataPathLength(path) === 0) {
-    return dataModelEquals(value, to) ? undefined : value;
+    return dataModelEquals(value, _to) ? undefined : value;
   }
-  if (!dataModelIsMapOrList(to)) {
-    throw new DataModelOperationError(`Cannot set data to ${dataModelTypeToLabel(dataModelType(to))}`);
+  let __to: DataModel | undefined = _to;
+  if (!dataModelIsMapOrList(__to)) {
+    __to = schema && defaultDataModelForSchema(schema.currentSchema);
+    if (!__to || !dataModelIsMap(__to)) {
+      throw new DataModelOperationError(
+        `Cannot set data to ${__to ? dataModelTypeToLabel(dataModelType(__to)) : 'undefined'}`,
+      );
+    }
   }
-  if (dataModelIsList(to)) {
-    return setToListDataRecursive(to, path, schema, (nextPath, childData, childSchema) =>
+  if (dataModelIsList(__to)) {
+    return setToListDataRecursive(__to, path, schema, (nextPath, childData, childSchema) =>
       setToDataModel(nextPath, value, childData, childSchema),
     );
   }
+  const to = __to;
   return setToMapDataRecursive(
     to,
     path,
@@ -204,13 +217,10 @@ export function setToDataModel(
       if (pathLength === 1) {
         return forceAddToMapData(to, value, key);
       }
-      if (pathLength > 1) {
-        // TODO fixedMap以外にも自動セットを行えるようにする
-        if (dataSchemaIsFixedMap(schema?.currentSchema)) {
-          // TODO DataSchemaに設定されたデフォルトデータを利用できるなら利用する
-          const newModel = setToDataModel(shiftDataPath(path), value, emptyMapModel, schema) ?? emptyMapModel;
-          return forceAddToMapData(to, newModel, key);
-        }
+      if (pathLength > 1 && schema) {
+        const defaultData = defaultDataModelForSchema(schema.currentSchema);
+        const newModel = setToDataModel(shiftDataPath(path), value, defaultData, schema) ?? emptyMapModel;
+        return forceAddToMapData(to, newModel, key);
       }
       throw new DataModelOperationError('Cannot set data to empty value');
     },

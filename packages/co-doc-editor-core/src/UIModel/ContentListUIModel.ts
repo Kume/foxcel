@@ -1,18 +1,11 @@
 import {AppAction} from '../App/AppState';
 import {ContentListUIModel} from './UIModelTypes';
-import {emptyListModel, emptyMapModel, nullDataModel} from '../DataModel/DataModel';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {dataSchemaIsList, dataSchemaIsMap} from '../DataModel/DataSchema';
+import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
 
 function initialData(model: ContentListUIModel): DataModel {
-  const contentDataSchema = model.schema.content.dataSchema;
-  if (dataSchemaIsMap(contentDataSchema)) {
-    return emptyMapModel;
-  } else if (dataSchemaIsList(contentDataSchema)) {
-    return emptyListModel;
-  } else {
-    return nullDataModel;
-  }
+  // このdataSchemaにrecursiveは入ってはいけないのでは？
+  return defaultDataModelForSchema(model.schema.content.dataSchema);
 }
 
 export function contentListAddBeforeAction(model: ContentListUIModel, index: number): AppAction {
