@@ -37,7 +37,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         state.data,
-        emptyDataPath,
+        undefined,
         action.path,
         state.dataFocusLog,
         state.schemaFocusLog,
@@ -59,7 +59,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         data,
-        emptyDataPath,
+        undefined,
         focus,
         state.dataFocusLog,
         state.schemaFocusLog,

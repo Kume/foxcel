@@ -1,5 +1,4 @@
-import {DataSchemaContext} from '../DataModel/DataSchema';
-import {UISchemaExcludeRecursive, uiSchemaKeyIsParentKey, uiSchemaKeyToDataPathComponent} from './UISchema';
+import {UISchemaExcludeRecursive, uiSchemaKeyIsParentKey} from './UISchema';
 import {UISchema} from './UISchemaTypes';
 import {
   dataPathComponentIsKey,
@@ -19,19 +18,16 @@ import {
   getMapKeyAtIndex,
 } from '../DataModel/DataModel';
 import {validIndexOrUndefined} from '../common/utils';
+import {uiSchemaKeyToDataPathComponent} from './DataPathContext';
 
 export class UISchemaContext {
-  public static createRootContext(
-    rootSchema: UISchemaExcludeRecursive,
-    dataSchemaContext: DataSchemaContext,
-  ): UISchemaContext {
-    return new UISchemaContext(rootSchema, rootSchema, dataSchemaContext, []);
+  public static createRootContext(rootSchema: UISchemaExcludeRecursive): UISchemaContext {
+    return new UISchemaContext(rootSchema, rootSchema, []);
   }
 
   private constructor(
     public readonly rootSchema: UISchemaExcludeRecursive,
     public readonly currentSchema: UISchemaExcludeRecursive,
-    public readonly dataSchemaContext: DataSchemaContext,
     private readonly path: readonly UISchemaExcludeRecursive[],
   ) {}
 
@@ -57,10 +53,8 @@ export class UISchemaContext {
           return this._contents[index];
         }
         const content = this.resolve(this.currentSchema.contents[index]);
-        let dataSchemaContext: DataSchemaContext;
-        // TODO dataSchemaContextをdigする必要がある。ただ、そもそもdataSchemaContext不要かも？
-        dataSchemaContext = this.dataSchemaContext;
-        return new UISchemaContext(this.rootSchema, content, dataSchemaContext, [...this.path, this.currentSchema]);
+        const nextPath = [...this.path, this.currentSchema];
+        return new UISchemaContext(this.rootSchema, content, nextPath);
       }
 
       default:
@@ -142,10 +136,7 @@ export class UISchemaContext {
     switch (this.currentSchema.type) {
       case 'contentList': {
         const content = this.resolve(this.currentSchema.content);
-        let dataSchemaContext: DataSchemaContext;
-        // TODO dataSchemaContextをdigする必要がある。ただ、そもそもdataSchemaContext不要かも？
-        dataSchemaContext = this.dataSchemaContext;
-        return new UISchemaContext(this.rootSchema, content, dataSchemaContext, [...this.path, this.currentSchema]);
+        return new UISchemaContext(this.rootSchema, content, [...this.path, this.currentSchema]);
       }
 
       default:

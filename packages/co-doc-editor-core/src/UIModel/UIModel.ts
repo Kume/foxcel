@@ -22,22 +22,35 @@ import {
   getMapDataIndexByPathComponent,
   getMapDataIndexForPointer,
   getMapDataPointerAtIndex,
+  getMapKeyAtIndex,
   listDataSize,
   mapDataSize,
   mapListDataModelWithPointer,
   mapMapDataModelWithPointer,
+  nullableStringToDataModel,
   stringDataModelToString,
 } from '../DataModel/DataModel';
 import {dataSchemaIsMap} from '../DataModel/DataSchema';
+import {
+  buildDataPathFromUIModelDataPathContext,
+  getChildDataModelByUISchemaKey,
+  makeKeyUIModelDataPathContext,
+  stringUISchemaKeyToDataPathComponent,
+  UIModelDataPathContext,
+  uiSchemaKeyToDataPathComponent,
+} from './DataPathContext';
+import {uiSchemaKeyIsParentKey} from './UISchema';
 
 export function buildUIModel(
   uiSchemaContext: UISchemaContext,
   dataModel: DataModel | undefined,
-  dataPath: ForwardDataPath,
+  dataPathContext: UIModelDataPathContext | undefined,
   dataPathFocus: ForwardDataPath | undefined,
   dataFocusLog: UIDataFocusLogNode | undefined,
   schemaFocusLog: UISchemaFocusLogNode | undefined,
 ): UIModel {
+  // TODO 古いuiModelを引数に入れ、変化がなければ古いuiModelを返して無駄にオブジェクトを生成しない様にする修正
+
   const {currentSchema} = uiSchemaContext;
   switch (currentSchema.type) {
     case 'tab': {
@@ -45,54 +58,75 @@ export function buildUIModel(
       const currentContentIndex =
         uiSchemaContext.contentIndexForDataPathComponent(firstPathComponent, dataModel) ?? schemaFocusLog?.a ?? 0;
       const childContext = uiSchemaContext.digForIndex(currentContentIndex);
-      const {model, pathComponent} = childContext.getDataFromParentData(dataModel, dataPath);
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+      const childDataModel = childContext.currentSchema.keyFlatten
+        ? dataModel
+        : getChildDataModelByUISchemaKey(dataModel, childContext.currentSchema.key);
+      const childPathContext = uiSchemaKeyIsParentKey(childContext.currentSchema.key)
+        ? makeKeyUIModelDataPathContext(dataPathContext)
+        : childContext.currentSchema.keyFlatten
+        ? dataPathContext && {
+            parentPath: dataPathContext.parentPath,
+            self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key),
+          }
+        : {parentPath: dataPath, self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key)};
       return {
         type: 'tab',
+        schema: currentSchema,
         dataPath,
         currentTabIndex: currentContentIndex,
         tabs: uiSchemaContext.contents().map((content) => ({
           label: content.currentSchema.dataSchema.label ?? '',
-          dataPath: pushDataPath(dataPath, content.currentSchema.key),
+          dataPath: pushDataPath(dataPath, uiSchemaKeyToDataPathComponent(content.currentSchema.key)),
         })),
-        // TODO dataFocus
         currentChild: buildUIModel(
           childContext,
-          model,
-          pathComponent ? pushDataPath(dataPath, pathComponent) : dataPath,
-          safeShiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
+          childDataModel,
+          childPathContext,
+          childContext.currentSchema.keyFlatten ? dataPathFocus : safeShiftDataPath(dataPathFocus),
           dataFocusLog?.c[currentContentIndex],
           schemaFocusLog?.c[currentContentIndex],
         ),
       };
     }
 
-    case 'text': {
-      const value = dataModel !== undefined && dataModelIsString(dataModel) && stringDataModelToString(dataModel);
-      return {type: 'text', dataPath, value: value || ''};
-    }
-
     case 'form': {
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
       return {
         type: 'form',
+        schema: currentSchema,
         dataPath,
-        contents: uiSchemaContext.contents().map((content, index) => {
-          const childDataModel = content.getDataFromParentData(dataModel, dataPath);
+        // contentsにはDataModelを渡してコールバックの引数にdataPointerを渡せる様にすべきか？
+        // => selfをDataPointerにすべきかと思って上記を書いたけど、そんなことはないか。
+        contents: uiSchemaContext.contents().map((contentContext, index) => {
+          const childDataModel = contentContext.currentSchema.keyFlatten
+            ? dataModel
+            : getChildDataModelByUISchemaKey(dataModel, contentContext.currentSchema.key);
+          const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+            ? makeKeyUIModelDataPathContext(dataPathContext)
+            : contentContext.currentSchema.keyFlatten
+            ? dataPathContext && {
+                parentPath: dataPathContext.parentPath,
+                self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+              }
+            : {parentPath: dataPath, self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key)};
           return {
             model: buildUIModel(
-              content,
-              childDataModel.model,
-              childDataModel.pathComponent ? pushDataPath(dataPath, childDataModel.pathComponent) : dataPath,
-              safeShiftDataPath(dataPathFocus), // TODO keyFlattenの考慮
+              contentContext,
+              childDataModel,
+              childPathContext,
+              contentContext.currentSchema.keyFlatten ? dataPathFocus : safeShiftDataPath(dataPathFocus),
               dataFocusLog?.c[index],
               schemaFocusLog?.c[index],
             ),
-            label: content.currentSchema.dataSchema.label ?? '',
+            label: contentContext.currentSchema.dataSchema.label ?? '',
           };
         }),
       };
     }
 
     case 'contentList': {
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
       const contentContext = uiSchemaContext.content();
       let indexes: ContentListIndex[];
       const focusPathComponent = dataPathFocus && headDataPathComponentOrUndefined(dataPathFocus);
@@ -116,12 +150,13 @@ export function buildUIModel(
           }
           if (currentIndex !== undefined) {
             const pointer = getMapDataPointerAtIndex(mapDataModel, currentIndex);
+            const key = getMapKeyAtIndex(mapDataModel, currentIndex);
             if (pointer) {
               const contentData = getMapDataAtIndex(mapDataModel, currentIndex);
               const content = buildUIModel(
                 contentContext,
                 contentData,
-                pushDataPath(dataPath, toPointerPathComponent(pointer)),
+                {parentPath: dataPath, self: toPointerPathComponent(pointer), key},
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c[getIdFromDataPointer(pointer)],
                 schemaFocusLog,
@@ -156,7 +191,7 @@ export function buildUIModel(
               const content = buildUIModel(
                 contentContext,
                 contentData,
-                pushDataPath(dataPath, toPointerPathComponent(pointer)),
+                {parentPath: dataPath, self: toPointerPathComponent(pointer)},
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
                 schemaFocusLog,
@@ -169,6 +204,22 @@ export function buildUIModel(
         }
       }
       return {...modelBase, indexes};
+    }
+
+    case 'text': {
+      if (dataPathContext?.isKey) {
+        return {
+          type: 'text',
+          isKey: true,
+          parentDataPath: dataPathContext.parentPath,
+          selfPointer: dataPathContext.selfPointer,
+          value: nullableStringToDataModel(dataPathContext.key),
+        };
+      } else {
+        const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+        const value = dataModel !== undefined && dataModelIsString(dataModel) && stringDataModelToString(dataModel);
+        return {type: 'text', schema: currentSchema, dataPath, value: value || ''};
+      }
     }
   }
 }

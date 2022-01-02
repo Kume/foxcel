@@ -1,6 +1,7 @@
 {
   "extends": "../../configs/tsconfig.lib.json",
   "compilerOptions": {
+    "lib": ["dom", "es2020"],
     "outDir": "./dist",
     "rootDir": "./src",
     "jsx": "react"

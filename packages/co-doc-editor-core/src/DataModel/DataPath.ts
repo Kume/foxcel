@@ -345,3 +345,7 @@ export function parsePath(source: string, pathType?: 'forward' | 'single'): Mult
 export function toPointerPathComponent(pointer: DataPointer): PointerPathComponent {
   return {t: DataPathComponentType.Pointer, ...pointer};
 }
+
+export function toMapKeyDataPathComponent(key: string): MapKeyDataPathComponent {
+  return key;
+}

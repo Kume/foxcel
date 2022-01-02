@@ -295,7 +295,7 @@ function isFlattenableUISchema(schema: UISchema): schema is FormUISchema | TabUI
 function makeKeyFlattenable(
   config: KeyOrKeyFlatten,
   contents: readonly UISchema[],
-): FlattenableUISchemaCommon & {key?: UISchemaKey} {
+): FlattenableUISchemaCommon & {key?: string} {
   if (config.keyFlatten) {
     const flatKeys: Map<UISchemaKey, UISchemaKey[]> = new Map();
     if (contents.length === 0) {
@@ -329,14 +329,21 @@ function makeKeyFlattenable(
   }
 }
 
-function parseKey(key: string): UISchemaKey;
-function parseKey(key: string | undefined): UISchemaKey | undefined;
-function parseKey(key: string | undefined): UISchemaKey | undefined {
+function parseKey(key: string): string;
+function parseKey(key: string | undefined): string | undefined;
+function parseKey(key: string, enableParentKey: true): UISchemaKey;
+function parseKey(key: string | undefined, enableParentKey: true): UISchemaKey | undefined;
+function parseKey(key: string | undefined, enableParentKey?: boolean): UISchemaKey | undefined {
   if (key === undefined) {
     return undefined;
   }
   if (key === '$key') {
-    return uiSchemaParentKey;
+    if (enableParentKey) {
+      return uiSchemaParentKey;
+    } else {
+      // TODO 正しくハンドリング
+      throw new Error('$key is disabled for the schema');
+    }
   }
   return key;
 }
@@ -494,7 +501,7 @@ function nextChildDataSchema(
         throw new Error('key is undefined');
       }
       if (dataSchema) {
-        const key = parseKey(resolved.config.key);
+        const key = parseKey(resolved.config.key, true);
         if (typeof key === 'string') {
           childDataSchema = context.dataSchemaContext?.resolveRecursive(getByKeyForFixedMapDataSchema(dataSchema, key));
           dataPathComponent = childDataSchema && {key, type: childDataSchema.t};
@@ -536,10 +543,9 @@ export function parseUISchemaConfig(
 
     case 'text':
       assertDataSchemaType(resolvedDataSchema, context, DataSchemaType.String);
-      console.log('xxxx UISchema text', {context, resolvedDataSchema});
       return {
         ...pick(config, 'type', 'label'),
-        key: parseKey(config.key),
+        key: parseKey(config.key, true),
         dataSchema: overwriteObject<StringDataSchema>({t: DataSchemaType.String}, resolvedDataSchema, {
           label: config.label,
         }),
@@ -580,7 +586,8 @@ export function parseUISchemaConfig(
         resolvedDataSchema,
       );
       return {
-        ...pick(config, 'type', 'label'),
+        type: 'form',
+        label: config.label,
         ...makeKeyFlattenable(config, contents),
         contents,
         dataSchema: childDataSchema,
@@ -596,7 +603,8 @@ export function parseUISchemaConfig(
         resolvedDataSchema,
       );
       return {
-        ...pick(config, 'type', 'label'),
+        type: 'tab',
+        label: config.label,
         ...makeKeyFlattenable(config, contents),
         contents,
         dataSchema: childDataSchema,
@@ -716,14 +724,7 @@ export function uiSchemaKeyAndPathComponentIsMatch(
   }
 }
 
-export function uiSchemaKeyToDataPathComponent(key: UISchemaKey): ForwardDataPathComponent {
-  if (key === uiSchemaParentKey) {
-    return {t: DataPathComponentType.Key};
-  }
-  return key;
-}
-
-export function uiSchemaKeyIsParentKey(key: UISchemaKey): key is typeof uiSchemaParentKey {
+export function uiSchemaKeyIsParentKey(key: UISchemaKey | undefined): key is typeof uiSchemaParentKey {
   return key === uiSchemaParentKey;
 }
 
@@ -742,15 +743,5 @@ export function uiSchemaChildIndexForDataPath(
       uiSchemaKeyAndPathComponentIsMatch(context.resolve(content).key, pathComponent),
     );
     return index < 0 ? undefined : index;
-  }
-}
-
-export function childDataModelForTabContentIndex(
-  dataModel: DataModel,
-  uiSchema: TabUISchema,
-  index: number,
-): DataModel | undefined {
-  if (dataModel === undefined) {
-    return undefined;
   }
 }

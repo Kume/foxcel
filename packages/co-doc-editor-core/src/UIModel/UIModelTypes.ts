@@ -1,9 +1,10 @@
 import {ForwardDataPath} from '../DataModel/DataPath';
-import {DataPointer} from '../DataModel/DataModelTypes';
-import {ContentListUISchema} from './UISchemaTypes';
+import {DataPointer, NullDataModel, StringDataModel} from '../DataModel/DataModelTypes';
+import {ContentListUISchema, FormUISchema, TabUISchema, TextUISchema} from './UISchemaTypes';
 
 export interface TabUIModel {
   readonly type: 'tab';
+  readonly schema: TabUISchema;
   readonly dataPath: ForwardDataPath;
   readonly currentTabIndex: number;
   readonly tabs: readonly TabUIModelTab[];
@@ -17,6 +18,7 @@ export interface TabUIModelTab {
 
 export interface FormUIModel {
   readonly type: 'form';
+  readonly schema: FormUISchema;
   readonly dataPath: ForwardDataPath;
   readonly contents: readonly FormUIModelContent[];
 }
@@ -26,11 +28,25 @@ export interface FormUIModelContent {
   readonly model: UIModel;
 }
 
-export interface TextUIModel {
+interface TextUIModelBase {
   readonly type: 'text';
-  readonly dataPath: ForwardDataPath;
-  readonly value: string;
 }
+
+interface KeyTextUIModel extends TextUIModelBase {
+  readonly isKey: true;
+  readonly parentDataPath: ForwardDataPath;
+  readonly selfPointer: DataPointer;
+  readonly value: string | null;
+}
+
+interface StandardTextUIModel extends TextUIModelBase {
+  readonly isKey?: undefined;
+  readonly schema: TextUISchema;
+  readonly dataPath: ForwardDataPath;
+  readonly value: StringDataModel | NullDataModel;
+}
+
+export type TextUIModel = KeyTextUIModel | StandardTextUIModel;
 
 interface ContentListUIModelBase {
   readonly type: 'contentList';

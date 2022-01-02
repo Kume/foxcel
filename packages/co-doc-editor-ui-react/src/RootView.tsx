@@ -43,10 +43,10 @@ const initialDataModel = unknownToDataModel({
   testB: {},
 });
 
-const rootSchemaContext = UISchemaContext.createRootContext(uiSchema, DataSchemaContext.createRootContext(dataSchema));
+const rootSchemaContext = UISchemaContext.createRootContext(uiSchema);
 
 function buildInitialState(data: DataModel): AppState {
-  const uiModel = buildUIModel(rootSchemaContext, data, emptyDataPath, undefined, undefined, undefined);
+  const uiModel = buildUIModel(rootSchemaContext, data, undefined, undefined, undefined, undefined);
   return {data, dataSchema, uiSchema, rootUISchemaContext: rootSchemaContext, uiModel};
 }
 

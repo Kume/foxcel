@@ -24,6 +24,7 @@ import {
   IntegerDataModel,
   ListDataModel,
   MapDataModel,
+  NullDataModel,
   StringDataModel,
 } from './DataModelTypes';
 import {DataSchemaContext} from './DataSchema';
@@ -68,6 +69,10 @@ export function dataModelType(model: DataModel): DataModelType {
 }
 
 export function stringToDataModel(value: string): StringDataModel {
+  return value;
+}
+
+export function nullableStringToDataModel(value: string | null): StringDataModel | NullDataModel {
   return value;
 }
 
@@ -572,6 +577,14 @@ export function getMapDataIndexForPointer(map: MapDataModel, pointer: DataPointe
 
 export function getMapDataAtPointer(map: MapDataModel, pointer: DataPointer): DataModel | undefined {
   const index = getMapDataIndexForPointer(map, pointer);
+  return index === undefined ? undefined : getMapDataAtIndex(map, index);
+}
+
+export function getMapDataAtPathComponent(
+  map: MapDataModel,
+  pathComponent: ForwardDataPathComponent,
+): DataModel | undefined {
+  const index = getMapDataIndexByPathComponent(map, pathComponent);
   return index === undefined ? undefined : getMapDataAtIndex(map, index);
 }
 

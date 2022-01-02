@@ -87,7 +87,6 @@ export const sampleConfig: RootSchemaConfig = {
   },
   uiSchema: {
     type: 'tab',
-    key: 'dummy',
     contents: [
       {
         type: 'contentList',
@@ -95,6 +94,7 @@ export const sampleConfig: RootSchemaConfig = {
         content: {
           type: 'form',
           contents: [
+            {type: 'text', key: '$key', label: 'キー'},
             {type: 'text', key: 'testA1'},
             {type: 'text', key: 'testA2'},
             {
