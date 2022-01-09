@@ -1,7 +1,6 @@
 import {DataModelOperationError} from './errors';
 import type {ParsedPath} from './DataPath/DataPathParser';
-// @ts-ignore 本来ESMだと正しく動作しない記述だが、viteはうまいことやってくれるので一旦エラーを無視するだけにする
-import parser = require('./DataPath/DataPathParser');
+import {parse} from './DataPath/DataPathParser';
 import {ShallowWritable} from '../common/utilTypes';
 import {DataPointer} from './DataModelTypes';
 
@@ -109,7 +108,7 @@ export function dataPathComponentIsListIndexLike(
   return typeof component === 'number' || dataPathComponentIsIndexOrKey(component);
 }
 
-export function dataPathComponentIsMapKey(key: ForwardDataPathComponent): key is MapKeyDataPathComponent {
+export function dataPathComponentIsMapKey(key: MultiDataPathComponent): key is MapKeyDataPathComponent {
   return typeof key === 'string';
 }
 
@@ -117,7 +116,7 @@ export function dataPathComponentToMapKey(key: MapKeyDataPathComponent | IndexOr
   return typeof key === 'string' ? key : key.v.toString(10);
 }
 
-export function dataPathComponentIsListIndex(key: ForwardDataPathComponent): key is ListIndexDataPathComponent {
+export function dataPathComponentIsListIndex(key: MultiDataPathComponent): key is ListIndexDataPathComponent {
   return typeof key === 'number';
 }
 
@@ -334,7 +333,7 @@ export function parsePath(source: string, pathType: 'single'): DataPath;
 export function parsePath(source: string, pathType: 'forward'): ForwardDataPath;
 export function parsePath(source: string): MultiDataPath;
 export function parsePath(source: string, pathType?: 'forward' | 'single'): MultiDataPath {
-  const parsed = parser.parse(source);
+  const parsed = parse(source);
   if (parsed.length === 0) {
     throw new Error(`invalid path value ${source}`);
   }

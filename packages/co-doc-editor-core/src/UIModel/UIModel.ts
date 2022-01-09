@@ -30,7 +30,7 @@ import {
   nullableStringToDataModel,
   stringDataModelToString,
 } from '../DataModel/DataModel';
-import {dataSchemaIsMap} from '../DataModel/DataSchema';
+import {dataSchemaIsMap, DataSchemaType} from '../DataModel/DataSchema';
 import {
   buildDataPathFromUIModelDataPathContext,
   getChildDataModelByUISchemaKey,
@@ -40,6 +40,7 @@ import {
   uiSchemaKeyToDataPathComponent,
 } from './DataPathContext';
 import {uiSchemaKeyIsParentKey} from './UISchema';
+import {fillTemplateLine} from '../DataModel/TemplateEngine';
 
 export function buildUIModel(
   uiSchemaContext: UISchemaContext,
@@ -132,13 +133,21 @@ export function buildUIModel(
       const focusPathComponent = dataPathFocus && headDataPathComponentOrUndefined(dataPathFocus);
       const modelBase = {type: 'contentList', dataPath, schema: currentSchema} as const;
       if (dataSchemaIsMap(currentSchema.dataSchema)) {
+        // TODO FixedMap対応だけではダメ
+        const itemDataSchema =
+          currentSchema.dataSchema.item?.t === DataSchemaType.FixedMap ? currentSchema.dataSchema.item : undefined;
         const mapDataModel = dataModelIsMap(dataModel) ? dataModel : undefined;
         if (mapDataModel) {
-          indexes = mapMapDataModelWithPointer(mapDataModel, (item, pointer, key) => ({
-            label: key ?? '---', // TODO スキーマ定義から表示するラベルを決定
-            pointer,
-            dataPath: pushDataPath(dataPath, toPointerPathComponent(pointer)),
-          }));
+          indexes = mapMapDataModelWithPointer(mapDataModel, (item, pointer, key) => {
+            const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
+            return {
+              label: itemDataSchema?.dataLabel
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataPath, key ?? undefined, {})
+                : [key ?? undefined],
+              pointer,
+              dataPath: childDataPath,
+            };
+          });
 
           let currentIndex =
             focusPathComponent === undefined
@@ -170,11 +179,20 @@ export function buildUIModel(
       } else {
         const listDataModel = dataModelIsList(dataModel) ? dataModel : undefined;
         if (dataModelIsList(listDataModel)) {
-          indexes = mapListDataModelWithPointer(listDataModel, (item, pointer, index) => ({
-            label: index.toString() ?? '---', // TODO スキーマ定義から表示するラベルを決定
-            pointer,
-            dataPath: pushDataPath(dataPath, toPointerPathComponent(pointer)),
-          }));
+          // TODO FixedMap対応だけではダメ
+          const itemDataSchema =
+            currentSchema.dataSchema.item?.t === DataSchemaType.FixedMap ? currentSchema.dataSchema.item : undefined;
+
+          indexes = mapListDataModelWithPointer(listDataModel, (item, pointer, index) => {
+            const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
+            return {
+              label: itemDataSchema?.dataLabel
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataPath, index, {})
+                : [index.toString()],
+              pointer,
+              dataPath: childDataPath,
+            };
+          });
 
           let currentIndex =
             focusPathComponent === undefined

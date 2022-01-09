@@ -1,0 +1,14 @@
+{
+  "name": "@foxcel/parser-generator",
+  "version": "0.0.1",
+  "description": "parser generator for foxcel",
+  "author": "makoto.kume",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "generate": "peggy --format es -o ../co-doc-editor-core/src/DataModel/DataPath/DataPathParser.js data-path.peggy"
+  },
+  "dependencies": {
+    "peggy": "^1.2.0"
+  }
+}

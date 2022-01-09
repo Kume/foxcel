@@ -27,6 +27,7 @@ import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
 import {LoadedSchemaPath, PathConfigMap, resolveConfigOrRecursive} from '../common/schemaCommon';
+import {parseTemplateLine, TemplateLine} from './TemplateEngine';
 
 export enum DataSchemaType {
   Number,
@@ -61,7 +62,7 @@ export type DataSchemaForType<T extends DataSchemaType> = TypeForType<DataSchema
 export interface DataSchemaBase<T> {
   readonly t: DataSchemaType;
   readonly label?: string;
-  readonly dataLabel?: string;
+  readonly dataLabel?: TemplateLine;
   readonly dataDescription?: string;
   readonly required?: boolean;
   readonly defaultToUndefined?: boolean;
@@ -330,7 +331,7 @@ function baseSchema<T extends DataSchemaType>(config: DataSchemaConfigBase, type
   return {
     t: type,
     label: config.label,
-    dataLabel: config.dataLabel,
+    dataLabel: config.dataLabel === undefined ? undefined : parseTemplateLine(config.dataLabel),
     dataDescription: config.dataDescription,
   };
 }

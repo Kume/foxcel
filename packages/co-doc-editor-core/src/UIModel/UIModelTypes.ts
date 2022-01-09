@@ -1,6 +1,7 @@
 import {ForwardDataPath} from '../DataModel/DataPath';
 import {DataPointer, NullDataModel, StringDataModel} from '../DataModel/DataModelTypes';
 import {ContentListUISchema, FormUISchema, TabUISchema, TextUISchema} from './UISchemaTypes';
+import {FilledTemplateNode} from '../DataModel/TemplateEngine';
 
 export interface TabUIModel {
   readonly type: 'tab';
@@ -68,7 +69,7 @@ interface NonEmptyContentListUIModel extends ContentListUIModelBase {
 export type ContentListUIModel = EmptyContentListUIModel | NonEmptyContentListUIModel;
 
 export interface ContentListIndex {
-  readonly label: string;
+  readonly label: readonly FilledTemplateNode[];
   readonly pointer: DataPointer;
   readonly dataPath: ForwardDataPath;
 }

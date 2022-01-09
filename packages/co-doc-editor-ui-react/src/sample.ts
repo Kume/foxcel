@@ -9,6 +9,7 @@ export const sampleConfig: RootSchemaConfig = {
         label: 'テストA一覧',
         item: {
           type: 'fixed_map',
+          dataLabel: '{{testA1}}',
           label: 'テストA',
           items: {
             testA1: {type: 'string', label: 'てすとA1'},

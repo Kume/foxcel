@@ -134,8 +134,8 @@ export type SelectOptionConfig<T = number | string> = SelectDynamicOptionConfig 
 // UIConfig Config
 ////////////////////////////////////////////////////////////////////////////
 interface UISchemaConfigBase {
-  label?: string;
-  key?: string;
+  readonly label?: string;
+  readonly key?: string;
 }
 
 export type KeyOrKeyFlatten = {key?: string; keyFlatten?: false} | {keyFlatten: true};
