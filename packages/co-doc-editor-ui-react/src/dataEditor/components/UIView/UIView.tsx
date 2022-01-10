@@ -5,6 +5,7 @@ import {TextUIView} from './TextUIView';
 import {TabUIView} from './TabUIView';
 import {ContentListUIView} from './ContentListUIView';
 import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
+import {TableUIView} from './TableUIView';
 
 export interface UIViewProps {
   readonly model: UIModel;
@@ -24,6 +25,9 @@ export const UIView: React.FC<UIViewProps> = ({model, ...others}) => {
 
     case 'contentList':
       return <ContentListUIView model={model} {...others} />;
+
+    case 'table':
+      return <TableUIView model={model} {...others} />;
 
     default:
       return <div>Error</div>;

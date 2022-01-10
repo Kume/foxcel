@@ -3,6 +3,7 @@ import type {ParsedPath} from './DataPath/DataPathParser';
 import {parse} from './DataPath/DataPathParser';
 import {ShallowWritable} from '../common/utilTypes';
 import {DataPointer} from './DataModelTypes';
+import {getIdFromDataPointer} from './DataModel';
 
 export enum DataPathComponentType {
   IndexOrKey,
@@ -347,4 +348,38 @@ export function toPointerPathComponent(pointer: DataPointer): PointerPathCompone
 
 export function toMapKeyDataPathComponent(key: string): MapKeyDataPathComponent {
   return key;
+}
+
+export function forwardDataPathComponentEquals(lhs: ForwardDataPathComponent, rhs: ForwardDataPathComponent): boolean {
+  if (typeof lhs !== 'object') {
+    return lhs === rhs;
+  }
+  if (typeof rhs !== 'object' || lhs.t !== rhs.t) {
+    return false;
+  }
+  switch (lhs.t) {
+    case DataPathComponentType.IndexOrKey: {
+      return lhs.v === (rhs as IndexOrKeyDataPathComponent).v;
+    }
+    case DataPathComponentType.Pointer:
+      // indexはキャッシュなので比較不要
+      return getIdFromDataPointer(lhs) === getIdFromDataPointer(rhs as PointerPathComponent);
+  }
+}
+
+export function forwardDataPathEquals(lhs: ForwardDataPath | undefined, rhs: ForwardDataPath | undefined): boolean {
+  if (lhs === undefined || rhs === undefined) {
+    return lhs === rhs;
+  }
+  const length = dataPathLength(lhs);
+  if (length !== dataPathLength(rhs)) {
+    return false;
+  }
+
+  for (let i = 0; i < length; i++) {
+    if (!forwardDataPathComponentEquals(lhs.components[i], rhs.components[i])) {
+      return false;
+    }
+  }
+  return true;
 }

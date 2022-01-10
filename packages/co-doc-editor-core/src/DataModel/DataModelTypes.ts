@@ -39,7 +39,7 @@ export interface MapDataModel {
 export type MapDataModelItem = readonly [string | null, number, DataModel];
 
 export interface DataCollectionItem {
-  index?: string | number;
+  key?: string;
   path: ForwardDataPath;
   data: DataModel;
 }

@@ -3,13 +3,15 @@ import {
   emptyDataPath,
   ForwardDataPath,
   ForwardDataPathComponent,
+  forwardDataPathComponentEquals,
+  forwardDataPathEquals,
   PointerPathComponent,
   pushDataPath,
   toMapKeyDataPathComponent,
 } from '../DataModel/DataPath';
 import {UISchemaExcludeRecursive, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
-import {DataModel, DataPointer} from '../DataModel/DataModelTypes';
-import {dataModelIsMap, getMapDataAtPathComponent} from '../DataModel/DataModel';
+import {DataModel, DataPointer, MapDataModel} from '../DataModel/DataModelTypes';
+import {getMapDataAtPathComponent} from '../DataModel/DataModel';
 
 export type UIModelDataPathContext = {readonly parentPath: ForwardDataPath} & (
   | {readonly isKey: true; readonly selfPointer: DataPointer; key: string | null}
@@ -85,11 +87,29 @@ export function uiSchemaKeyToDataPathComponent(key: UISchemaKey | undefined): Fo
 }
 
 export function getChildDataModelByUISchemaKey(
-  model: DataModel | undefined,
+  model: MapDataModel | undefined,
   key: UISchemaKey | undefined,
 ): DataModel | undefined {
-  if (model === undefined || key === undefined || !dataModelIsMap(model) || uiSchemaKeyIsParentKey(key)) {
+  if (model === undefined || key === undefined || uiSchemaKeyIsParentKey(key)) {
     return undefined;
   }
   return getMapDataAtPathComponent(model, stringUISchemaKeyToDataPathComponent(key));
+}
+
+export function uiModelDataPathContextEquals(
+  lhs: UIModelDataPathContext | undefined,
+  rhs: UIModelDataPathContext | undefined,
+): boolean {
+  if (lhs === undefined || rhs === undefined) {
+    return lhs === rhs;
+  }
+  if (lhs.isKey) {
+    return !!rhs.isKey && lhs.key === rhs.key && forwardDataPathEquals(lhs.parentPath, rhs.parentPath);
+  } else {
+    return (
+      !rhs.isKey &&
+      forwardDataPathEquals(lhs.parentPath, rhs.parentPath) &&
+      forwardDataPathComponentEquals(lhs.self, rhs.self)
+    );
+  }
 }

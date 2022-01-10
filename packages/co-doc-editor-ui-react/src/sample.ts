@@ -70,6 +70,19 @@ export const sampleConfig: RootSchemaConfig = {
                 },
               },
             },
+            testA5: {
+              type: 'map',
+              label: 'テストA5一覧',
+              item: {
+                type: 'fixed_map',
+                label: 'テストA5',
+                dataLabel: '{{testA5a}}',
+                items: {
+                  testA5a: {type: 'string', label: 'テストA5a'},
+                  testA5b: {type: 'string', label: 'テストA5a'},
+                },
+              },
+            },
           },
         },
       },
@@ -151,6 +164,15 @@ export const sampleConfig: RootSchemaConfig = {
                     {type: 'text', key: 'testA4b2'},
                   ],
                 },
+              ],
+            },
+            {
+              type: 'table',
+              key: 'testA5',
+              contents: [
+                {type: 'text', key: '$key'},
+                {type: 'text', key: 'testA5a'},
+                {type: 'text', key: 'testA5b'},
               ],
             },
           ],

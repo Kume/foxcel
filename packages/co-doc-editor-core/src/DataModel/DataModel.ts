@@ -21,6 +21,7 @@ import {
   DataModel,
   DataModelType,
   DataPointer,
+  FloatDataModel,
   IntegerDataModel,
   ListDataModel,
   MapDataModel,
@@ -179,6 +180,20 @@ export function dataModelToJson(model: DataModel): any {
   return map;
 }
 
+export function dataModelToString(model: DataModel | undefined): string {
+  if (dataModelIsString(model)) {
+    return stringDataModelToString(model);
+  } else if (dataModelIsInteger(model)) {
+    return numberDataModelToNumber(model).toString();
+  } else if (dataModelIsMapOrList(model)) {
+    return dataModelToJson(model);
+  } else if (dataModelIsBoolean(model)) {
+    return model ? 'TRUE' : 'FALSE';
+  } else {
+    return '';
+  }
+}
+
 /**
  * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
  */
@@ -328,6 +343,7 @@ export function pushToDataModel(
   value: DataModel,
   to: DataModel,
   schema?: DataSchemaContext,
+  key?: string,
 ): DataModel | undefined {
   const pathLength = dataPathLength(path);
 
@@ -339,18 +355,18 @@ export function pushToDataModel(
       return pushToListData(to, value);
     } else {
       return setToListDataRecursive(to, path, schema, (nextPath, childData, childSchema) =>
-        pushToDataModel(nextPath, value, childData, childSchema),
+        pushToDataModel(nextPath, value, childData, childSchema, key),
       );
     }
   }
   if (pathLength === 0) {
-    return pushToMapData(to, value);
+    return pushToMapData(to, value, key);
   } else {
     return setToMapDataRecursive(
       to,
       path,
       schema,
-      (nextPath, childData, childSchema) => pushToDataModel(nextPath, value, childData, childSchema),
+      (nextPath, childData, childSchema) => pushToDataModel(nextPath, value, childData, childSchema, key),
       () => {
         throw new DataModelOperationError('Cannot push data to empty value');
       },
@@ -634,6 +650,19 @@ function forceSetToMapDataForIndex(
   return {t: DataModelType.Map, v};
 }
 
+export function setToMapDataModel(map: MapDataModel, key: string, value: DataModel) {
+  const index = findMapDataIndexOfKey(map, key);
+  if (index === undefined) {
+    return pushToMapData(map, value, key);
+  } else {
+    if (dataModelEquals(value, getMapDataAtIndex(map, index)!)) {
+      return map;
+    } else {
+      return forceSetToMapDataForIndex(map, value, index, key);
+    }
+  }
+}
+
 function forceInsertToMapData(map: MapDataModel, value: DataModel, index: number, key?: string | null): MapDataModel {
   return {
     t: DataModelType.Map,
@@ -645,8 +674,8 @@ function forceAddToMapData(map: MapDataModel, value: DataModel, key: string): Ma
   return {t: DataModelType.Map, v: [...map.v, [key, generateDataModelId(), value]]};
 }
 
-function pushToMapData(map: MapDataModel, value: DataModel): MapDataModel {
-  return {t: DataModelType.Map, v: [...map.v, [null, generateDataModelId(), value]]};
+function pushToMapData(map: MapDataModel, value: DataModel, key?: string): MapDataModel {
+  return {t: DataModelType.Map, v: [...map.v, [key ?? null, generateDataModelId(), value]]};
 }
 
 function forceDeleteFromMapDataAt(map: MapDataModel, index: number): MapDataModel {
@@ -799,9 +828,16 @@ export function getIdFromDataPointer(pointer: DataPointer | undefined): number |
 export function getIdFromDataPointer(pointer: DataPointer | undefined): number | undefined {
   return pointer?.d;
 }
+
+export function dataPointerIdEquals(lhs: DataPointer | undefined, rhs: DataPointer | undefined): boolean {
+  if (lhs === undefined || rhs === undefined) {
+    return lhs === rhs;
+  }
+  return getIdFromDataPointer(lhs) === getIdFromDataPointer(rhs);
+}
 //#endregion For DataPointer
 
-export function dataModelIsMapOrList(model: DataModel): model is MapDataModel | ListDataModel {
+export function dataModelIsMapOrList(model: DataModel | undefined): model is MapDataModel | ListDataModel {
   return typeof model === 'object' && model !== null;
 }
 
@@ -813,8 +849,20 @@ export function dataModelIsInteger(model: DataModel | undefined): model is numbe
   return typeof model === 'number' && Number.isInteger(model);
 }
 
-export function dataModelIsString(model: DataModel): model is StringDataModel {
+export function dataModelIsNumber(model: DataModel | undefined): model is IntegerDataModel | FloatDataModel {
+  return typeof model === 'number';
+}
+
+export function dataModelIsString(model: DataModel | undefined): model is StringDataModel {
   return typeof model === 'string';
+}
+
+export function dataModelIsBoolean(model: DataModel | undefined): model is BooleanDataModel {
+  return typeof model === 'boolean';
+}
+
+export function dataModelIsNull(model: DataModel | undefined): model is NullDataModel {
+  return model === null;
 }
 
 export function dataModelIsList(model: DataModel | undefined): model is ListDataModel {

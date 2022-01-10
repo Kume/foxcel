@@ -7,6 +7,7 @@ export interface PushDataModelAction {
   readonly type: 'push';
   readonly path: ForwardDataPath;
   readonly data: DataModel;
+  readonly key?: string | null;
 }
 
 export interface SetDataModelAction {
@@ -72,7 +73,9 @@ export function applyDataModelAction(
         : insertToDataModel(action.path, action.after, action.data, model, schemaContext);
 
     case 'push':
-      return model === undefined ? undefined : pushToDataModel(action.path, action.data, model, schemaContext);
+      return model === undefined
+        ? undefined
+        : pushToDataModel(action.path, action.data, model, schemaContext, action.key ?? undefined);
 
     case 'delete':
       return model === undefined ? undefined : deleteFromDataModel(action.path, action.at, model, schemaContext);

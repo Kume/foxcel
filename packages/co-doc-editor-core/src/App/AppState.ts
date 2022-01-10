@@ -1,6 +1,6 @@
 import {UIModel} from '../UIModel/UIModelTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {emptyDataPath, ForwardDataPath} from '../DataModel/DataPath';
+import {ForwardDataPath} from '../DataModel/DataPath';
 import {logDataFocus, logSchemaFocus, UIDataFocusLogNode, UISchemaFocusLogNode} from '../UIModel/UIModelFocus';
 import {DataModelAction, applyDataModelAction} from '../DataModel/DataModelAction';
 import {buildUIModel} from '../UIModel/UIModel';
@@ -29,7 +29,12 @@ export interface AppDataModelAction {
   readonly action: DataModelAction;
 }
 
-export type AppAction = AppFocusAction | AppDataModelAction;
+export interface AppBatchAction {
+  readonly type: 'batch';
+  readonly actions: AppAction[];
+}
+
+export type AppAction = AppFocusAction | AppDataModelAction | AppBatchAction;
 
 export function applyAppActionToState(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -37,6 +42,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         state.data,
+        state.uiModel,
         undefined,
         action.path,
         state.dataFocusLog,
@@ -59,6 +65,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         data,
+        state.uiModel,
         undefined,
         focus,
         state.dataFocusLog,
@@ -72,6 +79,13 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         schemaFocusLog: logSchemaFocus(uiModel, state.rootUISchemaContext, state.schemaFocusLog),
         dataFocusLog: logDataFocus(uiModel, state.rootUISchemaContext, state.dataFocusLog),
       };
+    }
+    case 'batch': {
+      let currentState = state;
+      for (const innerAction of action.actions) {
+        currentState = applyAppActionToState(currentState, innerAction);
+      }
+      return currentState;
     }
   }
 }

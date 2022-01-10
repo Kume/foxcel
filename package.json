@@ -33,6 +33,7 @@
     "typescript": "^3.9.7"
   },
   "dependencies": {
+    "eslint-plugin-react-hooks": "^4.3.0",
     "js-yaml": "^3.14.0"
   }
 }

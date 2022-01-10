@@ -1,8 +1,8 @@
 import React, {useReducer} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {DataModel, emptyDataPath, unknownToDataModel} from 'co-doc-editor-core';
+import {DataModel, unknownToDataModel} from 'co-doc-editor-core';
 import {buildSimpleUISchema} from 'co-doc-editor-core/dist/UIModel/UISchema';
-import {buildSimpleDataSchema, DataSchemaContext} from 'co-doc-editor-core/dist/DataModel/DataSchema';
+import {buildSimpleDataSchema} from 'co-doc-editor-core/dist/DataModel/DataSchema';
 import {buildUIModel} from 'co-doc-editor-core/dist/UIModel/UIModel';
 import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
 import {sampleConfig} from './sample';
@@ -27,6 +27,11 @@ const initialDataModel = unknownToDataModel({
           },
         },
       },
+      testA5: {
+        testA5_01: {testA5a: 'testA5a_01', testA5b: 'testA5b_01'},
+        testA5_02: {testA5a: 'testA5a_02', testA5b: 'testA5b_02'},
+        testA5_03: {testA5a: 'testA5a_03', testA5b: 'testA5b_03'},
+      },
     },
     testA_value2: {
       testA1: 'aaa2',
@@ -46,7 +51,7 @@ const initialDataModel = unknownToDataModel({
 const rootSchemaContext = UISchemaContext.createRootContext(uiSchema);
 
 function buildInitialState(data: DataModel): AppState {
-  const uiModel = buildUIModel(rootSchemaContext, data, undefined, undefined, undefined, undefined);
+  const uiModel = buildUIModel(rootSchemaContext, data, undefined, undefined, undefined, undefined, undefined);
   return {data, dataSchema, uiSchema, rootUISchemaContext: rootSchemaContext, uiModel};
 }
 
