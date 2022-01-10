@@ -175,43 +175,57 @@ export function buildUIModel(
       let mapOrListDataOrUndefined: MapDataModel | ListDataModel | undefined;
       const oldTableModel = oldModel?.type === 'table' ? oldModel : undefined;
       const oldRowsById = new Map(oldTableModel?.rows.map((row) => [getIdFromDataPointer(row.pointer), row]) ?? []);
+      const schemaFocusLogEquals = oldTableModel && schemaFocusLog === oldTableModel.schemaFocusLog;
       let rows: readonly TableUIModelRow[];
       if (dataSchemaIsMap(currentSchema.dataSchema)) {
         if (dataModelIsMap(dataModel)) {
           mapOrListDataOrUndefined = dataModel;
           rows = mapMapDataModelWithPointer(dataModel, (rowData, pointer, key) => {
+            const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
             const id = getIdFromDataPointer(pointer);
             const pointerPathComponent = toPointerPathComponent(pointer);
             const oldRow = oldRowsById.get(id);
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
-            // TODO キャッシュで問題なければそれを使う最適化
-            return {
-              pointer,
-              dataPath: rowDataPath,
-              cells: uiSchemaContext.contents().map((contentContext, index) => {
-                const cellData = getChildDataModelByUISchemaKey(
-                  dataModelIsMap(rowData) ? rowData : undefined,
-                  contentContext.currentSchema.key,
-                );
-                const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
-                  ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
-                  : {
-                      parentPath: rowDataPath,
-                      self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
-                    };
-                return buildUIModel(
-                  contentContext,
-                  cellData,
-                  oldRow?.cells[index],
-                  childPathContext,
-                  safeShiftDataPath(rowDataPathFocus),
-                  rowDataFocusLog?.c[index],
-                  schemaFocusLog?.c[index],
-                );
-              }),
-            };
+            if (
+              oldRow &&
+              schemaFocusLogEquals &&
+              rowMapDataOrUndefined === oldRow.data &&
+              rowDataFocusLog === oldRow.dataFocusLog &&
+              forwardDataPathEquals(rowDataPathFocus, oldRow.dataPathFocus)
+            ) {
+              return oldRow;
+            } else {
+              return {
+                pointer,
+                data: rowMapDataOrUndefined,
+                dataPath: rowDataPath,
+                dataPathFocus: rowDataPathFocus,
+                dataFocusLog: rowDataFocusLog,
+                cells: uiSchemaContext.contents().map((contentContext, index) => {
+                  const cellData = getChildDataModelByUISchemaKey(
+                    dataModelIsMap(rowData) ? rowData : undefined,
+                    contentContext.currentSchema.key,
+                  );
+                  const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                    ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
+                    : {
+                        parentPath: rowDataPath,
+                        self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+                      };
+                  return buildUIModel(
+                    contentContext,
+                    cellData,
+                    oldRow?.cells[index],
+                    childPathContext,
+                    safeShiftDataPath(rowDataPathFocus),
+                    rowDataFocusLog?.c[index],
+                    schemaFocusLog?.c[index],
+                  );
+                }),
+              };
+            }
           });
         } else {
           rows = [];
@@ -220,38 +234,51 @@ export function buildUIModel(
         if (dataModelIsList(dataModel)) {
           mapOrListDataOrUndefined = dataModel;
           rows = mapListDataModelWithPointer(dataModel, (rowData, pointer) => {
+            const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
             const id = getIdFromDataPointer(pointer);
             const pointerPathComponent = toPointerPathComponent(pointer);
             const oldRow = oldRowsById.get(id);
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
-            // TODO キャッシュで問題なければそれを使う最適化
-            return {
-              pointer,
-              dataPath: rowDataPath,
-              cells: uiSchemaContext.contents().map((contentContext, index) => {
-                const cellData = getChildDataModelByUISchemaKey(
-                  dataModelIsMap(rowData) ? rowData : undefined,
-                  contentContext.currentSchema.key,
-                );
-                const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
-                  ? ({parentPath: dataPath, isKey: true, key: index.toString(), selfPointer: pointer} as const)
-                  : {
-                      parentPath: rowDataPath,
-                      self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
-                    };
-                return buildUIModel(
-                  contentContext,
-                  cellData,
-                  oldRow?.cells[index],
-                  childPathContext,
-                  safeShiftDataPath(rowDataPathFocus),
-                  rowDataFocusLog?.c[index],
-                  schemaFocusLog?.c[index],
-                );
-              }),
-            };
+            if (
+              oldRow &&
+              schemaFocusLogEquals &&
+              rowMapDataOrUndefined === oldRow.data &&
+              rowDataFocusLog === oldRow.dataFocusLog &&
+              forwardDataPathEquals(rowDataPathFocus, oldRow.dataPathFocus)
+            ) {
+              return oldRow;
+            } else {
+              return {
+                pointer,
+                data: rowMapDataOrUndefined,
+                dataPath: rowDataPath,
+                dataPathFocus: rowDataPathFocus,
+                dataFocusLog: rowDataFocusLog,
+                cells: uiSchemaContext.contents().map((contentContext, index) => {
+                  const cellData = getChildDataModelByUISchemaKey(
+                    rowMapDataOrUndefined,
+                    contentContext.currentSchema.key,
+                  );
+                  const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                    ? ({parentPath: dataPath, isKey: true, key: index.toString(), selfPointer: pointer} as const)
+                    : {
+                        parentPath: rowDataPath,
+                        self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+                      };
+                  return buildUIModel(
+                    contentContext,
+                    cellData,
+                    oldRow?.cells[index],
+                    childPathContext,
+                    safeShiftDataPath(rowDataPathFocus),
+                    rowDataFocusLog?.c[index],
+                    schemaFocusLog?.c[index],
+                  );
+                }),
+              };
+            }
           });
         } else {
           rows = [];

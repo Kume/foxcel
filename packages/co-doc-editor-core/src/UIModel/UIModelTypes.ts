@@ -102,7 +102,10 @@ export interface TableUIModelColumn {
 
 export interface TableUIModelRow {
   readonly pointer: DataPointer;
+  readonly data: MapDataModel | undefined;
   readonly dataPath: ForwardDataPath;
+  readonly dataPathFocus: ForwardDataPath | undefined;
+  readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly cells: readonly UIModel[];
 }
 
