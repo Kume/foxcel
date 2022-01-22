@@ -2,6 +2,7 @@ import {DataPath, ForwardDataPath, MultiDataPath, parsePath} from './DataPath';
 import {DataModel} from './DataModelTypes';
 import {dataModelIsInteger, dataModelIsString, numberDataModelToNumber, stringDataModelToString} from './DataModel';
 import {CollectDataModelGlobal, getDataModelBySinglePath} from './DataModelCollector';
+import {DataModelContext} from './DataModelContext';
 
 export interface TemplateToken {
   key: string;
@@ -72,16 +73,14 @@ export function parseTemplateLine(source: string): TemplateLine {
 export function fillTemplateLine(
   template: TemplateLine,
   data: DataModel | undefined,
-  currentDataPath: ForwardDataPath,
-  key: string | undefined,
-  global: CollectDataModelGlobal,
+  context: DataModelContext,
 ): FilledTemplateNode[] {
   return template.nodes.map((node) => {
     switch (node.type) {
       case 'text':
         return node.text;
       case 'var': {
-        const value = getDataModelBySinglePath(data, node.path, currentDataPath, key, global);
+        const value = getDataModelBySinglePath(data, node.path, context);
         if (value === undefined) {
           return undefined;
         } else if (dataModelIsString(value)) {

@@ -110,7 +110,7 @@ export function unknownToDataModel(value: unknown): DataModel {
   }
 }
 
-function dataModelEquals(a: DataModel, b: DataModel): boolean {
+export function dataModelEquals(a: DataModel, b: DataModel): boolean {
   if (a === b) {
     return true;
   }
@@ -570,8 +570,19 @@ export function getMapDataAt(map: MapDataModel, key: string): DataModel | undefi
   return index === undefined ? undefined : getMapDataAtIndex(map, index);
 }
 
+export function getMapDataAtWithIndexCache(map: MapDataModel, key: string, indexCache: number): DataModel | undefined {
+  if (map.v[indexCache][0] === key) {
+    return getMapDataAtIndex(map, indexCache);
+  }
+  return getMapDataAt(map, key);
+}
+
 export function getMapDataAtIndex(map: MapDataModel, index: number): DataModel | undefined {
   return map.v[index][2];
+}
+
+export function getMapDataKeys(map: MapDataModel): (string | null)[] {
+  return map.v.map(([key]) => key);
 }
 
 export function getMapDataIndexForId(map: MapDataModel, id: number): number | undefined {
@@ -841,8 +852,16 @@ export function dataModelIsMapOrList(model: DataModel | undefined): model is Map
   return typeof model === 'object' && model !== null;
 }
 
+export function mapOrListDataModelIsMap(model: MapDataModel | ListDataModel): model is MapDataModel {
+  return !Array.isArray(model);
+}
+
+export function mapOrListDataModelIsList(model: MapDataModel | ListDataModel): model is ListDataModel {
+  return Array.isArray(model);
+}
+
 export function dataModelIsMap(model: DataModel | undefined): model is MapDataModel {
-  return typeof model === 'object' && model !== null && !Array.isArray(model);
+  return dataModelIsMapOrList(model) && mapOrListDataModelIsMap(model);
 }
 
 export function dataModelIsInteger(model: DataModel | undefined): model is number {
@@ -866,7 +885,7 @@ export function dataModelIsNull(model: DataModel | undefined): model is NullData
 }
 
 export function dataModelIsList(model: DataModel | undefined): model is ListDataModel {
-  return typeof model === 'object' && model !== null && Array.isArray(model);
+  return Array.isArray(model);
 }
 
 export function stringDataModelToString(model: string): string {

@@ -55,6 +55,7 @@ import {
   TabUISchema,
   UISchema,
 } from './UISchemaTypes';
+import {stringUISchemaKeyToDataPathComponent} from './DataPathContext';
 
 export type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema ? never : E;
 
@@ -722,6 +723,12 @@ export function uiSchemaKeyAndPathComponentIsMatch(
   } else {
     return false;
   }
+}
+
+export function stringUISchemaKeyToString(key: string): string;
+export function stringUISchemaKeyToString(key: string | undefined): string | undefined;
+export function stringUISchemaKeyToString(key: string | undefined): string | undefined {
+  return key;
 }
 
 export function uiSchemaKeyIsParentKey(key: UISchemaKey | undefined): key is typeof uiSchemaParentKey {

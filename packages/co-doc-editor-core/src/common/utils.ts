@@ -73,3 +73,6 @@ export function resolvePath(currentPath: readonly string[], targetPath: readonly
 export function validIndexOrUndefined(index: number): number | undefined {
   return index < 0 ? undefined : index;
 }
+
+export const emptyArray: readonly any[] = [];
+Object.freeze(emptyArray);

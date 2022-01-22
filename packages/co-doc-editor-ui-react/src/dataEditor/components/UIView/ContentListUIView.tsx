@@ -24,6 +24,7 @@ const List = styled.ul`
 const ListItem = styled.li<{selected: boolean}>`
   border-bottom: gray 1px solid;
   background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
+  height: 20px;
 `;
 const ContentArea = styled.div`
   margin-left: 10px;

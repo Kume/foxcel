@@ -41,20 +41,67 @@ import {
   UIModelDataPathContext,
   uiSchemaKeyToDataPathComponent,
 } from './DataPathContext';
-import {uiSchemaKeyIsParentKey} from './UISchema';
+import {stringUISchemaKeyToString, uiSchemaKeyIsParentKey} from './UISchema';
 import {fillTemplateLine} from '../DataModel/TemplateEngine';
+import {
+  DataModelContext,
+  pushDataModelContextPath,
+  pushMapDataModelContextPath,
+  pushPointerToDataModelContext,
+  pushUiSchemaKeyToDataModelContext,
+} from '../DataModel/DataModelContext';
+
+function getMapChildContextForFlattenable(
+  childContext: UISchemaContext,
+  dataPathContext: UIModelDataPathContext | undefined,
+  dataPath: ForwardDataPath,
+  dataModelContext: DataModelContext,
+  dataModel: DataModel | undefined,
+  mapDataModelOrUndefined: MapDataModel | undefined,
+): [DataModel | undefined, UIModelDataPathContext | undefined, DataModelContext] {
+  if (uiSchemaKeyIsParentKey(childContext.currentSchema.key)) {
+    return [
+      undefined,
+      makeKeyUIModelDataPathContext(dataPathContext),
+      pushMapDataModelContextPath(dataModelContext, dataModel, undefined),
+    ];
+  } else {
+    if (childContext.currentSchema.keyFlatten) {
+      return [
+        dataModel,
+        dataPathContext && {
+          parentPath: dataPathContext.parentPath,
+          self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key),
+        },
+        dataModelContext,
+      ];
+    } else {
+      return [
+        getChildDataModelByUISchemaKey(mapDataModelOrUndefined, childContext.currentSchema.key),
+        {parentPath: dataPath, self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key)},
+        pushMapDataModelContextPath(
+          dataModelContext,
+          dataModel,
+          stringUISchemaKeyToString(childContext.currentSchema.key),
+        ),
+      ];
+    }
+  }
+}
 
 export function buildUIModel(
   uiSchemaContext: UISchemaContext,
   dataModel: DataModel | undefined,
   oldModel: UIModel | undefined,
   dataPathContext: UIModelDataPathContext | undefined,
+  dataContext: DataModelContext,
   dataPathFocus: ForwardDataPath | undefined,
   dataFocusLog: UIDataFocusLogNode | undefined,
   schemaFocusLog: UISchemaFocusLogNode | undefined,
 ): UIModel {
   const {currentSchema} = uiSchemaContext;
 
+  /** まだキャッシュは正しく動かないのでコメントアウトしておく
   if (oldModel) {
     if (oldModel.isKey) {
       if (
@@ -82,6 +129,7 @@ export function buildUIModel(
       }
     }
   }
+   **/
 
   switch (currentSchema.type) {
     case 'tab': {
@@ -91,17 +139,14 @@ export function buildUIModel(
       const childContext = uiSchemaContext.digForIndex(currentContentIndex);
       const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
       const mapDataModelOrUndefined = dataModelIsMap(dataModel) ? dataModel : undefined;
-      const childDataModel = childContext.currentSchema.keyFlatten
-        ? dataModel
-        : getChildDataModelByUISchemaKey(mapDataModelOrUndefined, childContext.currentSchema.key);
-      const childPathContext = uiSchemaKeyIsParentKey(childContext.currentSchema.key)
-        ? makeKeyUIModelDataPathContext(dataPathContext)
-        : childContext.currentSchema.keyFlatten
-        ? dataPathContext && {
-            parentPath: dataPathContext.parentPath,
-            self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key),
-          }
-        : {parentPath: dataPath, self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key)};
+      const [childDataModel, childPathContext, nextDataModelContext] = getMapChildContextForFlattenable(
+        childContext,
+        dataPathContext,
+        dataPath,
+        dataContext,
+        dataModel,
+        mapDataModelOrUndefined,
+      );
       return {
         type: 'tab',
         schema: currentSchema,
@@ -122,6 +167,7 @@ export function buildUIModel(
             ? oldModel.currentChild
             : undefined,
           childPathContext,
+          nextDataModelContext,
           childContext.currentSchema.keyFlatten ? dataPathFocus : safeShiftDataPath(dataPathFocus),
           dataFocusLog?.c[currentContentIndex],
           schemaFocusLog?.c[currentContentIndex],
@@ -143,23 +189,21 @@ export function buildUIModel(
         // contentsにはDataModelを渡してコールバックの引数にdataPointerを渡せる様にすべきか？
         // => selfをDataPointerにすべきかと思って上記を書いたけど、そんなことはないか。
         contents: uiSchemaContext.contents().map((contentContext, index) => {
-          const childDataModel = contentContext.currentSchema.keyFlatten
-            ? mapDataModelOrUndefined
-            : getChildDataModelByUISchemaKey(mapDataModelOrUndefined, contentContext.currentSchema.key);
-          const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
-            ? makeKeyUIModelDataPathContext(dataPathContext)
-            : contentContext.currentSchema.keyFlatten
-            ? dataPathContext && {
-                parentPath: dataPathContext.parentPath,
-                self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
-              }
-            : {parentPath: dataPath, self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key)};
+          const [childDataModel, childPathContext, nextDataModelContext] = getMapChildContextForFlattenable(
+            contentContext,
+            dataPathContext,
+            dataPath,
+            dataContext,
+            dataModel,
+            mapDataModelOrUndefined,
+          );
           return {
             model: buildUIModel(
               contentContext,
               childDataModel,
               oldModel?.type === 'form' ? oldModel.contents[index].model : undefined,
               childPathContext,
+              nextDataModelContext,
               contentContext.currentSchema.keyFlatten ? dataPathFocus : safeShiftDataPath(dataPathFocus),
               dataFocusLog?.c[index],
               schemaFocusLog?.c[index],
@@ -188,6 +232,7 @@ export function buildUIModel(
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
+            const rowDataContext = pushMapDataModelContextPath(dataContext, dataModel, key);
             if (
               oldRow &&
               schemaFocusLogEquals &&
@@ -208,17 +253,23 @@ export function buildUIModel(
                     dataModelIsMap(rowData) ? rowData : undefined,
                     contentContext.currentSchema.key,
                   );
-                  const childPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                  const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
                     ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
                     : {
                         parentPath: rowDataPath,
                         self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
                       };
+                  const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
+                    rowDataContext,
+                    rowData,
+                    contentContext.currentSchema.key,
+                  );
                   return buildUIModel(
                     contentContext,
                     cellData,
                     oldRow?.cells[index],
-                    childPathContext,
+                    cellPathContext,
+                    cellDataModelContext,
                     safeShiftDataPath(rowDataPathFocus),
                     rowDataFocusLog?.c[index],
                     schemaFocusLog?.c[index],
@@ -241,6 +292,7 @@ export function buildUIModel(
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
+            const rowDataContext = pushPointerToDataModelContext(dataContext, dataModel, pointer);
             if (
               oldRow &&
               schemaFocusLogEquals &&
@@ -267,11 +319,17 @@ export function buildUIModel(
                         parentPath: rowDataPath,
                         self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
                       };
+                  const cellDataContext = pushUiSchemaKeyToDataModelContext(
+                    rowDataContext,
+                    rowData,
+                    contentContext.currentSchema.key,
+                  );
                   return buildUIModel(
                     contentContext,
                     cellData,
                     oldRow?.cells[index],
                     childPathContext,
+                    cellDataContext,
                     safeShiftDataPath(rowDataPathFocus),
                     rowDataFocusLog?.c[index],
                     schemaFocusLog?.c[index],
@@ -317,10 +375,11 @@ export function buildUIModel(
         const mapDataModel = dataModelIsMap(dataModel) ? dataModel : undefined;
         if (mapDataModel) {
           indexes = mapMapDataModelWithPointer(mapDataModel, (item, pointer, key) => {
+            const childDataContext = pushPointerToDataModelContext(dataContext, mapDataModel, pointer);
             const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
             return {
               label: itemDataSchema?.dataLabel
-                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataPath, key ?? undefined, {})
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataContext)
                 : [key ?? undefined],
               pointer,
               dataPath: childDataPath,
@@ -347,6 +406,7 @@ export function buildUIModel(
                   ? oldModel.content
                   : undefined,
                 {parentPath: dataPath, self: toPointerPathComponent(pointer), key},
+                pushPointerToDataModelContext(dataContext, mapDataModel, pointer),
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c[getIdFromDataPointer(pointer)],
                 schemaFocusLog,
@@ -365,10 +425,11 @@ export function buildUIModel(
             currentSchema.dataSchema.item?.t === DataSchemaType.FixedMap ? currentSchema.dataSchema.item : undefined;
 
           indexes = mapListDataModelWithPointer(listDataModel, (item, pointer, index) => {
+            const childDataContext = pushPointerToDataModelContext(dataContext, listDataModel, pointer);
             const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
             return {
               label: itemDataSchema?.dataLabel
-                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataPath, index.toString(), {})
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataContext)
                 : [index.toString()],
               pointer,
               dataPath: childDataPath,
@@ -394,6 +455,7 @@ export function buildUIModel(
                   ? oldModel.content
                   : undefined,
                 {parentPath: dataPath, self: toPointerPathComponent(pointer)},
+                pushPointerToDataModelContext(dataContext, listDataModel, pointer),
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
                 schemaFocusLog,

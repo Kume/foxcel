@@ -10,11 +10,15 @@ import {
   dataPathComponentToListIndex,
   dataPathComponentToMapKey,
   DataPathComponentType,
+  dataPathConsecutiveReverseCount,
   dataPathLength,
   ForwardDataPath,
+  ForwardDataPathComponent,
   headDataPathComponent,
   headDataPathComponentOrUndefined,
+  KeyPathComponent,
   listIndexToDataPathComponent,
+  MapKeyDataPathComponent,
   MultiDataPath,
   MultiDataPathComponent,
   popDataPath,
@@ -29,6 +33,7 @@ import {
   dataModelIsMapOrList,
   dataModelIsString,
   dataModelMap,
+  findMapDataIndexOfKey,
   getFromDataModel,
   getListDataAt,
   getListDataIndexForPointer,
@@ -36,7 +41,11 @@ import {
   getMapDataAtIndex,
   getMapDataIndexForPointer,
   getMapKeyAtIndex,
+  mapListDataModel,
+  mapMapDataModel,
+  mapOrListDataModelIsList,
   numberDataModelToNumber,
+  stringDataModelToString,
   stringToDataModel,
 } from './DataModel';
 import {
@@ -46,6 +55,16 @@ import {
   dataSchemaContextKeysForPath,
   NamedDataSchemaManager,
 } from './DataSchema';
+import {WritableDataModelReferenceLogNode} from './DataModelReferenceLog';
+import {
+  DataModelContext,
+  DataModelContextMapPathComponent,
+  DataModelContextPathComponent,
+  getCurrentKeyOrUndefinedFromDataModelContext,
+  getParentDataModelFromContext,
+  popDataModelContextPath,
+  pushDataModelContextPath,
+} from './DataModelContext';
 
 interface CollectOrigin {
   readonly path: ForwardDataPath;
@@ -64,54 +83,114 @@ interface CollectDataModelContext extends CollectDataModelGlobal {
   readonly currentPath: ForwardDataPath;
 }
 
-interface DigCallbacks<Return> {
+interface DigCallbacks<Return, PathComponent extends MultiDataPathComponent> {
   key: () => Return;
-  map: (model: MapDataModel, key: string) => Return;
-  list: (model: ListDataModel, key: number) => Return;
-  other: () => Return;
+  collection: (model: DataModel, contextPathComponent: DataModelContextPathComponent) => Return;
+  other: (pathComponent: Exclude<PathComponent, ForwardDataPathComponent | KeyPathComponent>) => Return;
 }
 
-function digForPathComponent<Return>(
+function mapKeyDataPathComponentToContextPathComponent(
+  data: MapDataModel,
+  pathComponent: MapKeyDataPathComponent,
+): DataModelContextMapPathComponent | undefined {
+  const mapKey = dataPathComponentToMapKey(pathComponent);
+  const indexCache = findMapDataIndexOfKey(data, mapKey);
+  return indexCache === undefined ? undefined : {type: 'map', data, at: mapKey, indexCache};
+}
+
+export function digForPathComponent<Return, PathComponent extends MultiDataPathComponent>(
   model: DataModel,
-  pathComponent: DataPathComponent,
-  callbacks: DigCallbacks<Return>,
+  pathComponent: PathComponent,
+  callbacks: DigCallbacks<Return, PathComponent>,
 ): Return | undefined {
   if (dataPathComponentIsKey(pathComponent)) {
     return callbacks.key();
   } else if (dataPathComponentIsMapKey(pathComponent)) {
-    return dataModelIsMap(model) ? callbacks.map(model, dataPathComponentToMapKey(pathComponent)) : undefined;
+    if (dataModelIsMap(model)) {
+      const mapKey = dataPathComponentToMapKey(pathComponent);
+      const indexCache = findMapDataIndexOfKey(model, mapKey);
+      if (indexCache === undefined) {
+        return undefined;
+      }
+      const childData = getMapDataAtIndex(model, indexCache);
+      if (childData === undefined) {
+        return undefined;
+      }
+      return callbacks.collection(childData, {type: 'map', data: model, at: mapKey, indexCache});
+    } else {
+      return undefined;
+    }
   } else if (dataPathComponentIsListIndex(pathComponent)) {
-    return dataModelIsList(model) ? callbacks.list(model, dataPathComponentToListIndex(pathComponent)) : undefined;
+    if (!dataModelIsList(model)) {
+      return undefined;
+    }
+    const listIndex = dataPathComponentToListIndex(pathComponent);
+    const childData = getListDataAt(model, listIndex);
+    if (childData === undefined) {
+      return undefined;
+    }
+    return callbacks.collection(childData, {type: 'list', data: model, at: listIndex});
   } else if (dataPathComponentIsIndexOrKey(pathComponent)) {
     if (dataModelIsList(model)) {
-      return callbacks.list(model, dataPathComponentToListIndex(pathComponent));
+      const listIndex = dataPathComponentToListIndex(pathComponent);
+      const childData = getListDataAt(model, listIndex);
+      if (childData === undefined) {
+        return undefined;
+      }
+      return callbacks.collection(childData, {type: 'list', data: model, at: listIndex});
     } else if (dataModelIsMap(model)) {
-      return callbacks.map(model, dataPathComponentToMapKey(pathComponent));
+      const mapKey = dataPathComponentToMapKey(pathComponent);
+      const indexCache = findMapDataIndexOfKey(model, mapKey);
+      if (indexCache === undefined) {
+        return undefined;
+      }
+      const childData = getMapDataAtIndex(model, indexCache);
+      if (childData === undefined) {
+        return undefined;
+      }
+      return callbacks.collection(childData, {type: 'map', data: model, at: mapKey, indexCache});
     } else {
       return undefined;
     }
   } else if (dataPathComponentIsPointer(pathComponent)) {
     if (dataModelIsList(model)) {
       const listIndex = getListDataIndexForPointer(model, pathComponent);
-      return listIndex === undefined ? undefined : callbacks.list(model, listIndex);
+      if (listIndex === undefined) {
+        return undefined;
+      }
+      const childData = getListDataAt(model, listIndex);
+      if (childData === undefined) {
+        return undefined;
+      }
+      return callbacks.collection(childData, {type: 'list', data: model, at: listIndex});
     } else if (dataModelIsMap(model)) {
-      const index = getMapDataIndexForPointer(model, pathComponent);
-      const mapKey = index === undefined ? undefined : getMapKeyAtIndex(model, index);
-      return mapKey === undefined || mapKey === null ? undefined : callbacks.map(model, mapKey);
+      const indexCache = getMapDataIndexForPointer(model, pathComponent);
+      if (indexCache === undefined) {
+        return undefined;
+      }
+      const mapKey = getMapKeyAtIndex(model, indexCache);
+      if (mapKey === undefined || mapKey === null) {
+        return undefined;
+      }
+      const childData = getMapDataAtIndex(model, indexCache);
+      if (childData === undefined) {
+        return undefined;
+      }
+      return callbacks.collection(childData, {type: 'map', data: model, at: mapKey, indexCache});
     } else {
       return undefined;
     }
   } else {
-    return callbacks.other();
+    // Genericsを使うとうまく Type Guard が効かないので、仕方なく Type Assertion を使う。
+    return callbacks.other(pathComponent as Exclude<PathComponent, ForwardDataPathComponent | KeyPathComponent>);
   }
 }
 
 function getDataModelBySinglePathImpl(
   model: DataModel | undefined,
   path: DataPath,
-  currentDataPath: ForwardDataPath,
-  key: string | undefined,
-  context: CollectDataModelContext,
+  currentContext: DataModelContext,
+  originalContext: DataModelContext,
 ): DataModel | undefined {
   if (model === undefined) {
     return model;
@@ -123,16 +202,20 @@ function getDataModelBySinglePathImpl(
 
   const head = headDataPathComponent(path);
   if (dataPathComponentIsKey(head)) {
+    const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
     return key === undefined ? undefined : stringToDataModel(key);
   } else if (dataPathComponentIsMapKey(head)) {
     if (dataModelIsMap(model)) {
       const mapKey = dataPathComponentToMapKey(head);
+      const index = findMapDataIndexOfKey(model, mapKey);
+      if (index === undefined) {
+        return undefined;
+      }
       return getDataModelBySinglePathImpl(
-        getMapDataAt(model, mapKey),
+        getMapDataAtIndex(model, index),
         shiftDataPath(path),
-        pushDataPath(currentDataPath, head),
-        mapKey,
-        context,
+        pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+        originalContext,
       );
     } else {
       return undefined;
@@ -143,9 +226,8 @@ function getDataModelBySinglePathImpl(
       return getDataModelBySinglePathImpl(
         getListDataAt(model, listIndex),
         shiftDataPath(path),
-        pushDataPath(currentDataPath, head),
-        listIndex.toString(),
-        context,
+        pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+        originalContext,
       );
     } else {
       return undefined;
@@ -156,18 +238,20 @@ function getDataModelBySinglePathImpl(
       return getDataModelBySinglePathImpl(
         getListDataAt(model, listIndex),
         shiftDataPath(path),
-        pushDataPath(currentDataPath, head),
-        listIndex.toString(),
-        context,
+        pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+        originalContext,
       );
     } else if (dataModelIsMap(model)) {
       const mapKey = dataPathComponentToMapKey(head);
+      const index = findMapDataIndexOfKey(model, mapKey);
+      if (index === undefined) {
+        return undefined;
+      }
       return getDataModelBySinglePathImpl(
-        getMapDataAt(model, mapKey),
+        getMapDataAtIndex(model, index),
         shiftDataPath(path),
-        pushDataPath(currentDataPath, head),
-        mapKey,
-        context,
+        pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+        originalContext,
       );
     } else {
       return undefined;
@@ -180,22 +264,24 @@ function getDataModelBySinglePathImpl(
         : getDataModelBySinglePathImpl(
             getListDataAt(model, listIndex),
             shiftDataPath(path),
-            pushDataPath(currentDataPath, head),
-            listIndex.toString(),
-            context,
+            pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+            originalContext,
           );
     } else if (dataModelIsMap(model)) {
       const index = getMapDataIndexForPointer(model, head);
-      const mapKey = index === undefined ? undefined : getMapKeyAtIndex(model, index);
-      return mapKey === undefined || mapKey === null
-        ? undefined
-        : getDataModelBySinglePathImpl(
-            getMapDataAt(model, mapKey),
-            shiftDataPath(path),
-            pushDataPath(currentDataPath, head),
-            mapKey,
-            context,
-          );
+      if (index === undefined) {
+        return undefined;
+      }
+      const mapKey = getMapKeyAtIndex(model, index);
+      if (mapKey === undefined || mapKey === null) {
+        return undefined;
+      }
+      return getDataModelBySinglePathImpl(
+        getMapDataAt(model, mapKey),
+        shiftDataPath(path),
+        pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+        originalContext,
+      );
     } else {
       return undefined;
     }
@@ -213,15 +299,145 @@ function getDataModelBySinglePathImpl(
 export function getDataModelBySinglePath(
   model: DataModel | undefined,
   path: DataPath,
-  currentDataPath: ForwardDataPath,
-  key: string | undefined,
-  global: CollectDataModelGlobal,
+  context: DataModelContext,
 ): DataModel | undefined {
-  return getDataModelBySinglePathImpl(model, path, currentDataPath, key, {
-    ...global,
-    currentModel: model,
-    currentPath: currentDataPath,
+  return getDataModelBySinglePathImpl(model, path, context, context);
+}
+
+export interface DataModelCollectionItem {
+  readonly data: DataModel;
+  readonly context: DataModelContext;
+}
+
+function collectDataModelImpl2(
+  model: DataModel | undefined,
+  path: MultiDataPath,
+  currentContext: DataModelContext,
+  originalContext: DataModelContext,
+  originalModel: DataModel | undefined,
+): DataModelCollectionItem[] {
+  if (!model) {
+    return [];
+  }
+  if (dataPathLength(path) === 0) {
+    return [{data: model, context: currentContext}];
+  }
+  const head = headDataPathComponent(path);
+  const result = digForPathComponent<DataModelCollectionItem[], MultiDataPathComponent>(model, head, {
+    key: () => {
+      const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
+      return key === undefined
+        ? []
+        : [{data: stringToDataModel(key), context: popDataModelContextPath(currentContext)}];
+    },
+    collection: (childData, contextPathComponent) =>
+      collectDataModelImpl2(
+        childData,
+        shiftDataPath(path),
+        pushDataModelContextPath(currentContext, contextPathComponent),
+        originalContext,
+        originalModel,
+      ),
+    other: (otherPathComponent): DataModelCollectionItem[] => {
+      switch (otherPathComponent.t) {
+        case DataPathComponentType.WildCard:
+          if (dataModelIsMap(model)) {
+            return mapMapDataModel(model, (value, key, index) => {
+              return key === null
+                ? []
+                : collectDataModelImpl2(
+                    getMapDataAtIndex(model, index),
+                    shiftDataPath(path),
+                    pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
+                    originalContext,
+                    originalModel,
+                  );
+            }).flat();
+          } else if (dataModelIsList(model)) {
+            return mapListDataModel(model, (value, index) => {
+              return collectDataModelImpl2(
+                getListDataAt(model, index),
+                shiftDataPath(path),
+                pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
+                originalContext,
+                originalModel,
+              );
+            }).flat();
+          } else {
+            return [];
+          }
+        case DataPathComponentType.Nested:
+          if (dataModelIsMapOrList(model)) {
+            const nestedValues = collectDataModelImpl2(
+              originalModel,
+              otherPathComponent.v,
+              originalContext,
+              originalContext,
+              originalModel,
+            );
+            if (mapOrListDataModelIsList(model)) {
+              return nestedValues.flatMap(({data}) => {
+                if (!dataModelIsInteger(data)) {
+                  return [];
+                }
+                const index = numberDataModelToNumber(data);
+                return collectDataModelImpl2(
+                  getListDataAt(model, index),
+                  shiftDataPath(path),
+                  pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
+                  originalContext,
+                  originalModel,
+                );
+              });
+            } else {
+              return nestedValues.flatMap(({data}) => {
+                if (!dataModelIsString(data)) {
+                  return [];
+                }
+                const key = stringDataModelToString(data);
+                const index = findMapDataIndexOfKey(model, key);
+                if (index === undefined) {
+                  return [];
+                }
+                return collectDataModelImpl2(
+                  getMapDataAtIndex(model, index),
+                  shiftDataPath(path),
+                  pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
+                  originalContext,
+                  originalModel,
+                );
+              });
+            }
+          } else {
+            return [];
+          }
+        case DataPathComponentType.Reverse: {
+          const reverseCount = dataPathConsecutiveReverseCount(path);
+          return collectDataModelImpl2(
+            getParentDataModelFromContext(currentContext, reverseCount),
+            shiftDataPath(path, reverseCount),
+            popDataModelContextPath(currentContext, reverseCount),
+            originalContext,
+            originalModel,
+          );
+        }
+        case DataPathComponentType.ContextKey:
+          // TODO DataModelContextにスキーマをもたせてから
+          return [];
+        case DataPathComponentType.Union:
+          return otherPathComponent.v.flatMap((pathComponent) => {
+            return collectDataModelImpl2(
+              model,
+              unshiftDataPath(shiftDataPath(path), pathComponent),
+              currentContext,
+              originalContext,
+              originalModel,
+            );
+          });
+      }
+    },
   });
+  return result ?? [];
 }
 
 function collectDataModelImpl(
@@ -421,6 +637,12 @@ function collectDataModelImpl(
       }
     }
   }
+}
+
+export interface ReferenceDataResult {
+  readonly log: WritableDataModelReferenceLogNode | undefined;
+  readonly data: string;
+  readonly context: DataModelContext;
 }
 
 export function collectDataModel(

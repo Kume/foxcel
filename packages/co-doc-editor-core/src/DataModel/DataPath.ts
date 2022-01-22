@@ -121,6 +121,10 @@ export function dataPathComponentIsListIndex(key: MultiDataPathComponent): key i
   return typeof key === 'number';
 }
 
+export function dataPathComponentIsReverse(component: MultiDataPathComponent): component is ReversePathComponent {
+  return typeof component === 'object' && component.t === DataPathComponentType.Reverse;
+}
+
 export function dataPathComponentToListIndex(
   component: ListIndexDataPathComponent | IndexOrKeyDataPathComponent,
 ): number {
@@ -243,12 +247,12 @@ export function pushDataPath(path: AnyDataPath, component: ForwardDataPathCompon
   };
 }
 
-export function shiftDataPath(path: ForwardDataPath): ForwardDataPath;
-export function shiftDataPath(path: DataPath): DataPath;
-export function shiftDataPath(path: MultiDataPath): MultiDataPath;
-export function shiftDataPath(path: AnyDataPath): AnyDataPath {
+export function shiftDataPath(path: ForwardDataPath, count?: number): ForwardDataPath;
+export function shiftDataPath(path: DataPath, count?: number): DataPath;
+export function shiftDataPath(path: MultiDataPath, count?: number): MultiDataPath;
+export function shiftDataPath(path: AnyDataPath, count = 1): AnyDataPath {
   // Don't copy isAbsolute.
-  return {components: path.components.slice(1, path.components.length)};
+  return {components: path.components.slice(count)};
 }
 
 export function safeShiftDataPath(path: ForwardDataPath | undefined): ForwardDataPath | undefined;
@@ -382,4 +386,12 @@ export function forwardDataPathEquals(lhs: ForwardDataPath | undefined, rhs: For
     }
   }
   return true;
+}
+
+export function dataPathConsecutiveReverseCount(path: MultiDataPath): number {
+  let count = 0;
+  while (dataPathComponentIsReverse(path.components[count])) {
+    count++;
+  }
+  return count;
 }
