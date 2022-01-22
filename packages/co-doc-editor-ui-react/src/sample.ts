@@ -110,7 +110,7 @@ export const sampleConfig: RootSchemaConfig = {
           contents: [
             {type: 'text', key: '$key', label: 'キー'},
             {type: 'text', key: 'testA1'},
-            {type: 'text', key: 'testA2'},
+            {type: 'select', key: 'testA2', emptyToNull: true, options: []},
             {
               type: 'tab',
               key: 'testA3',

@@ -181,7 +181,7 @@ export interface TableUISchemaConfig extends UISchemaConfigBase {
 
 export interface SelectUISchemaConfig extends UISchemaConfigBase {
   readonly type: 'select';
-  readonly emptyToNull: boolean;
+  readonly emptyToNull?: boolean;
   readonly options?: SelectOptionConfig;
   readonly isMulti?: boolean;
 }

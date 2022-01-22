@@ -1,11 +1,27 @@
 import {ForwardDataPath} from '../DataModel/DataPath';
-import {DataPointer, ListDataModel, MapDataModel, NullDataModel, StringDataModel} from '../DataModel/DataModelTypes';
-import {ContentListUISchema, FormUISchema, TableUISchema, TabUISchema, TextUISchema} from './UISchemaTypes';
+import {
+  DataModel,
+  DataPointer,
+  ListDataModel,
+  MapDataModel,
+  NullDataModel,
+  StringDataModel,
+} from '../DataModel/DataModelTypes';
+import {
+  ContentListUISchema,
+  FormUISchema,
+  SelectUISchema,
+  TableUISchema,
+  TabUISchema,
+  TextUISchema,
+} from './UISchemaTypes';
 import {FilledTemplateNode} from '../DataModel/TemplateEngine';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
+import {DataModelContext} from '../DataModel/DataModelContext';
 
 interface UIModelCommon {
   readonly dataPath: ForwardDataPath;
+  readonly dataContext: DataModelContext;
   readonly dataPathFocus: ForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly schemaFocusLog: UISchemaFocusLogNode | undefined;
@@ -109,4 +125,15 @@ export interface TableUIModelRow {
   readonly cells: readonly UIModel[];
 }
 
-export type UIModel = TabUIModel | FormUIModel | TextUIModel | ContentListUIModel | TableUIModel;
+export interface SelectUIModel extends UIModelCommon {
+  readonly type: 'select';
+  readonly isKey?: void;
+  readonly schema: SelectUISchema;
+  readonly data: DataModel | undefined;
+  readonly current?: {
+    readonly label: string;
+    readonly value: string;
+  };
+}
+
+export type UIModel = TabUIModel | FormUIModel | TextUIModel | ContentListUIModel | TableUIModel | SelectUIModel;

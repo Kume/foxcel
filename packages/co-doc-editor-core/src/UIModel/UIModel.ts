@@ -151,6 +151,7 @@ export function buildUIModel(
         type: 'tab',
         schema: currentSchema,
         dataPath,
+        dataContext,
         data: mapDataModelOrUndefined,
         dataPathFocus,
         dataFocusLog,
@@ -182,6 +183,7 @@ export function buildUIModel(
         type: 'form',
         schema: currentSchema,
         dataPath,
+        dataContext,
         data: mapDataModelOrUndefined,
         dataPathFocus,
         dataFocusLog,
@@ -347,6 +349,7 @@ export function buildUIModel(
         schema: currentSchema,
         data: mapOrListDataOrUndefined,
         dataPath,
+        dataContext,
         dataPathFocus,
         dataFocusLog,
         schemaFocusLog,
@@ -363,6 +366,7 @@ export function buildUIModel(
       const modelBase = {
         type: 'contentList',
         dataPath,
+        dataContext,
         schema: currentSchema,
         dataPathFocus,
         dataFocusLog,
@@ -488,12 +492,28 @@ export function buildUIModel(
           schema: currentSchema,
           data: stringDataModel,
           dataPath,
+          dataContext,
           dataPathFocus,
           dataFocusLog,
           schemaFocusLog,
           value: value || '',
         };
       }
+    }
+
+    case 'select': {
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+      return {
+        type: 'select',
+        schema: currentSchema,
+        data: dataModel,
+        dataPath,
+        dataContext,
+        dataPathFocus,
+        dataFocusLog,
+        schemaFocusLog,
+        current: undefined,
+      };
     }
   }
 }
