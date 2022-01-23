@@ -1,5 +1,5 @@
 import React, {useRef, useState} from 'react';
-import {UIViewProps} from './UIView';
+import {ReadonlyUIViewProps, UIViewProps} from './UIView';
 import {SelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import Select from 'react-select';
 import {
@@ -24,4 +24,8 @@ export const SelectUIView: React.FC<Props> = ({model, onAction}) => {
       onChange={(value) => onAction(selectUIModelSetValue(model, value))}
     />
   );
+};
+
+export const SelectUIViewForTableReadonly: React.FC<ReadonlyUIViewProps<Props>> = ({model}) => {
+  return <div>{model.current?.label ?? ''}</div>;
 };

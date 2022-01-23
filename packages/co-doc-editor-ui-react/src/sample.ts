@@ -83,7 +83,8 @@ export const sampleConfig: RootSchemaConfig = {
                 dataLabel: '{{testA5a}}',
                 items: {
                   testA5a: {type: 'string', label: 'テストA5a'},
-                  testA5b: {type: 'string', label: 'テストA5a'},
+                  testA5b: {type: 'string', label: 'テストA5b'},
+                  testA5c: {type: 'string', label: 'テストA5c', in: ['AAAA', 'BBBB']},
                 },
               },
             },
@@ -177,6 +178,7 @@ export const sampleConfig: RootSchemaConfig = {
                 {type: 'text', key: '$key'},
                 {type: 'text', key: 'testA5a'},
                 {type: 'text', key: 'testA5b'},
+                {type: 'select', key: 'testA5c'},
               ],
             },
           ],

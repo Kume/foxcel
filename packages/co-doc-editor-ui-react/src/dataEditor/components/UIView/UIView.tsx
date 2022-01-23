@@ -13,6 +13,8 @@ export interface UIViewProps {
   onAction(action: AppAction): void;
 }
 
+export type ReadonlyUIViewProps<T extends UIViewProps> = Omit<T, 'onAction'>;
+
 export const UIView: React.FC<UIViewProps> = ({model, ...others}) => {
   switch (model.type) {
     case 'form':

@@ -382,7 +382,6 @@ function collectDataModelImpl2(
     other: (otherPathComponent): DataModelCollectionItem[] => {
       switch (otherPathComponent.t) {
         case DataPathComponentType.WildCard:
-          console.log('xxxx wildCard');
           if (dataModelIsMap(model)) {
             return mapMapDataModel(model, (value, key, index) => {
               return key === null

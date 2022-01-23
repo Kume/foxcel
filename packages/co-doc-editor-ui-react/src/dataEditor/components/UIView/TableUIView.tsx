@@ -3,7 +3,7 @@ import {UIView, UIViewProps} from './UIView';
 import {TableUIModel, TableUIModelRow} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {getIdFromDataPointer} from 'co-doc-editor-core';
 import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
-import {ReadOnlyUIView} from './ReadOnlyUIView';
+import {TableUIReadonlyCell} from './TableUIReadonlyCell';
 import styled from 'styled-components';
 import {
   copyFromTableUIModel,
@@ -189,7 +189,7 @@ const TableRowView = React.memo<TableRowViewProps>(({row, rowNumber, editingColu
             onMouseDown={(e) => callbacks.onMouseDown(e, rowNumber, index)}
             onMouseOver={(e) => callbacks.onMouseOver(e, rowNumber, index)}
             onDoubleClick={(e) => callbacks.onDoubleClick(e, rowNumber, index)}>
-            <ReadOnlyUIView model={cell} />
+            <TableUIReadonlyCell model={cell} />
           </ReadonlyCell>
         );
       })}
