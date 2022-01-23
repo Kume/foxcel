@@ -123,10 +123,7 @@ export interface SelectStaticOptionConfig<T = number | string> {
   value: T;
 }
 
-export type SelectOptionConfigItem<T = number | string> =
-  | string
-  | SelectStaticOptionConfig<T>
-  | SelectDynamicOptionConfig;
+export type SelectOptionConfigItem<T = number | string> = T | SelectStaticOptionConfig<T> | SelectDynamicOptionConfig;
 
 export type SelectOptionConfig<T = number | string> = SelectDynamicOptionConfig | readonly SelectOptionConfigItem<T>[];
 

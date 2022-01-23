@@ -84,6 +84,7 @@ export interface SelectStaticOptionSchema<T> {
 }
 
 export interface SelectDynamicOptionSchema {
+  readonly label?: undefined;
   readonly path: MultiDataPath;
   readonly labelPath?: MultiDataPath;
   readonly valuePath?: MultiDataPath;

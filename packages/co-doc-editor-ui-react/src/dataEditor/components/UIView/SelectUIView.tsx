@@ -1,12 +1,27 @@
-import React from 'react';
+import React, {useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {SelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import AsyncSelect from 'react-select/async';
+import Select from 'react-select';
+import {
+  getSelectUIOptions,
+  selectUIModelDefaultOptions,
+  selectUIModelSetValue,
+  SelectUIOption,
+} from 'co-doc-editor-core/dist/UIModel/SelectUIModel';
 
 interface Props extends UIViewProps {
   readonly model: SelectUIModel;
 }
 
 export const SelectUIView: React.FC<Props> = ({model, onAction}) => {
-  return <AsyncSelect defaultOptions={model.current ? [model.current] : []} />;
+  const [options, setOptions] = useState<SelectUIOption[]>(selectUIModelDefaultOptions(model));
+  return (
+    <Select<SelectUIOption>
+      options={options}
+      value={model.current ?? null}
+      getOptionValue={(value) => value.value}
+      onFocus={() => setOptions(getSelectUIOptions(model))}
+      onChange={(value) => onAction(selectUIModelSetValue(model, value))}
+    />
+  );
 };

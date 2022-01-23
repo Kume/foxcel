@@ -14,7 +14,7 @@ const initialDataModel = unknownToDataModel({
   testA: {
     testA_value1: {
       testA1: 'aaa',
-      testA2: 'dddd',
+      testA2: 'A2-2',
       testA3: {
         testA3a: {
           testA3a1: 'testA3a1サンプルデータ',

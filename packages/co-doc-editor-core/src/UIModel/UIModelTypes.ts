@@ -133,6 +133,7 @@ export interface SelectUIModel extends UIModelCommon {
   readonly current?: {
     readonly label: string;
     readonly value: string;
+    readonly data: DataModel;
   };
 }
 

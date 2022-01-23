@@ -13,7 +13,11 @@ export const sampleConfig: RootSchemaConfig = {
           label: 'テストA',
           items: {
             testA1: {type: 'string', label: 'てすとA1'},
-            testA2: {type: 'string', label: 'テストA2は長めのラベル名'},
+            testA2: {
+              type: 'string',
+              label: 'テストA2は長めのラベル名',
+              in: ['testA2_one', {label: 'testA2_two', value: 'A2-2'}, {path: '/*/$key'}],
+            },
             testA3: {
               type: 'fixed_map',
               label: 'テストA3',
@@ -110,7 +114,7 @@ export const sampleConfig: RootSchemaConfig = {
           contents: [
             {type: 'text', key: '$key', label: 'キー'},
             {type: 'text', key: 'testA1'},
-            {type: 'select', key: 'testA2', emptyToNull: true, options: []},
+            {type: 'select', key: 'testA2', emptyToNull: true},
             {
               type: 'tab',
               key: 'testA3',

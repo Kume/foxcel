@@ -1,4 +1,4 @@
-import {ContentListIndex, TableUIModelRow, UIModel} from './UIModelTypes';
+import {ContentListIndex, SelectUIModel, TableUIModelRow, UIModel} from './UIModelTypes';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {
@@ -11,6 +11,8 @@ import {
 } from '../DataModel/DataPath';
 import {UISchemaContext} from './UISchemaContext';
 import {
+  dataModelEquals,
+  dataModelEqualsToUnknown,
   dataModelIsList,
   dataModelIsMap,
   dataModelIsString,
@@ -503,6 +505,20 @@ export function buildUIModel(
 
     case 'select': {
       const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+      let current: SelectUIModel['current'];
+      // TODO 動的パスに対応
+      if (dataModel) {
+        for (const option of currentSchema.options) {
+          if (option.label === undefined) {
+            // TODO Dynamic option
+          } else {
+            // Static option
+            if (dataModelEqualsToUnknown(dataModel, option.value)) {
+              current = {label: option.label, value: option.value.toString(), data: dataModel};
+            }
+          }
+        }
+      }
       return {
         type: 'select',
         schema: currentSchema,
@@ -512,7 +528,7 @@ export function buildUIModel(
         dataPathFocus,
         dataFocusLog,
         schemaFocusLog,
-        current: undefined,
+        current,
       };
     }
   }
