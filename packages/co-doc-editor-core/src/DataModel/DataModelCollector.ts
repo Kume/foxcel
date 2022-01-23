@@ -41,6 +41,7 @@ import {
   getMapDataAtIndex,
   getMapDataIndexForPointer,
   getMapKeyAtIndex,
+  mapDataModelKeyIndexMap,
   mapListDataModel,
   mapMapDataModel,
   mapOrListDataModelIsList,
@@ -64,6 +65,7 @@ import {
   getParentDataModelFromContext,
   popDataModelContextPath,
   pushDataModelContextPath,
+  pushKeyToDataModelContextPath,
 } from './DataModelContext';
 
 interface CollectOrigin {
@@ -301,12 +303,51 @@ export function getDataModelBySinglePath(
   path: DataPath,
   context: DataModelContext,
 ): DataModel | undefined {
-  return getDataModelBySinglePathImpl(model, path, context, context);
+  if (path.isAbsolute) {
+    return getDataModelBySinglePathImpl(context.root.model, path, context, context);
+  } else {
+    return getDataModelBySinglePathImpl(model, path, context, context);
+  }
 }
 
 export interface DataModelCollectionItem {
   readonly data: DataModel;
   readonly context: DataModelContext;
+}
+
+export function* withNestedDataPath(
+  model: DataModel | undefined,
+  path: MultiDataPath,
+  context: DataModelContext,
+): Generator<[DataModel | undefined, DataModelContext], void> {
+  if (dataModelIsMapOrList(model)) {
+    const nestedValues = collectDataModel2(model, path, context);
+    if (mapOrListDataModelIsList(model)) {
+      for (const {data} of nestedValues) {
+        if (!dataModelIsInteger(data)) {
+          continue;
+        }
+        const index = numberDataModelToNumber(data);
+        yield [getListDataAt(model, index), pushDataModelContextPath(context, {type: 'list', data: model, at: index})];
+      }
+    } else {
+      const keyIndexMap = mapDataModelKeyIndexMap(model);
+      for (const {data} of nestedValues) {
+        if (!dataModelIsString(data)) {
+          continue;
+        }
+        const key = stringDataModelToString(data);
+        const index = keyIndexMap.get(key);
+        if (index === undefined) {
+          continue;
+        }
+        yield [
+          getMapDataAtIndex(model, index),
+          pushDataModelContextPath(context, {type: 'map', data: model, at: key, indexCache: index}),
+        ];
+      }
+    }
+  }
 }
 
 function collectDataModelImpl2(
@@ -328,7 +369,7 @@ function collectDataModelImpl2(
       const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
       return key === undefined
         ? []
-        : [{data: stringToDataModel(key), context: popDataModelContextPath(currentContext)}];
+        : [{data: stringToDataModel(key), context: pushKeyToDataModelContextPath(currentContext)}];
     },
     collection: (childData, contextPathComponent) =>
       collectDataModelImpl2(
@@ -341,6 +382,7 @@ function collectDataModelImpl2(
     other: (otherPathComponent): DataModelCollectionItem[] => {
       switch (otherPathComponent.t) {
         case DataPathComponentType.WildCard:
+          console.log('xxxx wildCard');
           if (dataModelIsMap(model)) {
             return mapMapDataModel(model, (value, key, index) => {
               return key === null
@@ -438,6 +480,18 @@ function collectDataModelImpl2(
     },
   });
   return result ?? [];
+}
+
+export function collectDataModel2(
+  model: DataModel | undefined,
+  path: MultiDataPath,
+  context: DataModelContext,
+): DataModelCollectionItem[] {
+  if (path.isAbsolute) {
+    return collectDataModelImpl2(context.root.model, path, context, context, model);
+  } else {
+    return collectDataModelImpl2(model, path, context, context, model);
+  }
 }
 
 function collectDataModelImpl(

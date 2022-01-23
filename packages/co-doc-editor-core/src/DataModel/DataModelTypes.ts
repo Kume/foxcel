@@ -31,10 +31,14 @@ export type StringDataModel = string;
 
 export type ListDataModel = readonly (readonly [number, DataModel])[];
 
+export type PublicListDataItem = readonly [data: DataModel, pointer: DataPointer, index: number];
+
 export interface MapDataModel {
   readonly t: DataModelType.Map;
   readonly v: readonly MapDataModelItem[];
 }
+
+export type PublicMapDataItem = readonly [data: DataModel, pointer: DataPointer, key: string | null, index: number];
 
 export type MapDataModelItem = readonly [string | null, number, DataModel];
 

@@ -11,7 +11,6 @@ import {
 } from '../DataModel/DataPath';
 import {UISchemaContext} from './UISchemaContext';
 import {
-  dataModelEquals,
   dataModelEqualsToUnknown,
   dataModelIsList,
   dataModelIsMap,
@@ -47,11 +46,12 @@ import {stringUISchemaKeyToString, uiSchemaKeyIsParentKey} from './UISchema';
 import {fillTemplateLine} from '../DataModel/TemplateEngine';
 import {
   DataModelContext,
-  pushDataModelContextPath,
   pushMapDataModelContextPath,
   pushPointerToDataModelContext,
   pushUiSchemaKeyToDataModelContext,
 } from '../DataModel/DataModelContext';
+import {findDataModel} from '../DataModel/DataModelSearcher';
+import {formatDynamicSelectUIOption} from './SelectUIModel';
 
 function getMapChildContextForFlattenable(
   childContext: UISchemaContext,
@@ -510,11 +510,21 @@ export function buildUIModel(
       if (dataModel) {
         for (const option of currentSchema.options) {
           if (option.label === undefined) {
-            // TODO Dynamic option
+            const findResult = findDataModel(
+              dataModel,
+              {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
+              dataContext,
+              {} as any, // TODO ちゃんとログの仕組みを整える
+            );
+            if (findResult) {
+              current = formatDynamicSelectUIOption(option, findResult.data, findResult.context);
+              break;
+            }
           } else {
             // Static option
             if (dataModelEqualsToUnknown(dataModel, option.value)) {
               current = {label: option.label, value: option.value.toString(), data: dataModel};
+              break;
             }
           }
         }

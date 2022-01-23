@@ -30,6 +30,7 @@ export interface TemplateLine {
 type TextFilledTemplateNode = string;
 type EmptyFilledTemplateNode = undefined;
 export type FilledTemplateNode = TextFilledTemplateNode | EmptyFilledTemplateNode;
+export type FilledTemplate = readonly FilledTemplateNode[];
 
 export function parseTemplateLine(source: string): TemplateLine {
   let searchCursor = 0;
@@ -70,6 +71,10 @@ export function parseTemplateLine(source: string): TemplateLine {
   }
 }
 
+export function dataPathToTemplateLine(path: DataPath): TemplateLine {
+  return {nodes: [{type: 'var', path}]};
+}
+
 export function fillTemplateLine(
   template: TemplateLine,
   data: DataModel | undefined,
@@ -93,4 +98,24 @@ export function fillTemplateLine(
       }
     }
   });
+}
+
+export function fillTemplateLineAndToString(
+  template: TemplateLine,
+  data: DataModel | undefined,
+  context: DataModelContext,
+): string {
+  return fillTemplateLine(template, data, context)
+    .map((node) => {
+      if (typeof node === 'string') {
+        return node;
+      } else {
+        return '';
+      }
+    })
+    .join('');
+}
+
+export function stringToFilledTemplateLine(str: string): FilledTemplate {
+  return [str];
 }

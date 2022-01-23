@@ -114,12 +114,14 @@ export type ConditionalDataSchemaItemConfig = ConditionalSchemaItem<DataSchemaCo
 ////////////////////////////////////////////////////////////////////////////
 export interface SelectDynamicOptionConfig {
   path: string;
+  label?: string;
   labelPath?: string;
   valuePath?: string;
 }
 
 export interface SelectStaticOptionConfig<T = number | string> {
   label: string;
+  path?: undefined;
   value: T;
 }
 

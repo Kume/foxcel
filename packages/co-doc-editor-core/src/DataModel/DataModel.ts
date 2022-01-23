@@ -26,6 +26,8 @@ import {
   ListDataModel,
   MapDataModel,
   NullDataModel,
+  PublicListDataItem,
+  PublicMapDataItem,
   StringDataModel,
 } from './DataModelTypes';
 import {DataSchemaContext} from './DataSchema';
@@ -456,6 +458,14 @@ export function getListDataAt(list: ListDataModel, at: number): DataModel | unde
   return list[at][1];
 }
 
+export function getListItemAt(list: ListDataModel, at: number): PublicListDataItem | undefined {
+  if (list[at] === undefined) {
+    return undefined;
+  }
+  const [id, value] = list[at];
+  return [value, {i: at, d: id}, at];
+}
+
 export function getListDataPointerAt(list: ListDataModel, index: number): DataPointer | undefined {
   const id = getListDataIdAtIndex(list, index);
   return id === undefined ? undefined : {i: index, d: id};
@@ -546,6 +556,20 @@ export function mapListDataModel<T>(
   return list.map(([id, item], index) => mapper(item, index, id));
 }
 
+export function findListDataModel(
+  list: ListDataModel,
+  match: (item: DataModel, pointer: DataPointer, index: number) => boolean,
+): number | undefined {
+  return list.findIndex(([id, item], index) => match(item, {i: index, d: id}, index));
+}
+
+export function* eachListDataItem(list: ListDataModel): Generator<PublicListDataItem, void> {
+  for (let i = 0; i < listDataSize(list); i++) {
+    const [id, value] = list[i];
+    yield [value, {i, d: id}, i];
+  }
+}
+
 export function mapListDataModelWithPointer<T>(
   list: ListDataModel,
   mapper: (item: DataModel, pointer: DataPointer, index: number) => T,
@@ -568,6 +592,24 @@ export function findMapDataIndexOfKey(map: MapDataModel, key: string): number | 
 export function getMapDataAt(map: MapDataModel, key: string): DataModel | undefined {
   const index = findMapDataIndexOfKey(map, key);
   return index === undefined ? undefined : getMapDataAtIndex(map, index);
+}
+
+export function getMapItemAtIndex(map: MapDataModel, index: number): PublicMapDataItem | undefined {
+  const rawItem = map.v[index];
+  if (rawItem === undefined) {
+    return undefined;
+  }
+  const [key, id, value] = rawItem;
+  return [value, {d: id, i: index}, key, index];
+}
+
+export function mapDataModelKeyIndexMap(map: MapDataModel): Map<string | null, number> {
+  const keyIndexMap = new Map<string | null, number>();
+  for (let i = mapDataSize(map) - 1; i >= 0; i--) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    keyIndexMap.set(getMapKeyAtIndex(map, i)!, i);
+  }
+  return keyIndexMap;
 }
 
 export function getMapDataAtWithIndexCache(map: MapDataModel, key: string, indexCache: number): DataModel | undefined {
@@ -783,6 +825,20 @@ export function mapMapDataModelWithPointer<T>(
   mapper: (value: DataModel, pointer: DataPointer, key: string | null, index: number) => T,
 ): T[] {
   return model.v.map(([key, id, value], index) => mapper(value, {i: index, d: id}, key, index));
+}
+
+export function findIndexMapDataModel(
+  model: MapDataModel,
+  match: (value: DataModel, pointer: DataPointer, key: string | null, index: number) => boolean,
+): number | undefined {
+  return model.v.findIndex(([key, id, value], index) => match(value, {i: index, d: id}, key, index));
+}
+
+export function* eachMapDataItem(map: MapDataModel): Generator<PublicMapDataItem, void> {
+  for (let i = 0; i < mapDataSize(map); i++) {
+    const [key, id, value] = map.v[i];
+    yield [value, {i, d: id}, key, i];
+  }
 }
 
 //#endregion For MapDataModel

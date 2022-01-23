@@ -27,7 +27,7 @@ import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
 import {LoadedSchemaPath, PathConfigMap, resolveConfigOrRecursive} from '../common/schemaCommon';
-import {parseTemplateLine, TemplateLine} from './TemplateEngine';
+import {dataPathToTemplateLine, parseTemplateLine, TemplateLine} from './TemplateEngine';
 
 export enum DataSchemaType {
   Number,
@@ -86,8 +86,8 @@ export interface SelectStaticOptionSchema<T> {
 export interface SelectDynamicOptionSchema {
   readonly label?: undefined;
   readonly path: MultiDataPath;
-  readonly labelPath?: MultiDataPath;
-  readonly valuePath?: MultiDataPath;
+  readonly labelTemplate?: TemplateLine;
+  readonly valuePath: ForwardDataPath | undefined;
 }
 
 export type SelectOptionSchema<T> = SelectStaticOptionSchema<T> | SelectDynamicOptionSchema;
@@ -261,7 +261,7 @@ export class DataSchemaContext {
 function isDynamicOptionConfig<T>(
   config: SelectStaticOptionConfig<T> | SelectDynamicOptionConfig,
 ): config is SelectDynamicOptionConfig {
-  return 'path' in config;
+  return config.path !== undefined;
 }
 
 export function parseOptionConfig(config: SelectOptionConfig<string>): readonly SelectOptionSchema<string>[];
@@ -285,8 +285,8 @@ export function parseOptionConfigItem(
 export function parseOptionConfigItem(
   config: SelectOptionConfigItem<string | number>,
 ): SelectOptionSchema<string | number> {
-  if (typeof config === 'string') {
-    return {label: config, value: config};
+  if (typeof config === 'string' || typeof config === 'number') {
+    return {label: config.toString(), value: config};
   }
   if (isDynamicOptionConfig(config)) {
     return parseDynamicOptionConfigItem(config);
@@ -298,8 +298,12 @@ export function parseOptionConfigItem(
 function parseDynamicOptionConfigItem(config: SelectDynamicOptionConfig): SelectDynamicOptionSchema {
   return {
     path: parsePath(config.path),
-    labelPath: (config.labelPath && parsePath(config.labelPath)) || undefined,
-    valuePath: (config.valuePath && parsePath(config.valuePath)) || undefined,
+    labelTemplate: config.label
+      ? parseTemplateLine(config.label)
+      : config.labelPath
+      ? dataPathToTemplateLine(parsePath(config.labelPath, 'single'))
+      : undefined,
+    valuePath: (config.valuePath && parsePath(config.valuePath, 'forward')) || undefined,
   };
 }
 

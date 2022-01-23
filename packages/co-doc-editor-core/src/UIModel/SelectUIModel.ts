@@ -1,7 +1,11 @@
 import {SelectUIModel} from './UIModelTypes';
 import {AppAction} from '../App/AppState';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {nullDataModel, unknownToDataModel} from '../DataModel/DataModel';
+import {dataModelToString, nullDataModel, unknownToDataModel} from '../DataModel/DataModel';
+import {collectDataModel2} from '../DataModel/DataModelCollector';
+import {DataModelContext} from '../DataModel/DataModelContext';
+import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
+import {SelectDynamicOptionSchema} from '../DataModel/DataSchema';
 
 export interface SelectUIOption {
   readonly label: string;
@@ -15,6 +19,10 @@ export function getSelectUIOptions(model: SelectUIModel): SelectUIOption[] {
   for (const optionSchema of model.schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
+      const collectResults = collectDataModel2(model.data, optionSchema.path, model.dataContext);
+      for (const {data, context} of collectResults) {
+        options.push(formatDynamicSelectUIOption(optionSchema, data, context));
+      }
     } else {
       // Static option
       options.push({
@@ -40,5 +48,18 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
       path: model.dataPath,
       data: value === null ? nullDataModel : value.data,
     },
+  };
+}
+
+export function formatDynamicSelectUIOption(
+  option: SelectDynamicOptionSchema,
+  data: DataModel,
+  context: DataModelContext,
+): SelectUIOption {
+  const stringValue = dataModelToString(data);
+  return {
+    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, data, context) : stringValue,
+    value: stringValue,
+    data: data,
   };
 }

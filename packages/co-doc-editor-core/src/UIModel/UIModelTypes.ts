@@ -15,7 +15,7 @@ import {
   TabUISchema,
   TextUISchema,
 } from './UISchemaTypes';
-import {FilledTemplateNode} from '../DataModel/TemplateEngine';
+import {FilledTemplate} from '../DataModel/TemplateEngine';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModelContext} from '../DataModel/DataModelContext';
 
@@ -98,7 +98,7 @@ interface NonEmptyContentListUIModel extends ContentListUIModelBase {
 export type ContentListUIModel = EmptyContentListUIModel | NonEmptyContentListUIModel;
 
 export interface ContentListIndex {
-  readonly label: readonly FilledTemplateNode[];
+  readonly label: FilledTemplate;
   readonly pointer: DataPointer;
   readonly dataPath: ForwardDataPath;
 }

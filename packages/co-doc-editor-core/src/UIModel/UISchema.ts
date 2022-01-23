@@ -3,12 +3,10 @@ import {
   ConditionalUISchemaConfig,
   ConditionConfig,
   ContentListUISchemaConfig,
-  DataModel,
   DataPath,
   dataPathComponentIsKey,
   dataPathComponentIsMapKeyLike,
   dataPathComponentToMapKey,
-  DataPathComponentType,
   ForwardDataPathComponent,
   KeyOrKeyFlatten,
   MappingTableUISchemaConfig,
@@ -55,7 +53,6 @@ import {
   TabUISchema,
   UISchema,
 } from './UISchemaTypes';
-import {stringUISchemaKeyToDataPathComponent} from './DataPathContext';
 
 export type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema ? never : E;
 
