@@ -6,6 +6,7 @@ import styled from 'styled-components';
 const Table = styled.table``;
 
 const LabelCell = styled.td`
+  font-size: var(--basic-font-size);
   background-color: lightgray;
 `;
 

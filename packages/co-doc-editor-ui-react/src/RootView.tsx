@@ -7,6 +7,7 @@ import {buildUIModel} from 'co-doc-editor-core/dist/UIModel/UIModel';
 import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
 import {sampleConfig} from './sample';
 import {applyAppActionToState, AppState} from 'co-doc-editor-core/dist/App/AppState';
+import styled from 'styled-components';
 
 const dataSchema = buildSimpleDataSchema(sampleConfig);
 const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);
@@ -64,6 +65,11 @@ function buildInitialState(data: DataModel): AppState {
   return {data, dataSchema, uiSchema, rootUISchemaContext: rootSchemaContext, uiModel};
 }
 
+const LayoutRoot = styled.div`
+  --basic-font-size: 16px;
+  --label-font-weight: 500;
+`;
+
 const initialState = buildInitialState(initialDataModel);
 export const RootView: React.FC = () => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
@@ -71,8 +77,8 @@ export const RootView: React.FC = () => {
   console.log('root', state);
 
   return (
-    <div>
+    <LayoutRoot>
       <UIView model={state.uiModel} onAction={dispatch} />
-    </div>
+    </LayoutRoot>
   );
 };

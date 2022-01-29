@@ -1,9 +1,7 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
-import {UIView, UIViewProps} from './UIView';
-import {TableUIModel, TableUIModelRow} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {UIViewProps} from './UIView';
+import {TableUIModel, TableUIModelRow, UIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {getIdFromDataPointer} from 'co-doc-editor-core';
-import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
-import {TableUIReadonlyCell} from './TableUIReadonlyCell';
 import styled from 'styled-components';
 import {
   copyFromTableUIModel,
@@ -18,6 +16,8 @@ import {
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
 import {parseTsv, stringifyTsv} from 'co-doc-editor-core/dist/common/tsv';
+import {TableCellCallbacks} from './TableUIViewCell';
+import {TextUIViewForTableCell} from './TextUIView';
 
 const Table = styled.table`
   background-color: gray;
@@ -30,20 +30,6 @@ const HeaderCell = styled.th`
 
 const TableRow = styled.tr`
   border-bottom: 1px solid gray;
-`;
-
-const ReadonlyCell = styled.td<{readonly selected: boolean}>`
-  padding: 0 4px;
-  background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  -ms-user-select: none;
-`;
-
-const EditingCell = styled.td`
-  padding: 0;
-  background-color: white;
 `;
 
 interface Props extends UIViewProps {
@@ -63,7 +49,7 @@ export const TableUIView = React.memo<Props>(({model, onAction}) => {
   const endMouseMove = useCallback(() => setSelection((origin) => origin && {...origin, isMouseActive: false}), []);
   const startMouseUpTracking = useMouseUpTracking(endMouseMove);
 
-  const callbacks = useMemo<TableRowCallbacks>(
+  const callbacks = useMemo<TableCellCallbacks>(
     () => ({
       onAction,
       onMouseDown(e, row, col) {
@@ -147,6 +133,7 @@ export const TableUIView = React.memo<Props>(({model, onAction}) => {
             key={getIdFromDataPointer(row.pointer)}
             row={row}
             rowNumber={index}
+            mainSelectedColumn={selection?.origin.row === index ? selection?.origin.col : undefined}
             selectionRange={tableRangeContains(selection?.range.row, index) ? selection?.range.col : undefined}
             callbacks={callbacks}
             editingColumn={editing?.row === index ? editing?.col : undefined}
@@ -159,42 +146,63 @@ export const TableUIView = React.memo<Props>(({model, onAction}) => {
 
 TableUIView.displayName = 'TableUIView';
 
-interface TableRowCallbacks {
-  readonly onAction: (action: AppAction) => void;
-  readonly onMouseDown: (e: React.MouseEvent, row: number, column: number) => void;
-  readonly onMouseOver: (e: React.MouseEvent, row: number, column: number) => void;
-  readonly onDoubleClick: (e: React.MouseEvent, row: number, column: number) => void;
-}
+const ReadonlyCell = styled.td<{readonly selected: boolean}>`
+  padding: 0 4px;
+  background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+`;
 
 interface TableRowViewProps {
   readonly row: TableUIModelRow;
   readonly rowNumber: number;
   readonly editingColumn: number | undefined;
   readonly selectionRange: TableRange | undefined;
-  readonly callbacks: TableRowCallbacks;
+  readonly mainSelectedColumn: number | undefined;
+  readonly callbacks: TableCellCallbacks;
 }
 
-const TableRowView = React.memo<TableRowViewProps>(({row, rowNumber, editingColumn, selectionRange, callbacks}) => {
-  return (
-    <TableRow>
-      {row.cells.map((cell, index) => {
-        return editingColumn === index ? (
-          <EditingCell key={index}>
-            <UIView model={cell} onAction={callbacks.onAction} />
-          </EditingCell>
-        ) : (
-          <ReadonlyCell
-            key={index}
-            selected={tableRangeContains(selectionRange, index)}
-            onMouseDown={(e) => callbacks.onMouseDown(e, rowNumber, index)}
-            onMouseOver={(e) => callbacks.onMouseOver(e, rowNumber, index)}
-            onDoubleClick={(e) => callbacks.onDoubleClick(e, rowNumber, index)}>
-            <TableUIReadonlyCell model={cell} />
-          </ReadonlyCell>
-        );
-      })}
-    </TableRow>
-  );
-});
+const TableRowView = React.memo<TableRowViewProps>(
+  ({row, rowNumber, editingColumn, selectionRange, mainSelectedColumn, callbacks}) => {
+    return (
+      <TableRow>
+        {row.cells.map((cell, index) => {
+          const isSelected = tableRangeContains(selectionRange, index);
+          const isMainSelected = mainSelectedColumn === index;
+          return (
+            <ReadonlyCell
+              key={index}
+              selected={isSelected}
+              onMouseDown={(e) => callbacks.onMouseDown(e, rowNumber, index)}
+              onMouseOver={(e) => callbacks.onMouseOver(e, rowNumber, index)}
+              onDoubleClick={(e) => callbacks.onDoubleClick(e, rowNumber, index)}>
+              {renderCell(cell, isMainSelected, rowNumber, index, callbacks)}
+            </ReadonlyCell>
+          );
+        })}
+      </TableRow>
+    );
+  },
+);
+
+function renderCell(model: UIModel, isMainSelected: boolean, row: number, col: number, callbacks: TableCellCallbacks) {
+  switch (model.type) {
+    case 'text':
+      return (
+        <TextUIViewForTableCell
+          model={model}
+          isMainSelected={isMainSelected}
+          row={row}
+          col={col}
+          callbacks={callbacks}
+        />
+      );
+    case 'select':
+    default:
+      return <div>Error</div>;
+  }
+}
 
 TableRowView.displayName = 'TableRowView';
