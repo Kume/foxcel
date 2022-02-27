@@ -22,11 +22,11 @@
     ]
   },
   "dependencies": {
+    "@floating-ui/react-dom": "^0.5.0",
     "co-doc-editor-ui-react": "^0.0.1",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-redux": "^7.2.4",
-    "react-select": "^5.2.2",
     "redux": "^4.1.0",
     "styled-components": "^5.2.3"
   },
@@ -34,8 +34,8 @@
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
     "@types/wicg-file-system-access": "^2020.9.1",
-    "@vitejs/plugin-react": "^1.0.7",
+    "@vitejs/plugin-react": "^1.2.0",
     "typescript": "^4.5.4",
-    "vite": "^2.7.2"
+    "vite": "^2.8.4"
   }
 }

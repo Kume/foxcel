@@ -29,8 +29,8 @@ const initialDataModel = unknownToDataModel({
         },
       },
       testA5: {
-        testA5_01: {testA5a: 'testA5a_01', testA5b: 'testA5b_01'},
-        testA5_02: {testA5a: 'testA5a_02', testA5b: 'testA5b_02'},
+        testA5_01: {testA5a: 'testA5a_01', testA5b: 'testA5b_01', testA5c: 'AAAA'},
+        testA5_02: {testA5a: 'testA5a_02', testA5b: 'testA5b_02', testA5c: 'CCCC'},
         testA5_03: {testA5a: 'testA5a_03', testA5b: 'testA5b_03'},
       },
     },

@@ -63,3 +63,11 @@ export function formatDynamicSelectUIOption(
     data: data,
   };
 }
+
+export function filterSelectUIOptionsByText(options: readonly SelectUIOption[], text: string): SelectUIOption[] {
+  return options.filter(
+    ({label, value}) =>
+      label.toLocaleLowerCase().indexOf(text.toLocaleLowerCase()) >= 0 ||
+      value.toLocaleLowerCase().indexOf(text.toLocaleLowerCase()) >= 0,
+  );
+}
