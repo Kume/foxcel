@@ -16,7 +16,7 @@ export const sampleConfig: RootSchemaConfig = {
             testA2: {
               type: 'string',
               label: 'テストA2は長めのラベル名',
-              in: ['testA2_one', {label: 'testA2_two', value: 'A2-2'}, {path: '/*/$key'}],
+              in: ['testA2_one', {label: 'testA2_two', value: 'A2-2'}, {path: '../testA5/*/$key'}],
             },
             testA3: {
               type: 'fixed_map',

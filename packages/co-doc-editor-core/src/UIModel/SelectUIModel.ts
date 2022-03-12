@@ -3,7 +3,7 @@ import {AppAction} from '../App/AppState';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {dataModelToString, nullDataModel, unknownToDataModel} from '../DataModel/DataModel';
 import {collectDataModel2} from '../DataModel/DataModelCollector';
-import {DataModelContext} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {SelectDynamicOptionSchema} from '../DataModel/DataSchema';
 
@@ -13,15 +13,15 @@ export interface SelectUIOption {
   readonly data: DataModel;
 }
 
-export function getSelectUIOptions(model: SelectUIModel): SelectUIOption[] {
+export function getSelectUIOptions(model: SelectUIModel, root: DataModelRoot): SelectUIOption[] {
   const options: SelectUIOption[] = [];
 
   for (const optionSchema of model.schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
-      const collectResults = collectDataModel2(model.data, optionSchema.path, model.dataContext);
+      const collectResults = collectDataModel2(model.data, optionSchema.path, model.dataContext, root);
       for (const {data, context} of collectResults) {
-        options.push(formatDynamicSelectUIOption(optionSchema, data, context));
+        options.push(formatDynamicSelectUIOption(optionSchema, data, context, root));
       }
     } else {
       // Static option
@@ -55,10 +55,11 @@ export function formatDynamicSelectUIOption(
   option: SelectDynamicOptionSchema,
   data: DataModel,
   context: DataModelContext,
+  root: DataModelRoot,
 ): SelectUIOption {
   const stringValue = dataModelToString(data);
   return {
-    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, data, context) : stringValue,
+    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, data, context, root) : stringValue,
     value: stringValue,
     data: data,
   };

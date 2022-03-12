@@ -7,10 +7,13 @@ import {ContentListUIView} from './ContentListUIView';
 import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
 import {TableUIView} from './TableUIView';
 import {SelectUIView} from './SelectUIView';
+import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {CheckboxUIView} from './CheckboxUIView';
 
 export interface UIViewProps {
   readonly model: UIModel;
   onAction(action: AppAction): void;
+  getRoot(): DataModelRoot;
 }
 
 export type ReadonlyUIViewProps<T extends UIViewProps> = Omit<T, 'onAction'>;

@@ -1,4 +1,4 @@
-import React, {useReducer} from 'react';
+import React, {useCallback, useReducer, useRef} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
 import {DataModel, unknownToDataModel} from 'co-doc-editor-core';
 import {buildSimpleUISchema} from 'co-doc-editor-core/dist/UIModel/UISchema';
@@ -8,6 +8,7 @@ import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
 import {sampleConfig} from './sample';
 import {applyAppActionToState, AppState} from 'co-doc-editor-core/dist/App/AppState';
 import styled from 'styled-components';
+import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
 
 const dataSchema = buildSimpleDataSchema(sampleConfig);
 const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);
@@ -57,7 +58,8 @@ function buildInitialState(data: DataModel): AppState {
     data,
     undefined,
     undefined,
-    {root: {model: data, schema: dataSchema}, path: []},
+    {path: []},
+    {model: data, schema: dataSchema},
     undefined,
     undefined,
     undefined,
@@ -73,12 +75,18 @@ const LayoutRoot = styled.div`
 const initialState = buildInitialState(initialDataModel);
 export const RootView: React.FC = () => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
+  const stateRef = useRef<AppState>(state);
+  stateRef.current = state;
+  const getRoot = useCallback(
+    (): DataModelRoot => ({model: stateRef.current.data, schema: stateRef.current.dataSchema}),
+    [],
+  );
 
   console.log('root', state);
 
   return (
     <LayoutRoot>
-      <UIView model={state.uiModel} onAction={dispatch} />
+      <UIView model={state.uiModel} onAction={dispatch} getRoot={getRoot} />
     </LayoutRoot>
   );
 };

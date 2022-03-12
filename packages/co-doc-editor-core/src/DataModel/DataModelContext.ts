@@ -41,11 +41,13 @@ export type DataModelContextPathComponent =
   | DataModelContextMapEmptyPathComponent
   | DataModelContextUndefinedPathComponent;
 
+export interface DataModelRoot {
+  readonly model: DataModel;
+  readonly schema: DataSchema;
+}
+
 export interface DataModelContext {
-  readonly root: {
-    model: DataModel;
-    schema: DataSchema;
-  };
+  // readonly root: DataModelRoot;
   readonly contextKeys?: readonly DataSchemaContextKeyItem[];
   readonly path: readonly DataModelContextPathComponent[];
   readonly isKey?: boolean;
@@ -205,7 +207,7 @@ export function pushKeyToDataModelContextPath(context: DataModelContext): DataMo
 
 export function popDataModelContextPath(context: DataModelContext, count = 1): DataModelContext {
   if (context.isKey) {
-    return {root: context.root, contextKeys: context.contextKeys, path: context.path};
+    return {contextKeys: context.contextKeys, path: context.path};
   } else {
     return {
       ...context,

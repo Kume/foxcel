@@ -43,7 +43,7 @@ interface Selection {
   readonly range: TableCellRange;
 }
 
-export const TableUIView = React.memo<Props>(({model, onAction}) => {
+export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
   const [editing, setEditing] = useState<TableCellPoint>();
   const [selection, setSelection] = useState<Selection>();
   const rootRef = useRef<HTMLTableElement | null>(null);
@@ -53,6 +53,7 @@ export const TableUIView = React.memo<Props>(({model, onAction}) => {
   const callbacks = useMemo<TableCellCallbacks>(
     () => ({
       onAction,
+      getRoot,
       onMouseDown(e, row, col) {
         const point = {row, col};
         if (e.shiftKey) {
@@ -178,7 +179,8 @@ const TableRowView = React.memo<TableRowViewProps>(
               selected={isSelected}
               onMouseDown={(e) => callbacks.onMouseDown(e, rowNumber, index)}
               onMouseOver={(e) => callbacks.onMouseOver(e, rowNumber, index)}
-              onDoubleClick={(e) => callbacks.onDoubleClick(e, rowNumber, index)}>
+              onDoubleClick={(e) => callbacks.onDoubleClick(e, rowNumber, index)}
+            >
               {renderCell(cell, isMainSelected, rowNumber, index, callbacks)}
             </ReadonlyCell>
           );

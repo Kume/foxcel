@@ -61,6 +61,7 @@ import {
   DataModelContext,
   DataModelContextMapPathComponent,
   DataModelContextPathComponent,
+  DataModelRoot,
   getCurrentKeyOrUndefinedFromDataModelContext,
   getParentDataModelFromContext,
   popDataModelContextPath,
@@ -302,9 +303,10 @@ export function getDataModelBySinglePath(
   model: DataModel | undefined,
   path: DataPath,
   context: DataModelContext,
+  dataRoot: DataModelRoot,
 ): DataModel | undefined {
   if (path.isAbsolute) {
-    return getDataModelBySinglePathImpl(context.root.model, path, context, context);
+    return getDataModelBySinglePathImpl(dataRoot.model, path, context, context);
   } else {
     return getDataModelBySinglePathImpl(model, path, context, context);
   }
@@ -319,9 +321,10 @@ export function* withNestedDataPath(
   model: DataModel | undefined,
   path: MultiDataPath,
   context: DataModelContext,
+  root: DataModelRoot,
 ): Generator<[DataModel | undefined, DataModelContext], void> {
   if (dataModelIsMapOrList(model)) {
-    const nestedValues = collectDataModel2(model, path, context);
+    const nestedValues = collectDataModel2(model, path, context, root);
     if (mapOrListDataModelIsList(model)) {
       for (const {data} of nestedValues) {
         if (!dataModelIsInteger(data)) {
@@ -485,9 +488,10 @@ export function collectDataModel2(
   model: DataModel | undefined,
   path: MultiDataPath,
   context: DataModelContext,
+  root: DataModelRoot,
 ): DataModelCollectionItem[] {
   if (path.isAbsolute) {
-    return collectDataModelImpl2(context.root.model, path, context, context, model);
+    return collectDataModelImpl2(root.model, path, context, context, model);
   } else {
     return collectDataModelImpl2(model, path, context, context, model);
   }

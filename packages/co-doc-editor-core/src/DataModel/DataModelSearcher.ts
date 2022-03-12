@@ -13,6 +13,7 @@ import {
 import {
   DataModelContext,
   DataModelContextPathComponent,
+  DataModelRoot,
   getCurrentKeyOrUndefinedFromDataModelContext,
   getParentDataModelFromContext,
   popDataModelContextPath,
@@ -43,10 +44,11 @@ export function dataModelIsMatch(
   matcher: DataModelMatcher,
   data: DataModel | undefined,
   context: DataModelContext,
+  root: DataModelRoot,
 ): boolean {
   switch (matcher.type) {
     case 'equal': {
-      const operand1 = matcher.operand1 ? getDataModelBySinglePath(data, matcher.operand1, context) : data;
+      const operand1 = matcher.operand1 ? getDataModelBySinglePath(data, matcher.operand1, context, root) : data;
       if (operand1 === undefined) {
         return false;
       }
@@ -81,6 +83,7 @@ function findDataModelImpl(
   path: MultiDataPath,
   currentContext: DataModelContext,
   originalContext: DataModelContext,
+  root: DataModelRoot,
   originalModel: DataModel | undefined,
   writableReferenceLog: WritableDataModelReferenceLogNode,
 ): DataModelSearchSingleResult | undefined {
@@ -89,7 +92,7 @@ function findDataModelImpl(
     return undefined;
   }
   if (dataPathLength(path) === 0) {
-    if (dataModelIsMatch(matcher, data, currentContext)) {
+    if (dataModelIsMatch(matcher, data, currentContext, root)) {
       return {data, context: currentContext};
     } else {
       return undefined;
@@ -111,6 +114,7 @@ function findDataModelImpl(
         shiftDataPath(path),
         pushDataModelContextPath(currentContext, contextPathComponent),
         originalContext,
+        root,
         originalModel,
         writableReferenceLog,
       ),
@@ -127,6 +131,7 @@ function findDataModelImpl(
                   shiftDataPath(path),
                   pushDataModelContextPath(currentContext, {type: 'map', data, at: key, indexCache: index}),
                   originalContext,
+                  root,
                   originalModel,
                   writableReferenceLog,
                 );
@@ -144,6 +149,7 @@ function findDataModelImpl(
                 shiftDataPath(path),
                 pushDataModelContextPath(currentContext, {type: 'list', data, at: index}),
                 originalContext,
+                root,
                 originalModel,
                 writableReferenceLog,
               );
@@ -158,13 +164,19 @@ function findDataModelImpl(
         case DataPathComponentType.Nested: {
           // TODO withNestedDataPathでログ記録
           const childPath = shiftDataPath(path);
-          for (const [childData, childContext] of withNestedDataPath(data, otherPathComponent.v, currentContext)) {
+          for (const [childData, childContext] of withNestedDataPath(
+            data,
+            otherPathComponent.v,
+            currentContext,
+            root,
+          )) {
             const findResult = findDataModelImpl(
               childData,
               matcher,
               childPath,
               childContext,
               originalContext,
+              root,
               originalModel,
               writableReferenceLog,
             );
@@ -183,6 +195,7 @@ function findDataModelImpl(
             shiftDataPath(path, reverseCount),
             popDataModelContextPath(currentContext, reverseCount),
             originalContext,
+            root,
             originalModel,
             writableReferenceLog,
           );
@@ -198,6 +211,7 @@ function findDataModelImpl(
               unshiftDataPath(shiftDataPath(path), pathComponent),
               currentContext,
               originalContext,
+              root,
               originalModel,
               writableReferenceLog,
             );
@@ -215,19 +229,21 @@ export function findDataModel(
   data: DataModel,
   params: DataModelSearchParams,
   context: DataModelContext,
+  root: DataModelRoot,
   writableReferenceLog: WritableDataModelReferenceLogNode,
 ): DataModelSearchSingleResult | undefined {
   if (params.path.isAbsolute) {
     return findDataModelImpl(
-      context.root.model,
+      root.model,
       params.matcher,
       params.path,
       context,
       context,
+      root,
       data,
       writableReferenceLog,
     );
   } else {
-    return findDataModelImpl(data, params.matcher, params.path, context, context, data, writableReferenceLog);
+    return findDataModelImpl(data, params.matcher, params.path, context, context, root, data, writableReferenceLog);
   }
 }

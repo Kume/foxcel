@@ -12,6 +12,7 @@ import {
 import {UISchemaContext} from './UISchemaContext';
 import {
   dataModelEqualsToUnknown,
+  dataModelIsBoolean,
   dataModelIsList,
   dataModelIsMap,
   dataModelIsString,
@@ -46,6 +47,7 @@ import {stringUISchemaKeyToString, uiSchemaKeyIsParentKey} from './UISchema';
 import {fillTemplateLine} from '../DataModel/TemplateEngine';
 import {
   DataModelContext,
+  DataModelRoot,
   pushMapDataModelContextPath,
   pushPointerToDataModelContext,
   pushUiSchemaKeyToDataModelContext,
@@ -97,6 +99,7 @@ export function buildUIModel(
   oldModel: UIModel | undefined,
   dataPathContext: UIModelDataPathContext | undefined,
   dataContext: DataModelContext,
+  dataRoot: DataModelRoot,
   dataPathFocus: ForwardDataPath | undefined,
   dataFocusLog: UIDataFocusLogNode | undefined,
   schemaFocusLog: UISchemaFocusLogNode | undefined,
@@ -171,6 +174,7 @@ export function buildUIModel(
             : undefined,
           childPathContext,
           nextDataModelContext,
+          dataRoot,
           childContext.currentSchema.keyFlatten ? dataPathFocus : safeShiftDataPath(dataPathFocus),
           dataFocusLog?.c[currentContentIndex],
           schemaFocusLog?.c[currentContentIndex],
@@ -208,6 +212,7 @@ export function buildUIModel(
               oldModel?.type === 'form' ? oldModel.contents[index].model : undefined,
               childPathContext,
               nextDataModelContext,
+              dataRoot,
               contentContext.currentSchema.keyFlatten ? dataPathFocus : safeShiftDataPath(dataPathFocus),
               dataFocusLog?.c[index],
               schemaFocusLog?.c[index],
@@ -274,6 +279,7 @@ export function buildUIModel(
                     oldRow?.cells[index],
                     cellPathContext,
                     cellDataModelContext,
+                    dataRoot,
                     safeShiftDataPath(rowDataPathFocus),
                     rowDataFocusLog?.c[index],
                     schemaFocusLog?.c[index],
@@ -334,6 +340,7 @@ export function buildUIModel(
                     oldRow?.cells[index],
                     childPathContext,
                     cellDataContext,
+                    dataRoot,
                     safeShiftDataPath(rowDataPathFocus),
                     rowDataFocusLog?.c[index],
                     schemaFocusLog?.c[index],
@@ -385,7 +392,7 @@ export function buildUIModel(
             const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
             return {
               label: itemDataSchema?.dataLabel
-                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataContext)
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataContext, dataRoot)
                 : [key ?? undefined],
               pointer,
               dataPath: childDataPath,
@@ -413,6 +420,7 @@ export function buildUIModel(
                   : undefined,
                 {parentPath: dataPath, self: toPointerPathComponent(pointer), key},
                 pushPointerToDataModelContext(dataContext, mapDataModel, pointer),
+                dataRoot,
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c[getIdFromDataPointer(pointer)],
                 schemaFocusLog,
@@ -435,7 +443,7 @@ export function buildUIModel(
             const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
             return {
               label: itemDataSchema?.dataLabel
-                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataContext)
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, childDataContext, dataRoot)
                 : [index.toString()],
               pointer,
               dataPath: childDataPath,
@@ -462,6 +470,7 @@ export function buildUIModel(
                   : undefined,
                 {parentPath: dataPath, self: toPointerPathComponent(pointer)},
                 pushPointerToDataModelContext(dataContext, listDataModel, pointer),
+                dataRoot,
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
                 schemaFocusLog,
@@ -498,6 +507,7 @@ export function buildUIModel(
           dataPathFocus,
           dataFocusLog,
           schemaFocusLog,
+          // TODO dataModelをプロパティとして持つなら、value不要っぽい
           value: value || '',
         };
       }
@@ -514,10 +524,11 @@ export function buildUIModel(
               dataModel,
               {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
               dataContext,
+              dataRoot,
               {} as any, // TODO ちゃんとログの仕組みを整える
             );
             if (findResult) {
-              current = formatDynamicSelectUIOption(option, findResult.data, findResult.context);
+              current = formatDynamicSelectUIOption(option, findResult.data, findResult.context, dataRoot);
               break;
             }
           } else {

@@ -35,7 +35,7 @@ interface Props extends UIViewProps {
   readonly model: ContentListUIModel;
 }
 
-export const ContentListUIView: React.FC<Props> = ({model, onAction}) => {
+export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const [contextMenuProp, setContextMenuProp] = useState<Omit<ContextMenuProps, 'onClose'>>();
   const closeContextMenu = useCallback(() => setContextMenuProp(undefined), []);
   const openContextMenu = useCallback(
@@ -73,7 +73,7 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction}) => {
       </ListArea>
       <ContentArea>
         {model.content ? (
-          <UIView model={model.content} onAction={onAction} />
+          <UIView model={model.content} onAction={onAction} getRoot={getRoot} />
         ) : (
           <EmptyContentArea>リストが空です。</EmptyContentArea>
         )}

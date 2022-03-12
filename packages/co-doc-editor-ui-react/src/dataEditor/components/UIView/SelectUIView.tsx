@@ -57,20 +57,20 @@ const InputArea = styled.div`
   align-items: flex-start;
 `;
 
-export const SelectUIView: React.FC<Props> = ({model, onAction}) => {
+export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingText, setEditingText] = useState<string>('');
   const [dropDownIsOpen, setDropDownIsOpen] = useState<boolean>(false);
   const [options, setOptions] = useState<SelectUIOption[]>(selectUIModelDefaultOptions(model));
   const filteredOptions = useMemo(() => filterSelectUIOptionsByText(options, editingText), [options, editingText]);
-  const {x, y, reference, floating, strategy, refs} = useFloating({
+  const {x, y, reference, floating, strategy} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
   const openDropdown = () => {
     setDropDownIsOpen((prev) => {
       if (!prev) {
-        setOptions(getSelectUIOptions(model));
+        setOptions(getSelectUIOptions(model, getRoot()));
       }
       return true;
     });
@@ -128,10 +128,6 @@ export const SelectUIView: React.FC<Props> = ({model, onAction}) => {
   );
 };
 
-interface PropsForTableCell extends TableUIViewCellProps {
-  readonly model: SelectUIModel;
-}
-
 const LayoutRootForTableCell = styled.div`
   position: relative;
   display: flex;
@@ -184,6 +180,10 @@ const DropDownMenuItem = styled.div`
   }
 `;
 
+interface PropsForTableCell extends TableUIViewCellProps {
+  readonly model: SelectUIModel;
+}
+
 export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMainSelected, row, col, callbacks}) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editingText, setEditingText] = useState<string>('');
@@ -201,12 +201,12 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
       setIsEditing(true);
       setDropDownIsOpen((prev) => {
         if (!prev) {
-          setOptions(getSelectUIOptions(model));
+          setOptions(getSelectUIOptions(model, callbacks.getRoot()));
         }
         return true;
       });
     },
-    [model],
+    [callbacks, model],
   );
   useEffect(() => {
     if (!isMainSelected) {
@@ -217,7 +217,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
   }, [callbacks, isMainSelected, model]);
   const openDropdown = () => {
     setDropDownIsOpen(true);
-    setOptions(getSelectUIOptions(model));
+    setOptions(getSelectUIOptions(model, callbacks.getRoot()));
   };
   const select = (value: SelectUIOption | null) => {
     callbacks.onAction(selectUIModelSetValue(model, value));

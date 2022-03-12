@@ -1,8 +1,8 @@
-import {DataPath, ForwardDataPath, MultiDataPath, parsePath} from './DataPath';
+import {DataPath, MultiDataPath, parsePath} from './DataPath';
 import {DataModel} from './DataModelTypes';
 import {dataModelIsInteger, dataModelIsString, numberDataModelToNumber, stringDataModelToString} from './DataModel';
-import {CollectDataModelGlobal, getDataModelBySinglePath} from './DataModelCollector';
-import {DataModelContext} from './DataModelContext';
+import {getDataModelBySinglePath} from './DataModelCollector';
+import {DataModelContext, DataModelRoot} from './DataModelContext';
 
 export interface TemplateToken {
   key: string;
@@ -79,13 +79,14 @@ export function fillTemplateLine(
   template: TemplateLine,
   data: DataModel | undefined,
   context: DataModelContext,
+  root: DataModelRoot,
 ): FilledTemplateNode[] {
   return template.nodes.map((node) => {
     switch (node.type) {
       case 'text':
         return node.text;
       case 'var': {
-        const value = getDataModelBySinglePath(data, node.path, context);
+        const value = getDataModelBySinglePath(data, node.path, context, root);
         if (value === undefined) {
           return undefined;
         } else if (dataModelIsString(value)) {
@@ -104,8 +105,9 @@ export function fillTemplateLineAndToString(
   template: TemplateLine,
   data: DataModel | undefined,
   context: DataModelContext,
+  root: DataModelRoot,
 ): string {
-  return fillTemplateLine(template, data, context)
+  return fillTemplateLine(template, data, context, root)
     .map((node) => {
       if (typeof node === 'string') {
         return node;
