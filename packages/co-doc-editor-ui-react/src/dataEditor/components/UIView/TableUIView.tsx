@@ -19,6 +19,7 @@ import {parseTsv, stringifyTsv} from 'co-doc-editor-core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
 import {TextUIViewForTableCell} from './TextUIView';
 import {SelectUIViewForTableCell} from './SelectUIView';
+import {CheckboxUIViewForTableCell} from './CheckboxUIView';
 
 const Table = styled.table`
   background-color: gray;
@@ -205,6 +206,16 @@ function renderCell(model: UIModel, isMainSelected: boolean, row: number, col: n
     case 'select':
       return (
         <SelectUIViewForTableCell
+          model={model}
+          isMainSelected={isMainSelected}
+          row={row}
+          col={col}
+          callbacks={callbacks}
+        />
+      );
+    case 'checkbox':
+      return (
+        <CheckboxUIViewForTableCell
           model={model}
           isMainSelected={isMainSelected}
           row={row}

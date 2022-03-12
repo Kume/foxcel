@@ -952,6 +952,10 @@ export function numberDataModelToNumber(model: number): number {
   return model;
 }
 
+export function booleanDataModelToBoolean(model: BooleanDataModel): boolean {
+  return model;
+}
+
 export function conditionIsMatch(
   condition: ConditionConfig<MultiDataPath>,
   collectDataForPath: undefined | ((path: MultiDataPath) => DataCollectionItem[]),

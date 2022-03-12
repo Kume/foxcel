@@ -513,6 +513,20 @@ export function buildUIModel(
       }
     }
 
+    case 'checkbox': {
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+      return {
+        type: 'checkbox',
+        schema: currentSchema,
+        data: dataModelIsBoolean(dataModel) ? dataModel : undefined,
+        dataPath,
+        dataContext,
+        dataPathFocus,
+        dataFocusLog,
+        schemaFocusLog,
+      };
+    }
+
     case 'select': {
       const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
       let current: SelectUIModel['current'];

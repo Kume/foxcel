@@ -1,5 +1,6 @@
 import {ForwardDataPath} from '../DataModel/DataPath';
 import {
+  BooleanDataModel,
   DataModel,
   DataPointer,
   ListDataModel,
@@ -8,6 +9,7 @@ import {
   StringDataModel,
 } from '../DataModel/DataModelTypes';
 import {
+  CheckBoxUISchema,
   ContentListUISchema,
   FormUISchema,
   SelectUISchema,
@@ -137,4 +139,18 @@ export interface SelectUIModel extends UIModelCommon {
   };
 }
 
-export type UIModel = TabUIModel | FormUIModel | TextUIModel | ContentListUIModel | TableUIModel | SelectUIModel;
+export interface CheckboxUIModel extends UIModelCommon {
+  readonly type: 'checkbox';
+  readonly isKey?: void;
+  readonly schema: CheckBoxUISchema;
+  readonly data: BooleanDataModel | undefined;
+}
+
+export type UIModel =
+  | TabUIModel
+  | FormUIModel
+  | TextUIModel
+  | ContentListUIModel
+  | TableUIModel
+  | SelectUIModel
+  | CheckboxUIModel;

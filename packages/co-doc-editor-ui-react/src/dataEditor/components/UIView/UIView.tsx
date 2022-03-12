@@ -38,6 +38,9 @@ export const UIView: React.FC<UIViewProps> = ({model, ...others}) => {
     case 'select':
       return <SelectUIView model={model} {...others} />;
 
+    case 'checkbox':
+      return <CheckboxUIView model={model} {...others} />;
+
     default:
       return <div>Error</div>;
   }
