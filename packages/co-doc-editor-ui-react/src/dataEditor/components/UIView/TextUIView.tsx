@@ -29,6 +29,9 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMa
   const [editingText, setEditingText] = useState<string | null>(model.value);
   const editingTextRef = useRef(editingText);
   editingTextRef.current = editingText;
+  const modelRef = useRef(model);
+  modelRef.current = model;
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const change = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditingText(e.target.value);
     setIsEditing(true);
@@ -41,10 +44,10 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMa
     if (!isMainSelected) {
       setIsEditing(false);
       if (model.value !== editingTextRef.current) {
-        callbacks.onAction(textUIModelSetText(model, editingTextRef.current));
+        callbacks.onAction(textUIModelSetText(modelRef.current, editingTextRef.current));
       }
     }
-  }, [callbacks, isMainSelected, model]);
+  }, [isMainSelected]);
   useEffect(() => {
     setEditingText(model.value);
   }, [model.value]);
@@ -53,12 +56,14 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMa
     <LayoutRootForTableCell
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
-      onDoubleClick={() => setIsEditing(true)}>
-      <TextWithBreak key="a" text={editingText ?? ''} />
+      onMouseUp={(e) => textAreaRef.current?.focus()}
+      onDoubleClick={() => setIsEditing(true)}
+    >
+      <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && (
         <TextareaForTableCell
           isVisible={isEditing}
-          ref={(ref) => ref?.focus()}
+          ref={textAreaRef}
           onChange={change}
           onBlur={blur}
           value={(isEditing && editingText) || ''}

@@ -120,6 +120,7 @@ export interface TableUIModelColumn {
 
 export interface TableUIModelRow {
   readonly pointer: DataPointer;
+  readonly key: string | null | undefined;
   readonly data: MapDataModel | undefined;
   readonly dataPath: ForwardDataPath;
   readonly dataPathFocus: ForwardDataPath | undefined;

@@ -244,6 +244,7 @@ export function buildUIModel(
             const rowDataContext = pushMapDataModelContextPath(dataContext, dataModel, key);
             if (
               oldRow &&
+              oldRow.key === key &&
               schemaFocusLogEquals &&
               rowMapDataOrUndefined === oldRow.data &&
               rowDataFocusLog === oldRow.dataFocusLog &&
@@ -253,6 +254,7 @@ export function buildUIModel(
             } else {
               return {
                 pointer,
+                key,
                 data: rowMapDataOrUndefined,
                 dataPath: rowDataPath,
                 dataPathFocus: rowDataPathFocus,
@@ -314,6 +316,7 @@ export function buildUIModel(
             } else {
               return {
                 pointer,
+                key: undefined,
                 data: rowMapDataOrUndefined,
                 dataPath: rowDataPath,
                 dataPathFocus: rowDataPathFocus,
@@ -530,10 +533,10 @@ export function buildUIModel(
     case 'select': {
       const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
       let current: SelectUIModel['current'];
-      // TODO 動的パスに対応
       if (dataModel) {
         for (const option of currentSchema.options) {
           if (option.label === undefined) {
+            // Dynamic option
             const findResult = findDataModel(
               dataModel,
               {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
