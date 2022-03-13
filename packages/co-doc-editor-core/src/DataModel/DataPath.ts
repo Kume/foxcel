@@ -346,6 +346,18 @@ export function parsePath(source: string, pathType?: 'forward' | 'single'): Mult
   return parsedPathToDataPath(parsed, pathType);
 }
 
+export function stringToDataPathComponent(source: string): ForwardDataPathComponent {
+  if (/^[0-9]+$/.test(source)) {
+    return {t: DataPathComponentType.IndexOrKey, v: Number(source)};
+  } else {
+    return source;
+  }
+}
+
+export function stringArrayToDataPath(source: readonly string[]): ForwardDataPath {
+  return {components: source.map((component) => stringToDataPathComponent(component))};
+}
+
 export function toPointerPathComponent(pointer: DataPointer): PointerPathComponent {
   return {t: DataPathComponentType.Pointer, ...pointer};
 }

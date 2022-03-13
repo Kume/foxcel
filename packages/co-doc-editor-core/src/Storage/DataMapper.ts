@@ -1,7 +1,7 @@
 import DataStorage from './DataStorage';
 import {DataFormatter} from './DataFormatter';
 import YamlDataFormatter from './YamlDataFormatter';
-import {StorageDataModelManager} from './StorageDataModelManager';
+import {StorageDataTrait} from './StorageDataTrait';
 import {getForPath, unknownIsObject} from './StorageCommon';
 import {DataMapperConfig, DataMapperNodeConfig} from '..';
 
@@ -131,13 +131,13 @@ async function deleteUnmarkedFile<T>(
 abstract class MappingNodeBase<T> {
   protected storage: DataStorage;
   protected formatter: DataFormatter;
-  protected modelManager: StorageDataModelManager<T>;
+  protected modelManager: StorageDataTrait<T>;
   protected path: readonly string[];
   protected childConfigs: Array<MappingNode<T>> = [];
 
   protected constructor(
     storage: DataStorage,
-    modelConverter: StorageDataModelManager<T>,
+    modelConverter: StorageDataTrait<T>,
     formatter: DataFormatter,
     path: readonly string[],
   ) {
@@ -188,7 +188,7 @@ abstract class MappingNode<T> extends MappingNodeBase<T> {
 
   public constructor(
     storage: DataStorage,
-    modelConverter: StorageDataModelManager<T>,
+    modelConverter: StorageDataTrait<T>,
     formatter: DataFormatter,
     path: readonly string[],
     directoryPath: readonly string[],
@@ -291,7 +291,7 @@ export class SingleMappingNode<T> extends MappingNode<T> {
 
   public constructor(
     storage: DataStorage,
-    modelConverter: StorageDataModelManager<T>,
+    modelConverter: StorageDataTrait<T>,
     formatter: DataFormatter,
     path: readonly string[],
     directoryPath: Array<string>,
@@ -360,19 +360,19 @@ export default class DataMapper<T> extends MappingNodeBase<T> {
   public static build<T>(
     config: DataMapperConfig | undefined,
     storage: DataStorage,
-    modelConverter: StorageDataModelManager<T>,
+    storageDataTrait: StorageDataTrait<T>,
     formatter: DataFormatter = new YamlDataFormatter(),
   ): DataMapper<T> {
-    const mapper = new DataMapper(storage, modelConverter, formatter, []);
+    const mapper = new DataMapper(storage, storageDataTrait, formatter, []);
     if (config) {
-      this._build(storage, modelConverter, formatter, config.children || [], mapper);
+      this._build(storage, storageDataTrait, formatter, config.children || [], mapper);
     }
     return mapper;
   }
 
   private static _build<T>(
     storage: DataStorage,
-    modelConverter: StorageDataModelManager<T>,
+    modelConverter: StorageDataTrait<T>,
     formatter: DataFormatter,
     configs: Array<DataMapperNodeConfig>,
     parent: MappingNodeBase<T>,
@@ -423,7 +423,7 @@ export default class DataMapper<T> extends MappingNodeBase<T> {
     return nextRoot;
   }
 
-  public async loadAsync(): Promise<FileDataMapNode<T> | undefined> {
+  public async loadAsync(): Promise<{rootNode: FileDataMapNode<T>; model: T} | undefined> {
     if (!(await this.storage.exists([this.indexFileName]))) {
       return undefined;
     }
@@ -433,6 +433,6 @@ export default class DataMapper<T> extends MappingNodeBase<T> {
     const root: WritableFileDataMapNode<T> = {};
     model = await this.loadChildrenAsync(formatted, model, root, []);
     setModelForFilePath(root, model, [this.indexFileName]);
-    return root;
+    return {rootNode: root, model};
   }
 }

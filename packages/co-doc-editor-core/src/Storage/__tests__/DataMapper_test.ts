@@ -1,6 +1,6 @@
 import ObjectDataStorage from '../ObjectDataStorage';
 import DataMapper, {FileDataMapNode} from '../DataMapper';
-import {RawStorageDataModelManager} from '../StorageDataModelManager';
+import {RawStorageDataTrait} from '../StorageDataTrait';
 import {DataMapperConfig} from '../../common/ConfigTypes';
 
 describe('Unit Test for DataMapper', () => {
@@ -145,7 +145,7 @@ describe('Unit Test for DataMapper', () => {
     testData.forEach((testDatum: TestData, key: string) => {
       it(`Save with [${key}]`, async () => {
         const storage = new ObjectDataStorage();
-        const mapper = DataMapper.build(testDatum.mapperConfig, storage, RawStorageDataModelManager);
+        const mapper = DataMapper.build(testDatum.mapperConfig, storage, RawStorageDataTrait);
         const fileMap = await mapper.saveAsync({}, testDatum.data);
         expect(storage.data).toEqual(testDatum.file);
         expect(fileMap).toEqual(testDatum.fileMap);
@@ -156,9 +156,9 @@ describe('Unit Test for DataMapper', () => {
         for (const filePath of Object.keys(testDatum.file)) {
           await storage.saveAsync(filePath.split('/'), testDatum.file[filePath]);
         }
-        const mapper = DataMapper.build(testDatum.mapperConfig, storage, RawStorageDataModelManager);
+        const mapper = DataMapper.build(testDatum.mapperConfig, storage, RawStorageDataTrait);
         const loaded = await mapper.loadAsync();
-        expect(loaded).toEqual(testDatum.fileMap);
+        expect(loaded?.rootNode).toEqual(testDatum.fileMap);
       });
     });
 
@@ -171,7 +171,7 @@ describe('Unit Test for DataMapper', () => {
         ],
       };
       const storage = new ObjectDataStorage();
-      const mapper = DataMapper.build(config, storage, RawStorageDataModelManager);
+      const mapper = DataMapper.build(config, storage, RawStorageDataTrait);
       const firstNode = await mapper.saveAsync({}, data);
       expect(storage.data['a/b/d.yml']).not.toBeUndefined();
       expect(storage.data['a/b.yml']).not.toBeUndefined();

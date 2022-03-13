@@ -312,6 +312,21 @@ export function getDataModelBySinglePath(
   }
 }
 
+export function getDataModelByForwardPath(model: DataModel | undefined, path: ForwardDataPath): DataModel | undefined {
+  if (!model) {
+    return undefined;
+  }
+  if (dataPathLength(path) === 0) {
+    return model;
+  }
+  const head = headDataPathComponent(path);
+  return digForPathComponent<DataModel | undefined, ForwardDataPathComponent>(model, head, {
+    key: () => undefined,
+    collection: (childData: DataModel) => getDataModelByForwardPath(childData, shiftDataPath(path)),
+    other: () => undefined,
+  });
+}
+
 export interface DataModelCollectionItem {
   readonly data: DataModel;
   readonly context: DataModelContext;

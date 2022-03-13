@@ -7,6 +7,9 @@ import {buildUIModel} from '../UIModel/UIModel';
 import {UISchemaContext} from '../UIModel/UISchemaContext';
 import {UISchema} from '../UIModel/UISchemaTypes';
 import {DataSchemaExcludeRecursive} from '../DataModel/DataSchema';
+import {nullDataModel} from '../DataModel/DataModel';
+import {UISchemaExcludeRecursive} from '../UIModel/UISchema';
+import {emptyDataModelContext} from '../DataModel/DataModelContext';
 
 export interface AppState {
   data: DataModel;
@@ -24,6 +27,13 @@ export interface AppFocusAction {
   readonly path: ForwardDataPath;
 }
 
+export interface AppInitializeAction {
+  readonly type: 'init';
+  readonly uiSchema: UISchemaExcludeRecursive;
+  readonly dataSchema: DataSchemaExcludeRecursive;
+  readonly data: DataModel | undefined;
+}
+
 export interface AppDataModelAction {
   readonly type: 'data';
   readonly action: DataModelAction;
@@ -34,17 +44,39 @@ export interface AppBatchAction {
   readonly actions: AppAction[];
 }
 
-export type AppAction = AppFocusAction | AppDataModelAction | AppBatchAction;
+export type AppAction = AppInitializeAction | AppFocusAction | AppDataModelAction | AppBatchAction;
 
 export function applyAppActionToState(state: AppState, action: AppAction): AppState {
   switch (action.type) {
+    case 'init': {
+      const data = action.data ?? nullDataModel;
+      const rootSchemaContext = UISchemaContext.createRootContext(action.uiSchema);
+      const uiModel = buildUIModel(
+        rootSchemaContext,
+        data,
+        undefined,
+        undefined,
+        emptyDataModelContext,
+        {model: data, schema: action.dataSchema},
+        undefined,
+        undefined,
+        undefined,
+      );
+      return {
+        data,
+        uiSchema: action.uiSchema,
+        dataSchema: action.dataSchema,
+        rootUISchemaContext: rootSchemaContext,
+        uiModel,
+      };
+    }
     case 'focus': {
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         state.data,
         state.uiModel,
         undefined,
-        {path: []},
+        emptyDataModelContext,
         {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
         action.path,
         state.dataFocusLog,
@@ -69,7 +101,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         data,
         state.uiModel,
         undefined,
-        {path: []},
+        emptyDataModelContext,
         {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
         focus,
         state.dataFocusLog,

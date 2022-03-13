@@ -53,6 +53,8 @@ export interface DataModelContext {
   readonly isKey?: boolean;
 }
 
+export const emptyDataModelContext: DataModelContext = {path: []};
+
 export const undefinedDataModelContextPathComponent: DataModelContextUndefinedPathComponent = {type: 'undefined'};
 
 export function dataModelContextDepth(context: DataModelContext): number {

@@ -96,7 +96,7 @@ export class NativeFileSystemDataStorage implements DataStorage {
       return false;
     }
     const directory = await getDirectoryNode(this.rootDirectory, paths.slice(0, -1));
-    return !!(await directory?.handle.getFile(paths[paths.length - 1]));
+    return !!(await directory?.handle.getFileHandle(paths[paths.length - 1]));
   }
 
   async loadAsync(paths: readonly string[]): Promise<string> {

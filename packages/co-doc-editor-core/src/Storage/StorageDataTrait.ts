@@ -1,6 +1,6 @@
 import {getForPath, setForPath} from './StorageCommon';
 
-export interface StorageDataModelManager<T> {
+export interface StorageDataTrait<T> {
   convert(source: unknown): T;
   convertBack(model: T): unknown;
   setForPath(destination: T, model: T, path: readonly string[]): T;
@@ -10,7 +10,7 @@ export interface StorageDataModelManager<T> {
   stringModel(str: string): T;
 }
 
-export const RawStorageDataModelManager: StorageDataModelManager<unknown> = {
+export const RawStorageDataTrait: StorageDataTrait<unknown> = {
   convert(source: unknown): unknown {
     return source;
   },

@@ -1,4 +1,7 @@
 {
   "extends": ["../../configs/.eslintrc.json"],
-  "plugins": []
+  "plugins": [],
+  "rules": {
+    "no-console": "off"
+  }
 }

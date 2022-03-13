@@ -6,9 +6,9 @@ import {buildSimpleDataSchema} from 'co-doc-editor-core/dist/DataModel/DataSchem
 import {buildUIModel} from 'co-doc-editor-core/dist/UIModel/UIModel';
 import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
 import {sampleConfig} from './sample';
-import {applyAppActionToState, AppState} from 'co-doc-editor-core/dist/App/AppState';
+import {applyAppActionToState, AppState, AppInitializeAction} from 'co-doc-editor-core/dist/App/AppState';
 import styled from 'styled-components';
-import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {DataModelRoot, emptyDataModelContext} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
 
 const dataSchema = buildSimpleDataSchema(sampleConfig);
 const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);
@@ -58,7 +58,7 @@ function buildInitialState(data: DataModel): AppState {
     data,
     undefined,
     undefined,
-    {path: []},
+    emptyDataModelContext,
     {model: data, schema: dataSchema},
     undefined,
     undefined,
@@ -73,7 +73,12 @@ const LayoutRoot = styled.div`
 `;
 
 const initialState = buildInitialState(initialDataModel);
-export const RootView: React.FC = () => {
+
+interface Props {
+  loadFile?(): AppInitializeAction;
+}
+
+export const RootView: React.FC<Props> = ({loadFile}) => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
@@ -82,10 +87,17 @@ export const RootView: React.FC = () => {
     [],
   );
 
+  const load = async () => {
+    if (loadFile) {
+      dispatch(await loadFile());
+    }
+  };
+
   console.log('root', state);
 
   return (
     <LayoutRoot>
+      <div onClick={load}>LOAD</div>
       <UIView model={state.uiModel} onAction={dispatch} getRoot={getRoot} />
     </LayoutRoot>
   );
