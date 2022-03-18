@@ -12,8 +12,8 @@ import {
 } from './DataPath';
 import {
   DataModelContext,
-  DataModelContextPathComponent,
   DataModelRoot,
+  emptyDataModelContext,
   getCurrentKeyOrUndefinedFromDataModelContext,
   getParentDataModelFromContext,
   popDataModelContextPath,
@@ -167,7 +167,7 @@ function findDataModelImpl(
           for (const [childData, childContext] of withNestedDataPath(
             data,
             otherPathComponent.v,
-            currentContext,
+            originalContext,
             root,
           )) {
             const findResult = findDataModelImpl(
@@ -237,7 +237,7 @@ export function findDataModel(
       root.model,
       params.matcher,
       params.path,
-      context,
+      emptyDataModelContext,
       context,
       root,
       data,

@@ -19,12 +19,16 @@ const List = styled.ul`
   list-style-type: none;
   padding: 0;
   margin: 0;
-  width: 100px;
+  min-width: 80px;
+  max-width: 160px;
 `;
 const ListItem = styled.li<{selected: boolean}>`
   border-bottom: gray 1px solid;
   background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
   height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 `;
 const ContentArea = styled.div`
   margin-left: 10px;
@@ -63,7 +67,8 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
               title={label.join('')}
               selected={model.currentIndex === index}
               onClick={() => onAction({type: 'focus', path: dataPath})}
-              onContextMenu={(e) => openContextMenu(index, e)}>
+              onContextMenu={(e) => openContextMenu(index, e)}
+            >
               {/* TODO labelはテンプレートなので、適切なコンポーネントを定義する必要がある */}
               {label}
             </ListItem>
@@ -75,7 +80,10 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
         {model.content ? (
           <UIView model={model.content} onAction={onAction} getRoot={getRoot} />
         ) : (
-          <EmptyContentArea>リストが空です。</EmptyContentArea>
+          <EmptyContentArea>
+            リストが空です。
+            <input type="button" value="追加" onClick={() => onAction(contentListAddAfterAction(model, 0))} />
+          </EmptyContentArea>
         )}
       </ContentArea>
     </LayoutRoot>

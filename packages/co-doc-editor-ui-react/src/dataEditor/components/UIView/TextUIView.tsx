@@ -43,10 +43,12 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMa
   useEffect(() => {
     if (!isMainSelected) {
       setIsEditing(false);
-      if (model.value !== editingTextRef.current) {
+      if (modelRef.current.value !== editingTextRef.current) {
         callbacks.onAction(textUIModelSetText(modelRef.current, editingTextRef.current));
       }
     }
+    // callbacks.onActionは不変なのでdepsはisMainSelectedだけで良い
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMainSelected]);
   useEffect(() => {
     setEditingText(model.value);
@@ -56,7 +58,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMa
     <LayoutRootForTableCell
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
-      onMouseUp={(e) => textAreaRef.current?.focus()}
+      onMouseUp={() => textAreaRef.current?.focus()}
       onDoubleClick={() => setIsEditing(true)}
     >
       <TextWithBreak text={editingText ?? ''} />

@@ -75,7 +75,7 @@ const LayoutRoot = styled.div`
 const initialState = buildInitialState(initialDataModel);
 
 interface Props {
-  loadFile?(): AppInitializeAction;
+  loadFile?(): Promise<AppInitializeAction>;
 }
 
 export const RootView: React.FC<Props> = ({loadFile}) => {

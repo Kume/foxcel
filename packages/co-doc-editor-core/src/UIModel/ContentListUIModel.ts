@@ -28,7 +28,7 @@ export function contentListAddAfterAction(model: ContentListUIModel, index: numb
     action: {
       type: 'insert',
       path: model.dataPath,
-      after: model.indexes[index].pointer,
+      after: model.indexes[index]?.pointer,
       data: initialData(model),
     },
   };

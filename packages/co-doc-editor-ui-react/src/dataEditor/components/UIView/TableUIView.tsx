@@ -28,6 +28,9 @@ const Table = styled.table`
 const HeaderCell = styled.th`
   font-weight: normal;
   background-color: lightgray;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+  padding: 0 4px;
 `;
 
 const TableRow = styled.tr`

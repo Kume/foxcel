@@ -8,6 +8,10 @@ const Table = styled.table``;
 const LabelCell = styled.td`
   font-size: var(--basic-font-size);
   background-color: lightgray;
+  min-width: 80px;
+  max-width: 160px;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 `;
 
 export interface FormUIViewProps extends UIViewProps {

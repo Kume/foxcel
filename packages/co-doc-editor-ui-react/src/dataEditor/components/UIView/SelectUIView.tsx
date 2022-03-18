@@ -114,7 +114,8 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
         <DropDownMenuLayout
           ref={floating}
           style={{position: strategy, top: y ?? '', left: x ?? ''}}
-          onMouseDown={(e) => e.preventDefault()}>
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {filteredOptions.map((option, index) => {
             return (
               <DropDownMenuItem key={index} onClick={() => select(option)} tabIndex={-1}>
@@ -166,6 +167,8 @@ const DropDownMenuLayout = styled.div`
 const TableCellLabel = styled.div`
   padding-left: 4px;
   position: relative;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 `;
 
 const BackgroundTextPlace = styled.span`
@@ -175,6 +178,8 @@ const BackgroundTextPlace = styled.span`
 
 const DropDownMenuItem = styled.div`
   padding: 2px 4px;
+  overflow-wrap: break-word;
+  word-break: keep-all;
   &:hover {
     background-color: lightblue;
   }
@@ -231,7 +236,8 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
       ref={reference}
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
-      onDoubleClick={() => setIsEditing(true)}>
+      onDoubleClick={() => setIsEditing(true)}
+    >
       <TableCellLabel>
         {editingText ? '' : model.current?.label}
         <BackgroundTextPlace>{editingText}</BackgroundTextPlace>

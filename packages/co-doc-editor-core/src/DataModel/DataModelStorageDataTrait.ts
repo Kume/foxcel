@@ -26,7 +26,6 @@ export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
   },
 
   setForPath(destination: DataModel, model: DataModel, path: readonly string[]): DataModel {
-    console.log('xxxx', {destination, model, path});
     const result = setToDataModel(stringArrayToDataPath(path), model, destination, undefined);
     return result ?? destination;
   },
