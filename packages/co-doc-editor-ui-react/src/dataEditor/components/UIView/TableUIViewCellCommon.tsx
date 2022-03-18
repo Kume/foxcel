@@ -8,6 +8,8 @@ export const TextareaForTableCell = styled.textarea<{readonly isVisible: boolean
   padding: 0 4px;
   overflow: hidden;
   position: absolute;
+  overflow-wrap: break-word;
+  word-break: keep-all;
   opacity: ${({isVisible}) => (isVisible ? 1 : 0)};
 
   background-color: transparent;
@@ -20,3 +22,26 @@ export const TextareaForTableCell = styled.textarea<{readonly isVisible: boolean
     outline: none;
   }
 `;
+
+interface TableCellEditState {
+  readonly isEditing: boolean;
+  readonly editingText: string | null;
+}
+
+type TableCellEditStateAction = ['changeText', string] | ['endEdit'];
+
+function tableCellEditStateReducer(state: TableCellEditState, action: TableCellEditStateAction): TableCellEditState {
+  switch (action[0]) {
+    case 'changeText':
+      return {isEditing: true, editingText: action[1]};
+    case 'endEdit':
+      return {isEditing: false, editingText: state.editingText};
+  }
+}
+
+export interface UseTableCellEditStateReturn {
+  readonly isEditing: boolean;
+  readonly editingText: string | null;
+}
+
+export function useTableCellEditState(): UseTableCellEditStateReturn {}

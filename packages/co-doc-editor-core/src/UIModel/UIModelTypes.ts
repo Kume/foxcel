@@ -3,6 +3,7 @@ import {
   BooleanDataModel,
   DataModel,
   DataPointer,
+  IntegerDataModel,
   ListDataModel,
   MapDataModel,
   NullDataModel,
@@ -12,6 +13,7 @@ import {
   CheckBoxUISchema,
   ContentListUISchema,
   FormUISchema,
+  NumberUISchema,
   SelectUISchema,
   TableUISchema,
   TabUISchema,
@@ -147,6 +149,13 @@ export interface CheckboxUIModel extends UIModelCommon {
   readonly data: BooleanDataModel | undefined;
 }
 
+export interface NumberUIModel extends UIModelCommon {
+  readonly type: 'number';
+  readonly isKey?: void;
+  readonly schema: NumberUISchema;
+  readonly data: IntegerDataModel | undefined;
+}
+
 export type UIModel =
   | TabUIModel
   | FormUIModel
@@ -154,4 +163,5 @@ export type UIModel =
   | ContentListUIModel
   | TableUIModel
   | SelectUIModel
-  | CheckboxUIModel;
+  | CheckboxUIModel
+  | NumberUIModel;

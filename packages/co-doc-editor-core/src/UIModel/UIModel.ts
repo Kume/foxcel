@@ -15,6 +15,7 @@ import {
   dataModelIsBoolean,
   dataModelIsList,
   dataModelIsMap,
+  dataModelIsNumber,
   dataModelIsString,
   dataPointerIdEquals,
   getIdFromDataPointer,
@@ -71,14 +72,7 @@ function getMapChildContextForFlattenable(
     ];
   } else {
     if (childContext.currentSchema.keyFlatten) {
-      return [
-        dataModel,
-        dataPathContext && {
-          parentPath: dataPathContext.parentPath,
-          self: stringUISchemaKeyToDataPathComponent(childContext.currentSchema.key),
-        },
-        dataModelContext,
-      ];
+      return [dataModel, dataPathContext, dataModelContext];
     } else {
       return [
         getChildDataModelByUISchemaKey(mapDataModelOrUndefined, childContext.currentSchema.key),
@@ -514,6 +508,21 @@ export function buildUIModel(
           value: value || '',
         };
       }
+    }
+
+    case 'number': {
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+      const numberData = dataModelIsNumber(dataModel) ? dataModel : undefined;
+      return {
+        type: 'number',
+        schema: currentSchema,
+        data: numberData,
+        dataPath,
+        dataContext,
+        dataPathFocus,
+        dataFocusLog,
+        schemaFocusLog,
+      };
     }
 
     case 'checkbox': {
