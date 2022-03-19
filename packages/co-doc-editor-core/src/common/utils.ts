@@ -76,3 +76,7 @@ export function validIndexOrUndefined(index: number): number | undefined {
 
 export const emptyArray: readonly any[] = [];
 Object.freeze(emptyArray);
+
+export function emptyFunction(): void {
+  // 何もしない
+}

@@ -20,6 +20,7 @@ import {TableCellCallbacks} from './TableUIViewCell';
 import {TextUIViewForTableCell} from './TextUIView';
 import {SelectUIViewForTableCell} from './SelectUIView';
 import {CheckboxUIViewForTableCell} from './CheckboxUIView';
+import {NumberUIViewForTableCell} from './NumberUIView';
 
 const Table = styled.table`
   background-color: gray;
@@ -219,6 +220,16 @@ function renderCell(model: UIModel, isMainSelected: boolean, row: number, col: n
     case 'checkbox':
       return (
         <CheckboxUIViewForTableCell
+          model={model}
+          isMainSelected={isMainSelected}
+          row={row}
+          col={col}
+          callbacks={callbacks}
+        />
+      );
+    case 'number':
+      return (
+        <NumberUIViewForTableCell
           model={model}
           isMainSelected={isMainSelected}
           row={row}

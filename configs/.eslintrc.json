@@ -45,10 +45,12 @@
     "@typescript-eslint/no-explicit-any": "off",
 
     // 必要なこともたまにあり、その場合二重にコメントが必要なので無駄
-    "@typescript-eslint/ban-ts-comment": "off"
+    "@typescript-eslint/ban-ts-comment": "off",
+
+    // クラスでないオブジェクトが持つ関数に対しても動いてしまうので、邪魔
+    "@typescript-eslint/unbound-method": "off"
 
     // "@typescript-eslint/no-inferrable-types": "off",
     // "@typescript-eslint/no-namespace": ["error", {"allowDeclarations": true}],
-    // "@typescript-eslint/unbound-method": "off"
   }
 }

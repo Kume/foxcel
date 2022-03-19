@@ -1,11 +1,10 @@
 import {UIViewProps} from './UIView';
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {NumberUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {numberDataModelToNumber} from 'co-doc-editor-core';
 import {numberUIModelDisplayText, numberUIModelSetText} from 'co-doc-editor-core/dist/UIModel/NumberUIModel';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
-import {TextareaForTableCell} from './TableUIViewCellCommon';
+import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
 import styled from 'styled-components';
 
 interface Props extends UIViewProps {
@@ -38,30 +37,48 @@ const LayoutRootForTableCell = styled.div`
   padding: 0 4px;
 `;
 
+const useTableCellEditState = makeUseTableCellEditState<NumberUIModel>(numberUIModelDisplayText);
+
 export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMainSelected, row, col, callbacks}) => {
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const modelValue = model.data === undefined ? undefined : numberDataModelToNumber(model.data);
-  const [editingText, setEditingText] = useState<string>(modelValue === undefined ? '' : modelValue.toString());
+  const change = useCallback(
+    (model: NumberUIModel, textInput: string) => {
+      const action = numberUIModelSetText(model, textInput);
+      if (action) {
+        callbacks.onAction(action);
+      } else {
+        dispatch(['resetText', numberUIModelDisplayText(model)]);
+      }
+    },
+    // dispatchは不変のため、depsには不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [callbacks],
+  );
+  const changeTextInput = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => dispatch(['changeText', e.target.value]),
+    // dispatchは不変のため、depsには不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const {editingText, isEditing, dispatch, startEdit} = useTableCellEditState(model, isMainSelected, change);
 
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setEditingText(numberUIModelDisplayText(model));
-  }, [model]);
+  const blur = useCallback(() => {
+    change(model, editingText);
+  }, [change, editingText, model]);
 
   return (
     <LayoutRootForTableCell
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
       onMouseUp={() => textAreaRef.current?.focus()}
-      onDoubleClick={() => setIsEditing(true)}
+      onDoubleClick={startEdit}
     >
       <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && (
         <TextareaForTableCell
           isVisible={isEditing}
           ref={textAreaRef}
-          onChange={change}
+          onChange={changeTextInput}
           onBlur={blur}
           value={(isEditing && editingText) || ''}
         />

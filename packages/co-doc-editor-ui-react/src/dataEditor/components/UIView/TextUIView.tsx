@@ -1,11 +1,11 @@
 import {TextUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useRef} from 'react';
 import {UIViewProps} from './UIView';
 import {textUIModelSetText} from 'co-doc-editor-core/dist/UIModel/TextUIModel';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
-import {TextareaForTableCell} from './TableUIViewCellCommon';
+import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
 
 export interface TextUIViewProps extends UIViewProps {
   readonly model: TextUIModel;
@@ -24,42 +24,31 @@ const LayoutRootForTableCell = styled.div`
   padding: 0 4px;
 `;
 
+const useTableCellEditState = makeUseTableCellEditState<TextUIModel>((model) => model.value ?? '');
+
 export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMainSelected, row, col, callbacks}) => {
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editingText, setEditingText] = useState<string | null>(model.value);
-  const editingTextRef = useRef(editingText);
-  editingTextRef.current = editingText;
-  const modelRef = useRef(model);
-  modelRef.current = model;
+  const {editingText, isEditing, dispatch, startEdit} = useTableCellEditState(
+    model,
+    isMainSelected,
+    (model, textInput) => callbacks.onAction(textUIModelSetText(model, textInput)),
+  );
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const change = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditingText(e.target.value);
-    setIsEditing(true);
-  }, []);
+  const change = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => dispatch(['changeText', e.target.value]),
+    // dispatchは不変のため、depsには不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   const blur = useCallback(() => {
     callbacks.onAction(textUIModelSetText(model, editingText));
   }, [callbacks, editingText, model]);
-
-  useEffect(() => {
-    if (!isMainSelected) {
-      setIsEditing(false);
-      if (modelRef.current.value !== editingTextRef.current) {
-        callbacks.onAction(textUIModelSetText(modelRef.current, editingTextRef.current));
-      }
-    }
-    // callbacks.onActionは不変なのでdepsはisMainSelectedだけで良い
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMainSelected]);
-  useEffect(() => {
-    setEditingText(model.value);
-  }, [model.value]);
 
   return (
     <LayoutRootForTableCell
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
       onMouseUp={() => textAreaRef.current?.focus()}
-      onDoubleClick={() => setIsEditing(true)}
+      onDoubleClick={startEdit}
     >
       <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && (
