@@ -46,6 +46,7 @@ export class UISchemaContext {
     switch (this.currentSchema.type) {
       case 'tab':
       case 'table':
+      case 'mappingTable':
       case 'form': {
         if (index >= this.currentSchema.contents.length) {
           throw new Error('Invalid content index');
@@ -119,6 +120,7 @@ export class UISchemaContext {
       case 'tab':
       case 'form':
       case 'table':
+      case 'mappingTable':
         this._contents = this.currentSchema.contents.map((content, index) => {
           return this.digForIndex(index);
         });

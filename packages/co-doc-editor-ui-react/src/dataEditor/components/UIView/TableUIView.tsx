@@ -1,59 +1,93 @@
 import React, {useCallback, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
-import {TableUIModel, TableUIModelRow, UIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {TableUIModel, TableUIModelRow} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {getIdFromDataPointer} from 'co-doc-editor-core';
-import styled from 'styled-components';
 import {
-  copyFromTableUIModel,
-  cutFromTableUIModel,
-  pasteForTableUIModel,
   selectingTableCellRange,
-  TableCellPoint,
-  TableCellRange,
   TableRange,
   tableRangeContains,
+  tableUIModelCopy,
+  tableUIModelCut,
+  tableUIModelPaste,
 } from 'co-doc-editor-core/dist/UIModel/TableUIModel';
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
 import {parseTsv, stringifyTsv} from 'co-doc-editor-core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
-import {TextUIViewForTableCell} from './TextUIView';
-import {SelectUIViewForTableCell} from './SelectUIView';
-import {CheckboxUIViewForTableCell} from './CheckboxUIView';
-import {NumberUIViewForTableCell} from './NumberUIView';
-
-const Table = styled.table`
-  background-color: gray;
-`;
-
-const HeaderCell = styled.th`
-  font-weight: normal;
-  background-color: lightgray;
-  overflow-wrap: break-word;
-  word-break: keep-all;
-  padding: 0 4px;
-`;
-
-const TableRow = styled.tr`
-  border-bottom: 1px solid gray;
-`;
+import {
+  renderTableUIViewCell,
+  TableUIViewCellLayout,
+  TableUIViewHeaderCell,
+  TableUIViewLayoutRoot,
+  TableUIViewRow,
+  TableUIViewSelection,
+} from './TablueUIViewCommon';
 
 interface Props extends UIViewProps {
   readonly model: TableUIModel;
 }
 
-interface Selection {
-  readonly origin: TableCellPoint;
-  readonly isMouseActive: boolean;
-  readonly range: TableCellRange;
+interface ActionRef {
+  readonly selection: TableUIViewSelection | undefined;
+  readonly model: TableUIModel;
 }
 
 export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
-  const [editing, setEditing] = useState<TableCellPoint>();
-  const [selection, setSelection] = useState<Selection>();
-  const rootRef = useRef<HTMLTableElement | null>(null);
+  const [selection, setSelection] = useState<TableUIViewSelection>();
+  const layoutRootRef = useRef<HTMLTableElement | null>(null);
   const endMouseMove = useCallback(() => setSelection((origin) => origin && {...origin, isMouseActive: false}), []);
   const startMouseUpTracking = useMouseUpTracking(endMouseMove);
+  const actionRef_: ActionRef = {selection, model};
+  const actionRef = useRef(actionRef_);
+  actionRef.current = actionRef_;
+
+  const editFocusCallbacks = useMemo<EditFocusCallbacks>(
+    () => ({
+      onLostFocus: () => {
+        setSelection(undefined);
+      },
+      onPaste(data) {
+        if (actionRef.current.selection) {
+          const result = tableUIModelPaste(
+            actionRef.current.model,
+            actionRef.current.selection.range,
+            parseTsv(data),
+            getRoot(),
+          );
+          if (result) {
+            onAction(result.action);
+            if (result.changedSelection) {
+              setSelection({...actionRef.current.selection, range: result.changedSelection});
+            }
+          }
+          return true;
+        }
+        return false;
+      },
+      onCopy() {
+        if (actionRef.current.selection) {
+          const data = tableUIModelCopy(actionRef.current.model, actionRef.current.selection.range);
+          return stringifyTsv(data);
+        } else {
+          return undefined;
+        }
+      },
+      onCut() {
+        if (actionRef.current.selection) {
+          const {action, data} = tableUIModelCut(actionRef.current.model, actionRef.current.selection.range);
+          onAction(action);
+          return stringifyTsv(data);
+        } else {
+          return undefined;
+        }
+      },
+    }),
+    // onAction は更新されることが無い仕様なので、deps指定は不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const {startFocus} = useEditFocusControl(layoutRootRef, editFocusCallbacks);
 
   const callbacks = useMemo<TableCellCallbacks>(
     () => ({
@@ -62,9 +96,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
       onMouseDown(e, row, col) {
         const point = {row, col};
         if (e.shiftKey) {
-          if (selection) {
-            setSelection({...selection, range: selectingTableCellRange(selection.origin, point)});
-          }
+          setSelection((prev) => (prev ? {...prev, range: selectingTableCellRange(prev.origin, point)} : undefined));
         } else {
           setSelection({origin: point, isMouseActive: true, range: selectingTableCellRange(point, point)});
           startMouseUpTracking();
@@ -72,67 +104,24 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
         }
       },
       onMouseOver(e, row, col) {
-        if (selection?.isMouseActive) {
-          setSelection({...selection, range: selectingTableCellRange(selection.origin, {row, col})});
-        }
-      },
-      onDoubleClick(e, row, col) {
-        setEditing({row, col});
+        setSelection((prev) =>
+          prev?.isMouseActive ? {...prev, range: selectingTableCellRange(prev.origin, {row, col})} : prev,
+        );
       },
     }),
-    [onAction, selection],
+    // getRoot, onAction, startFocus, startMouseUpTracking は更新されることが無い仕様なので、deps指定は不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
-
-  const editFocusCallbacks = useMemo<EditFocusCallbacks>(
-    () => ({
-      onLostFocus: () => {
-        setSelection(undefined);
-        setEditing(undefined);
-      },
-      onPaste(data) {
-        if (selection) {
-          const result = pasteForTableUIModel(model, selection.range, parseTsv(data));
-          if (result) {
-            onAction(result.action);
-            if (result.changedSelection) {
-              setSelection({...selection, range: result.changedSelection});
-            }
-          }
-          return true;
-        }
-        return false;
-      },
-      onCopy() {
-        if (selection) {
-          const data = copyFromTableUIModel(model, selection.range);
-          return stringifyTsv(data);
-        } else {
-          return undefined;
-        }
-      },
-      onCut() {
-        if (selection) {
-          const {action, data} = cutFromTableUIModel(model, selection.range);
-          onAction(action);
-          return stringifyTsv(data);
-        } else {
-          return undefined;
-        }
-      },
-    }),
-    [model, selection, onAction],
-  );
-
-  const {startFocus} = useEditFocusControl(rootRef, editFocusCallbacks);
 
   return (
-    <Table cellSpacing={1} ref={rootRef}>
+    <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
       <thead>
-        <TableRow>
+        <TableUIViewRow>
           {model.columns.map((column, index) => (
-            <HeaderCell key={index}>{column.label}</HeaderCell>
+            <TableUIViewHeaderCell key={index}>{column.label}</TableUIViewHeaderCell>
           ))}
-        </TableRow>
+        </TableUIViewRow>
       </thead>
       <tbody>
         {model.rows.map((row, index) => (
@@ -143,103 +132,39 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
             mainSelectedColumn={selection?.origin.row === index ? selection?.origin.col : undefined}
             selectionRange={tableRangeContains(selection?.range.row, index) ? selection?.range.col : undefined}
             callbacks={callbacks}
-            editingColumn={editing?.row === index ? editing?.col : undefined}
           />
         ))}
       </tbody>
-    </Table>
+    </TableUIViewLayoutRoot>
   );
 });
 
 TableUIView.displayName = 'TableUIView';
 
-const ReadonlyCell = styled.td<{readonly selected: boolean}>`
-  padding: 0 0;
-  background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
-  user-select: none;
-  -moz-user-select: none;
-  -webkit-user-select: none;
-  -ms-user-select: none;
-`;
-
 interface TableRowViewProps {
   readonly row: TableUIModelRow;
   readonly rowNumber: number;
-  readonly editingColumn: number | undefined;
   readonly selectionRange: TableRange | undefined;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
 }
 
 const TableRowView = React.memo<TableRowViewProps>(
-  ({row, rowNumber, editingColumn, selectionRange, mainSelectedColumn, callbacks}) => {
+  ({row, rowNumber, selectionRange, mainSelectedColumn, callbacks}) => {
     return (
-      <TableRow>
+      <TableUIViewRow>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <ReadonlyCell
-              key={index}
-              selected={isSelected}
-              onMouseDown={(e) => callbacks.onMouseDown(e, rowNumber, index)}
-              onMouseOver={(e) => callbacks.onMouseOver(e, rowNumber, index)}
-              onDoubleClick={(e) => callbacks.onDoubleClick(e, rowNumber, index)}
-            >
-              {renderCell(cell, isMainSelected, rowNumber, index, callbacks)}
-            </ReadonlyCell>
+            <TableUIViewCellLayout key={index} selected={isSelected}>
+              {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks)}
+            </TableUIViewCellLayout>
           );
         })}
-      </TableRow>
+      </TableUIViewRow>
     );
   },
 );
-
-function renderCell(model: UIModel, isMainSelected: boolean, row: number, col: number, callbacks: TableCellCallbacks) {
-  switch (model.type) {
-    case 'text':
-      return (
-        <TextUIViewForTableCell
-          model={model}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    case 'select':
-      return (
-        <SelectUIViewForTableCell
-          model={model}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    case 'checkbox':
-      return (
-        <CheckboxUIViewForTableCell
-          model={model}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    case 'number':
-      return (
-        <NumberUIViewForTableCell
-          model={model}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    default:
-      return <div>Error</div>;
-  }
-}
 
 TableRowView.displayName = 'TableRowView';

@@ -33,9 +33,9 @@ type TableCellEditStateAction = ['resetText' | 'changeText', string] | ['endEdit
 
 function tableCellEditStateReducer(state: TableCellEditState, action: TableCellEditStateAction): TableCellEditState {
   switch (action[0]) {
-    case 'resetText':
-      return {isEditing: true, editingText: action[1]};
     case 'changeText':
+      return {isEditing: true, editingText: action[1]};
+    case 'resetText':
       return {isEditing: state.isEditing, editingText: action[1]};
     case 'startEdit':
       return {isEditing: true, editingText: state.editingText};
@@ -51,13 +51,15 @@ export interface UseTableCellEditStateReturn {
   dispatch(action: TableCellEditStateAction): void;
 }
 
-export function makeUseTableCellEditState<Model>(modelToText: (model: Model) => string) {
+export function makeUseTableCellEditState<Model, Schema>(modelToText: (model: Model) => string) {
   return (
-    model: Model,
+    model: Model | undefined,
+    schema: Schema | undefined,
     isMainSelected: boolean,
     onChange: (model: Model, text: string) => void,
+    onChangeWithSchema: (schema: Schema, text: string) => void,
   ): UseTableCellEditStateReturn => {
-    const modelText = useMemo(() => modelToText(model), [model]);
+    const modelText = useMemo(() => (model ? modelToText(model) : ''), [model]);
     const [state, dispatch] = useReducer(tableCellEditStateReducer, {isEditing: false, editingText: modelText});
     const startEdit = useCallback(() => dispatch(['startEdit']), []);
 
@@ -70,7 +72,11 @@ export function makeUseTableCellEditState<Model>(modelToText: (model: Model) => 
       if (!isMainSelected) {
         dispatch(['endEdit']);
         if (modelText !== state.editingText) {
-          onChange(model, state.editingText);
+          if (model) {
+            onChange(model, state.editingText);
+          } else if (schema) {
+            onChangeWithSchema(schema, state.editingText);
+          }
         }
       }
       // isMainSelectedがtrueからfalseになった時だけ実行したい意図なので、他のdepsは不要

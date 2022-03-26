@@ -92,7 +92,9 @@ export function useEditFocusControl(
     } else {
       return undefined;
     }
-  }, [callbacks, isFocused]);
+    // isFocusedがtrue変更されたときのみ実行する意図なので、depsはisFocusedのみが正解
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused]);
   const startFocus = useCallback(() => setIsFocused(true), []);
   return {startFocus};
 }

@@ -36,7 +36,7 @@ export interface InsertDataModelAction {
 
 export interface DeleteDataModelAction {
   readonly type: 'delete';
-  readonly at: DataPointer;
+  readonly at?: DataPointer;
   readonly path: ForwardDataPath;
 }
 

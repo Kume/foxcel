@@ -14,6 +14,8 @@ import {
   MultiDataPath,
   shiftDataPath,
   headDataPathComponent,
+  tailDataPathComponent,
+  DataPathComponent,
 } from './DataPath';
 import {
   BooleanDataModel,
@@ -47,6 +49,8 @@ export function dataModelTypeToLabel(type: DataModelType): string {
 export const emptyMapModel: MapDataModel = {t: DataModelType.Map, v: []};
 export const emptyListModel: ListDataModel = [];
 export const nullDataModel = null;
+export const trueDataModel: BooleanDataModel = true;
+export const falseDataModel: BooleanDataModel = false;
 
 export function dataModelType(model: DataModel): DataModelType {
   switch (typeof model) {
@@ -81,6 +85,11 @@ export function nullableStringToDataModel(value: string | null): StringDataModel
 
 export function numberToIntegerDataModel(value: number): IntegerDataModel {
   return value;
+}
+
+export function stringToNumberDataModel(value: string): IntegerDataModel | undefined {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
 export function booleanToDataModel(value: boolean): BooleanDataModel {
@@ -381,11 +390,16 @@ export function pushToDataModel(
  */
 export function deleteFromDataModel(
   path: ForwardDataPath,
-  at: DataPointer,
+  at: DataPointer | undefined,
   from: DataModel,
   schema: DataSchemaContext | undefined,
 ): DataModel | undefined {
-  if (dataPathLength(path) === 0) {
+  const pathLength = dataPathLength(path);
+  if (pathLength === 0) {
+    if (!at) {
+      return undefined;
+    }
+
     if (dataModelIsMap(from)) {
       const index = getMapDataIndexForPointer(from, at);
       if (index === undefined) {
@@ -401,18 +415,31 @@ export function deleteFromDataModel(
     } else {
       return undefined;
     }
-  } else {
-    if (dataModelIsList(from)) {
-      return setToListDataRecursive(from, path, schema, (nextPath, childData, childSchema) =>
-        deleteFromDataModel(nextPath, at, childData, childSchema),
-      );
-    } else if (dataModelIsMap(from)) {
-      return setToMapDataRecursive(from, path, schema, (nextPath, childData, childSchema) =>
-        deleteFromDataModel(nextPath, at, childData, childSchema),
-      );
+  }
+
+  if (!at && pathLength === 1) {
+    const pathTail = tailDataPathComponent(path);
+    if (dataModelIsMap(from)) {
+      const deleted = deleteFromMapDataAtPathComponent(from, pathTail);
+      return from === deleted ? undefined : deleted;
+    } else if (dataModelIsList(from)) {
+      const deleted = deleteFromListDataAtPathComponent(from, pathTail);
+      return from === deleted ? undefined : deleted;
     } else {
       return undefined;
     }
+  }
+
+  if (dataModelIsList(from)) {
+    return setToListDataRecursive(from, path, schema, (nextPath, childData, childSchema) =>
+      deleteFromDataModel(nextPath, at, childData, childSchema),
+    );
+  } else if (dataModelIsMap(from)) {
+    return setToMapDataRecursive(from, path, schema, (nextPath, childData, childSchema) =>
+      deleteFromDataModel(nextPath, at, childData, childSchema),
+    );
+  } else {
+    return undefined;
   }
 }
 
@@ -531,6 +558,24 @@ function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
 
 function forceDeleteFromListDataAt(list: ListDataModel, index: number): ListDataModel {
   return [...list.slice(0, index), ...list.slice(index + 1)];
+}
+
+export function deleteFromListDataAtPathComponent(
+  list: ListDataModel,
+  pathComponent: DataPathComponent,
+): ListDataModel {
+  if (dataPathComponentIsListIndexLike(pathComponent)) {
+    const index = dataPathComponentToListIndex(pathComponent);
+    if (index < 0 || index >= listDataSize(list)) {
+      return list;
+    }
+    return forceDeleteFromListDataAt(list, index);
+  }
+  if (dataPathComponentIsPointer(pathComponent)) {
+    const index = getListDataIndexForPointer(list, pathComponent);
+    return index === undefined ? list : forceDeleteFromListDataAt(list, index);
+  }
+  return list;
 }
 
 function setToListDataRecursive(
@@ -733,6 +778,18 @@ function pushToMapData(map: MapDataModel, value: DataModel, key?: string): MapDa
 
 function forceDeleteFromMapDataAt(map: MapDataModel, index: number): MapDataModel {
   return {t: DataModelType.Map, v: [...map.v.slice(0, index), ...map.v.slice(index + 1)]};
+}
+
+function deleteFromMapDataAtPathComponent(map: MapDataModel, pathComponent: ForwardDataPathComponent): MapDataModel {
+  if (dataPathComponentIsMapKeyLike(pathComponent)) {
+    const index = findMapDataIndexOfKey(map, dataPathComponentToMapKey(pathComponent));
+    return index === undefined ? map : forceDeleteFromMapDataAt(map, index);
+  }
+  if (dataPathComponentIsPointer(pathComponent)) {
+    const index = getMapDataIndexForPointer(map, pathComponent);
+    return index === undefined ? map : forceDeleteFromMapDataAt(map, index);
+  }
+  return map;
 }
 
 function setToMapDataRecursive(

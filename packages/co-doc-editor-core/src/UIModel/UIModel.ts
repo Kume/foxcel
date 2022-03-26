@@ -1,4 +1,4 @@
-import {ContentListIndex, SelectUIModel, TableUIModelRow, UIModel} from './UIModelTypes';
+import {ContentListIndex, MappingTableUIModelRow, SelectUIModel, TableUIModelRow, UIModel} from './UIModelTypes';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {
@@ -18,12 +18,15 @@ import {
   dataModelIsNumber,
   dataModelIsString,
   dataPointerIdEquals,
+  eachMapDataItem,
+  findMapDataIndexOfKey,
   getIdFromDataPointer,
   getListDataAt,
   getListDataIndexByPathComponent,
   getListDataIndexForPointer,
   getListDataPointerAt,
   getMapDataAtIndex,
+  getMapDataAtPointer,
   getMapDataIndexByPathComponent,
   getMapDataIndexForPointer,
   getMapDataPointerAtIndex,
@@ -31,6 +34,7 @@ import {
   listDataSize,
   mapDataSize,
   mapListDataModelWithPointer,
+  mapMapDataModel,
   mapMapDataModelWithPointer,
   nullableStringToDataModel,
   stringDataModelToString,
@@ -49,12 +53,15 @@ import {fillTemplateLine} from '../DataModel/TemplateEngine';
 import {
   DataModelContext,
   DataModelRoot,
+  pushDataModelContextPath,
   pushMapDataModelContextPath,
   pushPointerToDataModelContext,
   pushUiSchemaKeyToDataModelContext,
+  undefinedDataModelContextPathComponent,
 } from '../DataModel/DataModelContext';
 import {findDataModel} from '../DataModel/DataModelSearcher';
 import {formatDynamicSelectUIOption} from './SelectUIModel';
+import {getDataModelBySinglePath} from '../DataModel/DataModelCollector';
 
 function getMapChildContextForFlattenable(
   childContext: UISchemaContext,
@@ -255,7 +262,7 @@ export function buildUIModel(
                 dataFocusLog: rowDataFocusLog,
                 cells: uiSchemaContext.contents().map((contentContext, index) => {
                   const cellData = getChildDataModelByUISchemaKey(
-                    dataModelIsMap(rowData) ? rowData : undefined,
+                    rowMapDataOrUndefined,
                     contentContext.currentSchema.key,
                   );
                   const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
@@ -266,7 +273,7 @@ export function buildUIModel(
                       };
                   const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
                     rowDataContext,
-                    rowData,
+                    rowMapDataOrUndefined,
                     contentContext.currentSchema.key,
                   );
                   return buildUIModel(
@@ -361,6 +368,218 @@ export function buildUIModel(
         schemaFocusLog,
         columns: uiSchemaContext.contents().map((content) => ({label: content.currentSchema.dataSchema.label ?? ''})),
         rows,
+      };
+    }
+
+    case 'mappingTable': {
+      const mapOrUndefined = dataModelIsMap(dataModel) ? dataModel : undefined;
+      const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
+      const referenceData = getDataModelBySinglePath(mapOrUndefined, currentSchema.sourcePath, dataContext, dataRoot);
+      const oldTableModel = oldModel?.type === 'mappingTable' ? oldModel : undefined;
+      let rows: readonly MappingTableUIModelRow[];
+      const danglingRows: TableUIModelRow[] = [];
+      if (dataModelIsMap(referenceData)) {
+        if (mapOrUndefined) {
+          const oldRowsById = new Map<number, MappingTableUIModelRow>();
+          if (oldTableModel) {
+            for (const oldRow of oldTableModel?.rows) {
+              if (!oldRow.isEmpty) {
+                oldRowsById.set(getIdFromDataPointer(oldRow.pointer), oldRow);
+              }
+            }
+          }
+          const oldDanglingRowsById = new Map(
+            oldTableModel?.danglingRows.map((row) => [getIdFromDataPointer(row.pointer), row]),
+          );
+          const mappedKeys = new Set<string | null>();
+          rows = mapMapDataModel(
+            referenceData,
+            (sourceRowData, key): MappingTableUIModelRow => {
+              const rowMapDataIndex = key === null ? undefined : findMapDataIndexOfKey(mapOrUndefined, key);
+              const rowDataContext = pushMapDataModelContextPath(dataContext, mapOrUndefined, key);
+              if (rowMapDataIndex === undefined) {
+                return {
+                  isEmpty: true,
+                  key,
+                  cells: uiSchemaContext.contents().map((contentContext) => {
+                    if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
+                      // TODO エラーハンドリング
+                      throw new Error('mapping tableの中に$key指定の要素が含まれていてはならない。');
+                    } else if (contentContext.currentSchema.key === undefined) {
+                      // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
+                      throw new Error('mapping tableの要素はkey指定を省略不可');
+                    }
+                    return {
+                      schema: contentContext.currentSchema,
+                      key: contentContext.currentSchema.key,
+                      dataContext: pushDataModelContextPath(rowDataContext, undefinedDataModelContextPathComponent),
+                    };
+                  }),
+                };
+              }
+              mappedKeys.add(key);
+              // findMapDataIndexOfKeyで手に入れたindexなのでpointerは必ず取得できる
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              const pointer = getMapDataPointerAtIndex(mapOrUndefined, rowMapDataIndex)!;
+              const rowData = getMapDataAtPointer(mapOrUndefined, pointer);
+              const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
+              const id = getIdFromDataPointer(pointer);
+              const pointerPathComponent = toPointerPathComponent(pointer);
+              const rowDataFocusLog = dataFocusLog?.c[id];
+              const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
+              const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
+              const oldRow_ = oldRowsById.get(id);
+              const oldRow = oldRow_?.isEmpty ? undefined : oldRow_;
+              if (
+                oldRow &&
+                oldRow.key === key &&
+                oldTableModel &&
+                schemaFocusLog === oldTableModel.schemaFocusLog &&
+                rowMapDataOrUndefined === oldRow.data &&
+                rowDataFocusLog === oldRow.dataFocusLog &&
+                forwardDataPathEquals(rowDataPathFocus, oldRow.dataPathFocus)
+              ) {
+                return oldRow;
+              } else {
+                return {
+                  pointer,
+                  key,
+                  data: rowMapDataOrUndefined,
+                  dataPath: rowDataPath,
+                  dataPathFocus: rowDataPathFocus,
+                  dataFocusLog: rowDataFocusLog,
+                  cells: uiSchemaContext.contents().map((contentContext, index) => {
+                    const cellData = getChildDataModelByUISchemaKey(
+                      rowMapDataOrUndefined,
+                      contentContext.currentSchema.key,
+                    );
+                    const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                      ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
+                      : {
+                          parentPath: rowDataPath,
+                          self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+                        };
+                    const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
+                      rowDataContext,
+                      rowMapDataOrUndefined,
+                      contentContext.currentSchema.key,
+                    );
+                    return buildUIModel(
+                      contentContext,
+                      cellData,
+                      oldRow?.cells[index],
+                      cellPathContext,
+                      cellDataModelContext,
+                      dataRoot,
+                      safeShiftDataPath(rowDataPathFocus),
+                      rowDataFocusLog?.c[index],
+                      schemaFocusLog?.c[index],
+                    );
+                  }),
+                };
+              }
+            },
+          );
+          for (const [rowData, pointer, key] of eachMapDataItem(mapOrUndefined)) {
+            if (mappedKeys.has(key)) {
+              continue;
+            }
+            const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
+            const id = getIdFromDataPointer(pointer);
+            const pointerPathComponent = toPointerPathComponent(pointer);
+            const rowDataFocusLog = dataFocusLog?.c[id];
+            const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
+            const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
+            const rowDataContext = pushMapDataModelContextPath(dataContext, mapOrUndefined, key);
+            const oldRow = oldDanglingRowsById.get(id);
+            if (
+              oldRow &&
+              oldRow.key === key &&
+              oldTableModel &&
+              schemaFocusLog === oldTableModel.schemaFocusLog &&
+              rowMapDataOrUndefined === oldRow.data &&
+              rowDataFocusLog === oldRow.dataFocusLog &&
+              forwardDataPathEquals(rowDataPathFocus, oldRow.dataPathFocus)
+            ) {
+              danglingRows.push(oldRow);
+            } else {
+              danglingRows.push({
+                pointer,
+                key,
+                data: rowMapDataOrUndefined,
+                dataPath: rowDataPath,
+                dataPathFocus: rowDataPathFocus,
+                dataFocusLog: rowDataFocusLog,
+                cells: uiSchemaContext.contents().map((contentContext, index) => {
+                  const cellData = getChildDataModelByUISchemaKey(
+                    rowMapDataOrUndefined,
+                    contentContext.currentSchema.key,
+                  );
+                  const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                    ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
+                    : {
+                        parentPath: rowDataPath,
+                        self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+                      };
+                  const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
+                    rowDataContext,
+                    rowMapDataOrUndefined,
+                    contentContext.currentSchema.key,
+                  );
+                  return buildUIModel(
+                    contentContext,
+                    cellData,
+                    oldRow?.cells[index],
+                    cellPathContext,
+                    cellDataModelContext,
+                    dataRoot,
+                    safeShiftDataPath(rowDataPathFocus),
+                    rowDataFocusLog?.c[index],
+                    schemaFocusLog?.c[index],
+                  );
+                }),
+              });
+            }
+          }
+        } else {
+          rows = mapMapDataModel(referenceData, (rowData, key) => {
+            const rowDataContext = pushMapDataModelContextPath(dataContext, mapOrUndefined, key);
+            return {
+              isEmpty: true,
+              key,
+              cells: uiSchemaContext.contents().map((contentContext) => {
+                // TODO 共通化
+                if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
+                  // TODO エラーハンドリング
+                  throw new Error('mapping tableの中に$key指定の要素が含まれていてはならない。');
+                } else if (contentContext.currentSchema.key === undefined) {
+                  // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
+                  throw new Error('mapping tableの要素はkey指定を省略不可');
+                }
+                return {
+                  schema: contentContext.currentSchema,
+                  key: contentContext.currentSchema.key,
+                  dataContext: pushDataModelContextPath(rowDataContext, undefinedDataModelContextPathComponent),
+                };
+              }),
+            };
+          });
+        }
+      } else {
+        rows = [];
+      }
+      return {
+        type: 'mappingTable',
+        schema: currentSchema,
+        data: mapOrUndefined,
+        dataPath,
+        dataContext,
+        dataPathFocus,
+        dataFocusLog,
+        schemaFocusLog,
+        columns: uiSchemaContext.contents().map((content) => ({label: content.currentSchema.dataSchema.label ?? ''})),
+        rows,
+        danglingRows,
       };
     }
 
@@ -548,6 +767,7 @@ export function buildUIModel(
             // Dynamic option
             const findResult = findDataModel(
               dataModel,
+              // TODO matcherは暫定対応なので、後でちゃんと実装する
               {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
               dataContext,
               dataRoot,

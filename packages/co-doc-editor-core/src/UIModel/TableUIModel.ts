@@ -1,8 +1,17 @@
 import {AppAction} from '../App/AppState';
-import {TableUIModel} from './UIModelTypes';
+import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
-import {dataModelToString, emptyMapModel, setToMapDataModel} from '../DataModel/DataModel';
+import {dataModelIsBoolean, dataModelToString, emptyMapModel, setToMapDataModel} from '../DataModel/DataModel';
 import {DataModel} from '../DataModel/DataModelTypes';
+import {selectUIModelHandleInputForSchema, selectUIModelSetString} from './SelectUIModel';
+import {
+  DataModelRoot,
+  mapDataModelContextPathForDataModel,
+  pushDataModelContextPath,
+} from '../DataModel/DataModelContext';
+import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} from './CheckboxUIModel';
+import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
+import {DataSchema, dataSchemaIsBoolean} from '../DataModel/DataSchema';
 
 export interface TableCellPoint {
   readonly row: number;
@@ -35,11 +44,11 @@ export function selectingTableCellRange(startPoint: TableCellPoint, currentPoint
   return {row: makeRange(startPoint.row, currentPoint.row), col: makeRange(startPoint.col, currentPoint.col)};
 }
 
-export function pasteRange(selectionRange: TableRange, dataSize: number): number {
+export function tableUIModelPasteRange(selectionRange: TableRange, dataSize: number): number {
   return Math.max(dataSize, Math.floor(selectionRange.size / dataSize));
 }
 
-interface PasteResult {
+export interface TableUIModelPasteResult {
   readonly action: AppAction;
   readonly changedSelection?: TableCellRange;
 }
@@ -54,7 +63,11 @@ interface NewRow {
   readonly data: DataModel;
 }
 
-function makeNewRow(model: TableUIModel, defaultValues: ValueWithColumnIndex[]): AppAction {
+export function tableUIModelMakeNewRow(
+  model: TableUIModel | MappingTableUIModel,
+  defaultValues: ValueWithColumnIndex[],
+  root: DataModelRoot,
+): AppAction {
   let rowData = emptyMapModel;
   let key: string | null | undefined;
 
@@ -70,17 +83,68 @@ function makeNewRow(model: TableUIModel, defaultValues: ValueWithColumnIndex[]):
         }
         break;
       }
+      case 'select': {
+        if (typeof columnSchema.key === 'string') {
+          const cellContext = pushDataModelContextPath(
+            model.dataContext,
+            mapDataModelContextPathForDataModel(rowData, columnSchema.key),
+          );
+          const result = selectUIModelHandleInputForSchema(columnSchema, defaultValue.value, cellContext, root);
+          if (result !== undefined) {
+            rowData = setToMapDataModel(rowData, columnSchema.key, result);
+          }
+        }
+        break;
+      }
+      case 'number': {
+        if (typeof columnSchema.key === 'string') {
+          const result = numberUIModelHandleInputForSchema(columnSchema, defaultValue.value);
+          if (result !== undefined) {
+            rowData = setToMapDataModel(rowData, columnSchema.key, result);
+          }
+        }
+        break;
+      }
+      case 'checkbox': {
+        if (typeof columnSchema.key === 'string') {
+          const result = checkboxUIModelHandleInputWithSchema(columnSchema, defaultValue.value);
+          if (result !== undefined) {
+            rowData = setToMapDataModel(rowData, columnSchema.key, result);
+          }
+          break;
+        }
+      }
     }
   }
 
   return {type: 'data', action: {type: 'push', data: rowData, path: model.dataPath, key}};
 }
 
-export function pasteForTableUIModel(
+export function tableUIModelPasteCellAction(
+  cellUIModel: UIModel,
+  cellData: string,
+  root: DataModelRoot,
+): AppAction | undefined {
+  switch (cellUIModel.type) {
+    case 'text':
+      return textUIModelSetText(cellUIModel, cellData);
+    case 'select':
+      return selectUIModelSetString(cellUIModel, cellData, root);
+    case 'checkbox':
+      return checkboxUIModelSetStringValue(cellUIModel, cellData);
+    case 'number':
+      return numberUIModelSetText(cellUIModel, cellData);
+    default:
+      return undefined;
+  }
+}
+
+export function tableUIModelPaste(
   model: TableUIModel,
   selection: TableCellRange,
   data: readonly (readonly string[])[],
-): PasteResult | undefined {
+  root: DataModelRoot,
+): TableUIModelPasteResult | undefined {
   const dataRowSize = data.length;
   if (dataRowSize === 0) {
     return undefined;
@@ -89,9 +153,9 @@ export function pasteForTableUIModel(
 
   const actions: AppAction[] = [];
 
-  const pasteRowSize = pasteRange(selection.row, dataRowSize);
+  const pasteRowSize = tableUIModelPasteRange(selection.row, dataRowSize);
   const pasteColumnSize = Math.min(
-    pasteRange(selection.col, dataColumnSize),
+    tableUIModelPasteRange(selection.col, dataColumnSize),
     model.columns.length - selection.col.start,
   );
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
@@ -101,20 +165,20 @@ export function pasteForTableUIModel(
         const columnIndex = selection.col.start + columnDataIndex;
         const cellUIModel = row.cells[columnIndex];
         const cellData = data[rowDataIndex % dataRowSize][columnDataIndex % dataColumnSize];
-        switch (cellUIModel.type) {
-          case 'text':
-            actions.push(textUIModelSetText(cellUIModel, cellData));
-            break;
+        const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
+        if (action) {
+          actions.push(action);
         }
       }
     } else {
       actions.push(
-        makeNewRow(
+        tableUIModelMakeNewRow(
           model,
           data[rowDataIndex].map((value, columnDataIndex) => ({
             columnIndex: columnDataIndex + selection.col.start,
             value,
           })),
+          root,
         ),
       );
     }
@@ -129,19 +193,34 @@ export function pasteForTableUIModel(
   };
 }
 
-export function copyFromTableUIModel(model: TableUIModel, selection: TableCellRange): string[][] {
+export function tableUIModelCopyCell(cell: UIModel): string {
+  if (cell.isKey) {
+    return cell.value ?? '';
+  } else {
+    return tableUIModelStringToDataModelWithSchema(cell.schema?.dataSchema, cell.data);
+  }
+}
+
+export function tableUIModelStringToDataModelWithSchema(
+  dataSchema: DataSchema | undefined,
+  data: DataModel | undefined,
+): string {
+  if (dataSchemaIsBoolean(dataSchema)) {
+    const cellData = dataModelIsBoolean(data) ? data : false;
+    return dataModelToString(cellData);
+  } else {
+    return dataModelToString(data);
+  }
+}
+
+export function tableUIModelCopy(model: TableUIModel, selection: TableCellRange): string[][] {
   const data: string[][] = [];
   for (let selectionRowIndex = 0; selectionRowIndex < selection.row.size; selectionRowIndex++) {
     const rowData: string[] = [];
     const row = model.rows[selection.row.start + selectionRowIndex];
     data.push(rowData);
     for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
-      const cell = row.cells[selection.col.start + selectionColumnIndex];
-      if (cell.isKey) {
-        rowData.push(cell.value ?? '');
-      } else {
-        rowData.push(dataModelToString(cell.data));
-      }
+      rowData.push(tableUIModelCopyCell(row.cells[selection.col.start + selectionColumnIndex]));
     }
   }
   return data;
@@ -152,23 +231,26 @@ interface CutResult {
   readonly data: string[][];
 }
 
-export function cutFromTableUIModel(model: TableUIModel, selection: TableCellRange): CutResult {
+export function tableUIModelCut(model: TableUIModel, selection: TableCellRange): CutResult {
   const actions: AppAction[] = [];
 
   for (let selectionRowIndex = 0; selectionRowIndex < selection.row.size; selectionRowIndex++) {
     const row = model.rows[selection.row.start + selectionRowIndex];
     for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
       const cell = row.cells[selection.col.start + selectionColumnIndex];
-      switch (cell.type) {
-        case 'text':
-          actions.push(textUIModelSetText(cell, null));
-          break;
+      if (cell.isKey) {
+        actions.push({
+          type: 'data',
+          action: {type: 'setKey', path: cell.parentDataPath, sourceKeyPointer: cell.selfPointer, key: null},
+        });
+      } else {
+        actions.push({type: 'data', action: {type: 'delete', path: cell.dataPath}});
       }
     }
   }
 
   return {
     action: {type: 'batch', actions},
-    data: copyFromTableUIModel(model, selection),
+    data: tableUIModelCopy(model, selection),
   };
 }

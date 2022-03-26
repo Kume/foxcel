@@ -226,7 +226,7 @@ function findDataModelImpl(
 }
 
 export function findDataModel(
-  data: DataModel,
+  data: DataModel | undefined,
   params: DataModelSearchParams,
   context: DataModelContext,
   root: DataModelRoot,

@@ -98,6 +98,28 @@ export const sampleConfig: RootSchemaConfig = {
               type: 'number',
               label: 'テストA7数値',
             },
+            testA8: {
+              type: 'map',
+              label: 'テストA8マッピング',
+              item: {
+                type: 'fixed_map',
+                label: 'テストA8',
+                items: {
+                  testA8a: {type: 'string', label: 'テストA8a'},
+                  testA8b: {type: 'number', label: 'テストA8b'},
+                  testA8c: {
+                    type: 'string',
+                    label: 'テストA5c',
+                    in: [
+                      {label: 'テストA5c-1', value: 'A5c-1'},
+                      {label: 'テストA5c-2', value: 'A5c-2'},
+                      {label: 'テストA5c-3', value: 'A5c-3'},
+                    ],
+                  },
+                  testA8d: {type: 'boolean', label: 'テストA8d'},
+                },
+              },
+            },
           },
         },
       },
@@ -200,6 +222,17 @@ export const sampleConfig: RootSchemaConfig = {
             {
               type: 'number',
               key: 'testA7',
+            },
+            {
+              type: 'mappingTable',
+              key: 'testA8',
+              sourcePath: '../testA5',
+              contents: [
+                {type: 'text', key: 'testA8a'},
+                {type: 'number', key: 'testA8b'},
+                {type: 'select', key: 'testA8c'},
+                {type: 'checkbox', key: 'testA8d'},
+              ],
             },
           ],
         },

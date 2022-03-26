@@ -13,6 +13,7 @@ import {
   CheckBoxUISchema,
   ContentListUISchema,
   FormUISchema,
+  MappingTableUISchema,
   NumberUISchema,
   SelectUISchema,
   TableUISchema,
@@ -22,6 +23,7 @@ import {
 import {FilledTemplate} from '../DataModel/TemplateEngine';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModelContext} from '../DataModel/DataModelContext';
+import {UISchemaExcludeRecursive} from './UISchema';
 
 interface UIModelCommon {
   readonly dataPath: ForwardDataPath;
@@ -130,6 +132,29 @@ export interface TableUIModelRow {
   readonly cells: readonly UIModel[];
 }
 
+export interface MappingTableUIModel extends UIModelCommon {
+  readonly type: 'mappingTable';
+  readonly isKey?: void;
+  readonly schema: MappingTableUISchema;
+  readonly data: MapDataModel | undefined;
+  readonly columns: readonly TableUIModelColumn[];
+  readonly rows: readonly MappingTableUIModelRow[];
+  readonly danglingRows: readonly TableUIModelRow[];
+}
+
+export type MappingTableUIModelNotEmptyRow = TableUIModelRow & {isEmpty?: false};
+export interface MappingTableUIModelEmptyRow {
+  readonly isEmpty: true;
+  readonly key: string | null | undefined;
+  readonly cells: readonly MappingTableUIModelEmptyCell[];
+}
+export type MappingTableUIModelRow = MappingTableUIModelNotEmptyRow | MappingTableUIModelEmptyRow;
+export interface MappingTableUIModelEmptyCell {
+  readonly schema: UISchemaExcludeRecursive;
+  readonly key: string;
+  readonly dataContext: DataModelContext;
+}
+
 export interface SelectUIModel extends UIModelCommon {
   readonly type: 'select';
   readonly isKey?: void;
@@ -162,6 +187,7 @@ export type UIModel =
   | TextUIModel
   | ContentListUIModel
   | TableUIModel
+  | MappingTableUIModel
   | SelectUIModel
   | CheckboxUIModel
   | NumberUIModel;

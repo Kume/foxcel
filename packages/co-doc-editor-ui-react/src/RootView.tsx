@@ -34,6 +34,10 @@ const initialDataModel = unknownToDataModel({
         testA5_02: {testA5a: 'testA5a_02', testA5b: 'testA5b_02', testA5c: 'CCCC'},
         testA5_03: {testA5a: 'testA5a_03', testA5b: 'testA5b_03'},
       },
+      testA8: {
+        testA5_01: {testA8a: 'testA8a'},
+        testA8_dangling: {testA8a: 'testA8_dang'},
+      },
     },
     testA_value2: {
       testA1: 'aaa2',
@@ -87,17 +91,11 @@ export const RootView: React.FC<Props> = ({loadFile}) => {
     [],
   );
 
-  const load = async () => {
-    if (loadFile) {
-      dispatch(await loadFile());
-    }
-  };
-
   console.log('root', state);
 
   return (
     <LayoutRoot>
-      <div onClick={load}>LOAD</div>
+      {loadFile && <div onClick={async () => dispatch(await loadFile())}>LOAD</div>}
       <UIView model={state.uiModel} onAction={dispatch} getRoot={getRoot} />
     </LayoutRoot>
   );

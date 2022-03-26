@@ -102,7 +102,7 @@ function mapKeyDataPathComponentToContextPathComponent(
 }
 
 export function digForPathComponent<Return, PathComponent extends MultiDataPathComponent>(
-  model: DataModel,
+  model: DataModel | undefined,
   pathComponent: PathComponent,
   callbacks: DigCallbacks<Return, PathComponent>,
 ): Return | undefined {
@@ -195,100 +195,128 @@ function getDataModelBySinglePathImpl(
   currentContext: DataModelContext,
   originalContext: DataModelContext,
 ): DataModel | undefined {
-  if (model === undefined) {
-    return model;
-  }
-
   if (dataPathLength(path) === 0) {
     return model;
   }
 
   const head = headDataPathComponent(path);
-  if (dataPathComponentIsKey(head)) {
-    const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
-    return key === undefined ? undefined : stringToDataModel(key);
-  } else if (dataPathComponentIsMapKey(head)) {
-    if (dataModelIsMap(model)) {
-      const mapKey = dataPathComponentToMapKey(head);
-      const index = findMapDataIndexOfKey(model, mapKey);
-      if (index === undefined) {
-        return undefined;
-      }
+  return digForPathComponent<DataModel | undefined, DataPathComponent>(model, head, {
+    key: () => {
+      const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
+      return key === undefined ? undefined : stringToDataModel(key);
+    },
+    collection: (childData: DataModel, contextPathComponent: DataModelContextPathComponent): DataModel | undefined => {
       return getDataModelBySinglePathImpl(
-        getMapDataAtIndex(model, index),
+        childData,
         shiftDataPath(path),
-        pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+        pushDataModelContextPath(currentContext, contextPathComponent),
         originalContext,
       );
-    } else {
-      return undefined;
-    }
-  } else if (dataPathComponentIsListIndex(head)) {
-    if (dataModelIsList(model)) {
-      const listIndex = dataPathComponentToListIndex(head);
-      return getDataModelBySinglePathImpl(
-        getListDataAt(model, listIndex),
-        shiftDataPath(path),
-        pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
-        originalContext,
-      );
-    } else {
-      return undefined;
-    }
-  } else if (dataPathComponentIsIndexOrKey(head)) {
-    if (dataModelIsList(model)) {
-      const listIndex = dataPathComponentToListIndex(head);
-      return getDataModelBySinglePathImpl(
-        getListDataAt(model, listIndex),
-        shiftDataPath(path),
-        pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
-        originalContext,
-      );
-    } else if (dataModelIsMap(model)) {
-      const mapKey = dataPathComponentToMapKey(head);
-      const index = findMapDataIndexOfKey(model, mapKey);
-      if (index === undefined) {
-        return undefined;
-      }
-      return getDataModelBySinglePathImpl(
-        getMapDataAtIndex(model, index),
-        shiftDataPath(path),
-        pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
-        originalContext,
-      );
-    } else {
-      return undefined;
-    }
-  } else if (dataPathComponentIsPointer(head)) {
-    if (dataModelIsList(model)) {
-      const listIndex = getListDataIndexForPointer(model, head);
-      return listIndex === undefined
-        ? undefined
-        : getDataModelBySinglePathImpl(
-            getListDataAt(model, listIndex),
-            shiftDataPath(path),
-            pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+    },
+    other: (otherPathComponent): DataModel | undefined => {
+      switch (otherPathComponent.t) {
+        case DataPathComponentType.Reverse: {
+          const reverseCount = dataPathConsecutiveReverseCount(path);
+          return getDataModelBySinglePathImpl(
+            getParentDataModelFromContext(currentContext, reverseCount),
+            shiftDataPath(path, reverseCount),
+            popDataModelContextPath(currentContext, reverseCount),
             originalContext,
           );
-    } else if (dataModelIsMap(model)) {
-      const index = getMapDataIndexForPointer(model, head);
-      if (index === undefined) {
-        return undefined;
+        }
+        case DataPathComponentType.ContextKey:
+          break;
+        case DataPathComponentType.Nested:
+          break;
       }
-      const mapKey = getMapKeyAtIndex(model, index);
-      if (mapKey === undefined || mapKey === null) {
-        return undefined;
-      }
-      return getDataModelBySinglePathImpl(
-        getMapDataAt(model, mapKey),
-        shiftDataPath(path),
-        pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
-        originalContext,
-      );
-    } else {
-      return undefined;
-    }
-  }
+    },
+  });
+
+  // if (dataPathComponentIsKey(head)) {
+  //   const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
+  //   return key === undefined ? undefined : stringToDataModel(key);
+  // } else if (dataPathComponentIsMapKey(head)) {
+  //   if (dataModelIsMap(model)) {
+  //     const mapKey = dataPathComponentToMapKey(head);
+  //     const index = findMapDataIndexOfKey(model, mapKey);
+  //     if (index === undefined) {
+  //       return undefined;
+  //     }
+  //     return getDataModelBySinglePathImpl(
+  //       getMapDataAtIndex(model, index),
+  //       shiftDataPath(path),
+  //       pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+  //       originalContext,
+  //     );
+  //   } else {
+  //     return undefined;
+  //   }
+  // } else if (dataPathComponentIsListIndex(head)) {
+  //   if (dataModelIsList(model)) {
+  //     const listIndex = dataPathComponentToListIndex(head);
+  //     return getDataModelBySinglePathImpl(
+  //       getListDataAt(model, listIndex),
+  //       shiftDataPath(path),
+  //       pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+  //       originalContext,
+  //     );
+  //   } else {
+  //     return undefined;
+  //   }
+  // } else if (dataPathComponentIsIndexOrKey(head)) {
+  //   if (dataModelIsList(model)) {
+  //     const listIndex = dataPathComponentToListIndex(head);
+  //     return getDataModelBySinglePathImpl(
+  //       getListDataAt(model, listIndex),
+  //       shiftDataPath(path),
+  //       pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+  //       originalContext,
+  //     );
+  //   } else if (dataModelIsMap(model)) {
+  //     const mapKey = dataPathComponentToMapKey(head);
+  //     const index = findMapDataIndexOfKey(model, mapKey);
+  //     if (index === undefined) {
+  //       return undefined;
+  //     }
+  //     return getDataModelBySinglePathImpl(
+  //       getMapDataAtIndex(model, index),
+  //       shiftDataPath(path),
+  //       pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+  //       originalContext,
+  //     );
+  //   } else {
+  //     return undefined;
+  //   }
+  // } else if (dataPathComponentIsPointer(head)) {
+  //   if (dataModelIsList(model)) {
+  //     const listIndex = getListDataIndexForPointer(model, head);
+  //     return listIndex === undefined
+  //       ? undefined
+  //       : getDataModelBySinglePathImpl(
+  //           getListDataAt(model, listIndex),
+  //           shiftDataPath(path),
+  //           pushDataModelContextPath(currentContext, {type: 'list', data: model, at: listIndex}),
+  //           originalContext,
+  //         );
+  //   } else if (dataModelIsMap(model)) {
+  //     const index = getMapDataIndexForPointer(model, head);
+  //     if (index === undefined) {
+  //       return undefined;
+  //     }
+  //     const mapKey = getMapKeyAtIndex(model, index);
+  //     if (mapKey === undefined || mapKey === null) {
+  //       return undefined;
+  //     }
+  //     return getDataModelBySinglePathImpl(
+  //       getMapDataAt(model, mapKey),
+  //       shiftDataPath(path),
+  //       pushDataModelContextPath(currentContext, {type: 'map', data: model, at: mapKey, indexCache: index}),
+  //       originalContext,
+  //     );
+  //   } else {
+  //     return undefined;
+  //   }
+  // }
   // switch (head.t) {
   //   case DataPathComponentType.Reverse:
   //     return getDataModelBySinglePathImpl();

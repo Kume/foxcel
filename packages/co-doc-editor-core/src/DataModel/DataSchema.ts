@@ -537,3 +537,15 @@ export function dataSchemaIsMap(schema: DataSchema | undefined): schema is MapDa
 export function dataSchemaIsList(schema: DataSchema | undefined): schema is ListDataSchema {
   return schema?.t === DataSchemaType.List;
 }
+
+export function dataSchemaIsString(schema: DataSchema | undefined): schema is StringDataSchema {
+  return schema?.t === DataSchemaType.String;
+}
+
+export function dataSchemaIsNumber(schema: DataSchema | undefined): schema is NumberDataSchema {
+  return schema?.t === DataSchemaType.Number;
+}
+
+export function dataSchemaIsBoolean(schema: DataSchema | undefined): schema is BooleanDataSchema {
+  return schema?.t === DataSchemaType.Boolean;
+}

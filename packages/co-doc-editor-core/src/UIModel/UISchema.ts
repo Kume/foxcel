@@ -228,7 +228,7 @@ function parseSelectUISchemaConfig(
       options,
     };
   } else {
-    assertDataSchemaType(dataSchema, context, DataSchemaType.String);
+    assertDataSchemaType(dataSchema, context, [DataSchemaType.String, DataSchemaType.Number]);
     const options = optionsFromDataSchema(dataSchema, context) || (config.options && parseOptionConfig(config.options));
     if (!options) {
       throw new UISchemaParseError('options config not found.', context);
@@ -237,7 +237,7 @@ function parseSelectUISchemaConfig(
       ...pick(config, 'type', 'label'),
       key: parseKey(config.key),
       isMulti: false,
-      dataSchema: overwriteObject<StringDataSchema>(dataSchema, {label: config.label}),
+      dataSchema: overwriteObject<StringDataSchema | NumberDataSchema>(dataSchema, {label: config.label}),
       options,
     };
   }
@@ -730,22 +730,4 @@ export function stringUISchemaKeyToString(key: string | undefined): string | und
 
 export function uiSchemaKeyIsParentKey(key: UISchemaKey | undefined): key is typeof uiSchemaParentKey {
   return key === uiSchemaParentKey;
-}
-
-export function uiSchemaChildIndexForDataPath(
-  schema: TabUISchema | FormUISchema,
-  context: UISchemaContext,
-  pathComponent: ForwardDataPathComponent | undefined,
-): number | undefined {
-  if (pathComponent === undefined) {
-    return undefined;
-  }
-  if (schema.keyFlatten) {
-    schema.flatKeys;
-  } else {
-    const index = schema.contents.findIndex((content) =>
-      uiSchemaKeyAndPathComponentIsMatch(context.resolve(content).key, pathComponent),
-    );
-    return index < 0 ? undefined : index;
-  }
 }

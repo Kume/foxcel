@@ -4,14 +4,17 @@ import {SelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {
   filterSelectUIOptionsByText,
   getSelectUIOptions,
+  getSelectUIOptionsWithSchema,
   selectUIModelDefaultOptions,
+  selectUIModelHandleInputForSchema,
   selectUIModelSetValue,
   SelectUIOption,
 } from 'co-doc-editor-core/dist/UIModel/SelectUIModel';
-import {TableUIViewCellProps} from './TableUIViewCell';
+import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {TextareaForTableCell} from './TableUIViewCellCommon';
+import {SelectUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
 
 interface Props extends UIViewProps {
   readonly model: SelectUIModel;
@@ -178,41 +181,49 @@ const BackgroundTextPlace = styled.span`
 
 const DropDownMenuItem = styled.div`
   padding: 2px 4px;
-  overflow-wrap: break-word;
-  word-break: keep-all;
+  white-space: nowrap;
   &:hover {
     background-color: lightblue;
   }
 `;
 
-interface PropsForTableCell extends TableUIViewCellProps {
-  readonly model: SelectUIModel;
-}
+type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<SelectUIModel, SelectUISchema>;
 
-export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMainSelected, row, col, callbacks}) => {
+export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
+  model,
+  schema,
+  isMainSelected,
+  row,
+  col,
+  callbacks,
+}) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editingText, setEditingText] = useState<string>('');
   const [dropDownIsOpen, setDropDownIsOpen] = useState<boolean>(false);
-  const [options, setOptions] = useState<SelectUIOption[]>(selectUIModelDefaultOptions(model));
+  const [options, setOptions] = useState<SelectUIOption[]>(model ? selectUIModelDefaultOptions(model) : []);
   const filteredOptions = useMemo(() => filterSelectUIOptionsByText(options, editingText), [options, editingText]);
   const {x, y, reference, floating, strategy} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
+  const refreshOptions = () => {
+    if (model) {
+      setOptions(getSelectUIOptions(model, callbacks.getRoot()));
+    } else if (schema) {
+      setOptions(getSelectUIOptionsWithSchema(schema.schema, schema.dataContext, callbacks.getRoot()));
+    }
+  };
 
-  const change = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setEditingText(e.target.value);
-      setIsEditing(true);
-      setDropDownIsOpen((prev) => {
-        if (!prev) {
-          setOptions(getSelectUIOptions(model, callbacks.getRoot()));
-        }
-        return true;
-      });
-    },
-    [callbacks, model],
-  );
+  const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditingText(e.target.value);
+    setIsEditing(true);
+    setDropDownIsOpen((prev) => {
+      if (!prev) {
+        refreshOptions();
+      }
+      return true;
+    });
+  };
   useEffect(() => {
     if (!isMainSelected) {
       setDropDownIsOpen(false);
@@ -222,10 +233,22 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
   }, [callbacks, isMainSelected, model]);
   const openDropdown = () => {
     setDropDownIsOpen(true);
-    setOptions(getSelectUIOptions(model, callbacks.getRoot()));
+    refreshOptions();
   };
   const select = (value: SelectUIOption | null) => {
-    callbacks.onAction(selectUIModelSetValue(model, value));
+    if (model) {
+      callbacks.onAction(selectUIModelSetValue(model, value));
+    } else if (schema) {
+      const result = selectUIModelHandleInputForSchema(
+        schema.schema,
+        value?.value ?? null,
+        schema.dataContext,
+        callbacks.getRoot(),
+      );
+      if (result !== undefined) {
+        schema.onEdit(result);
+      }
+    }
     setDropDownIsOpen(false);
     setIsEditing(false);
     setEditingText('');
@@ -239,7 +262,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
       onDoubleClick={() => setIsEditing(true)}
     >
       <TableCellLabel>
-        {editingText ? '' : model.current?.label}
+        {editingText ? '' : model?.current?.label}
         <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
         {isMainSelected && (
           <TextareaForTableCell

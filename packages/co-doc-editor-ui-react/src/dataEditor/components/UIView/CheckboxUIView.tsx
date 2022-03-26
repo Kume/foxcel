@@ -1,9 +1,11 @@
 import React from 'react';
 import {UIViewProps} from './UIView';
 import {CheckboxUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {checkboxUIModelValue, selectUIModelSetValue} from 'co-doc-editor-core/dist/UIModel/CheckboxUIModel';
-import {TableUIViewCellProps} from './TableUIViewCell';
+import {checkboxUIModelValue, checkboxUIModelSetValue} from 'co-doc-editor-core/dist/UIModel/CheckboxUIModel';
+import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
+import {CheckBoxUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
+import {trueDataModel} from 'co-doc-editor-core';
 
 interface Props extends UIViewProps {
   readonly model: CheckboxUIModel;
@@ -14,14 +16,12 @@ export const CheckboxUIView: React.FC<Props> = ({model, onAction}) => {
     <input
       type="checkbox"
       checked={checkboxUIModelValue(model)}
-      onChange={(e) => onAction(selectUIModelSetValue(e.target.checked, model))}
+      onChange={(e) => onAction(checkboxUIModelSetValue(e.target.checked, model))}
     />
   );
 };
 
-interface PropsForTableCell extends TableUIViewCellProps {
-  readonly model: CheckboxUIModel;
-}
+type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<CheckboxUIModel, CheckBoxUISchema>;
 
 const LayoutRootForTableCell = styled.div`
   display: flex;
@@ -33,7 +33,7 @@ const LabelForTableCell = styled.div`
   margin: 0 0.5em;
 `;
 
-export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({model, row, col, callbacks}) => {
+export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({model, schema, row, col, callbacks}) => {
   return (
     <LayoutRootForTableCell
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
@@ -42,8 +42,14 @@ export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({model, 
       <LabelForTableCell onMouseDown={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
-          checked={checkboxUIModelValue(model)}
-          onChange={(e) => callbacks.onAction(selectUIModelSetValue(e.target.checked, model))}
+          checked={model ? checkboxUIModelValue(model) : false}
+          onChange={(e) => {
+            if (model) {
+              callbacks.onAction(checkboxUIModelSetValue(e.target.checked, model));
+            } else if (schema) {
+              schema.onEdit(trueDataModel);
+            }
+          }}
         />
       </LabelForTableCell>
     </LayoutRootForTableCell>

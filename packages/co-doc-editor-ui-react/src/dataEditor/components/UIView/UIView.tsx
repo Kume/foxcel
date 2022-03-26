@@ -9,14 +9,14 @@ import {TableUIView} from './TableUIView';
 import {SelectUIView} from './SelectUIView';
 import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
 import {CheckboxUIView} from './CheckboxUIView';
+import {NumberUIView} from './NumberUIView';
+import {MappingTableUIView} from './MappingTableUIView';
 
 export interface UIViewProps {
   readonly model: UIModel;
   onAction(action: AppAction): void;
   getRoot(): DataModelRoot;
 }
-
-export type ReadonlyUIViewProps<T extends UIViewProps> = Omit<T, 'onAction'>;
 
 export const UIView: React.FC<UIViewProps> = ({model, ...others}) => {
   switch (model.type) {
@@ -26,6 +26,9 @@ export const UIView: React.FC<UIViewProps> = ({model, ...others}) => {
     case 'text':
       return <TextUIView model={model} {...others} />;
 
+    case 'number':
+      return <NumberUIView model={model} {...others} />;
+
     case 'tab':
       return <TabUIView model={model} {...others} />;
 
@@ -34,6 +37,9 @@ export const UIView: React.FC<UIViewProps> = ({model, ...others}) => {
 
     case 'table':
       return <TableUIView model={model} {...others} />;
+
+    case 'mappingTable':
+      return <MappingTableUIView model={model} {...others} />;
 
     case 'select':
       return <SelectUIView model={model} {...others} />;

@@ -76,7 +76,7 @@ interface SelectUISchemaBase extends UISchemaBase {
 }
 
 interface SingleSelectUISchema extends SelectUISchemaBase {
-  readonly dataSchema: StringDataSchema;
+  readonly dataSchema: StringDataSchema | NumberDataSchema;
   readonly isMulti: false;
 }
 
