@@ -18,6 +18,7 @@ const Tab = styled.div<{selected: boolean}>`
   background-color: lightgray;
   position: relative;
   bottom: -1px;
+  white-space: nowrap;
   ${({selected}) =>
     selected
       ? `
@@ -44,7 +45,8 @@ export const TabUIView: React.FC<TabUIViewProps> = ({model, ...otherProps}) => {
           <Tab
             selected={model.currentTabIndex === index}
             key={index}
-            onClick={() => otherProps.onAction({type: 'focus', path: dataPath})}>
+            onClick={() => otherProps.onAction({type: 'focus', path: dataPath})}
+          >
             {label}
           </Tab>
         ))}

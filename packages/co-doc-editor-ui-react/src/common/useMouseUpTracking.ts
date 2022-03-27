@@ -7,6 +7,7 @@ export function useMouseUpTracking(onMouseUp: (e: MouseEvent) => void): () => vo
     if (isTracking) {
       const mouseUp = (e: MouseEvent) => {
         onMouseUp(e);
+        setIsTracking(false);
       };
       document.addEventListener('mouseup', mouseUp);
       return () => {

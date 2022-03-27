@@ -8,6 +8,7 @@ export interface TableCellCallbacks {
   readonly getRoot: () => DataModelRoot;
   readonly onMouseDown: (e: React.MouseEvent, row: number, column: number) => void;
   readonly onMouseOver: (e: React.MouseEvent, row: number, column: number) => void;
+  readonly onKeyDown: (e: KeyboardEvent | React.KeyboardEvent) => boolean;
 }
 
 export interface TableUIViewCellProps {
@@ -15,6 +16,7 @@ export interface TableUIViewCellProps {
   readonly row: number;
   readonly col: number;
   readonly callbacks: TableCellCallbacks;
+  readonly disabled?: boolean;
 }
 
 export interface TableUIViewCellSchemaInfo<Schema> {

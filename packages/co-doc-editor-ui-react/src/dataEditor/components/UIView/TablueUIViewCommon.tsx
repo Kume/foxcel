@@ -6,11 +6,22 @@ import {CheckboxUIViewForTableCell} from './CheckboxUIView';
 import {NumberUIViewForTableCell} from './NumberUIView';
 import React from 'react';
 import {UIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {TableCellPoint, TableCellRange} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
-import {UISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
+import {TableUIModelMoveDirection, TableUISelection} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
 import {DataModel, emptyMapModel, ForwardDataPath, setToMapDataModel} from 'co-doc-editor-core';
-import {getUiSchemaUniqueKeyOrUndefined, UISchemaExcludeRecursive} from 'co-doc-editor-core/dist/UIModel/UISchema';
+import {UISchemaExcludeRecursive} from 'co-doc-editor-core/dist/UIModel/UISchema';
 import {DataModelContext} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {
+  KeyValue_ArrowDown,
+  KeyValue_ArrowLeft,
+  KeyValue_ArrowRight,
+  KeyValue_ArrowUp,
+  KeyValue_Backspace,
+  KeyValue_Delete,
+  KeyValue_Enter,
+  KeyValue_Tab,
+  withoutModifierKey,
+  withShiftKey,
+} from '../../../common/Keybord';
 
 export const TableUIViewLayoutRoot = styled.table`
   background-color: gray;
@@ -52,6 +63,7 @@ export function renderTableUIViewCell(
   row: number,
   col: number,
   callbacks: TableCellCallbacks,
+  disabled?: boolean,
 ): React.ReactNode {
   switch (model.type) {
     case 'text':
@@ -62,6 +74,7 @@ export function renderTableUIViewCell(
           row={row}
           col={col}
           callbacks={callbacks}
+          disabled={disabled}
         />
       );
     case 'select':
@@ -72,6 +85,7 @@ export function renderTableUIViewCell(
           row={row}
           col={col}
           callbacks={callbacks}
+          disabled={disabled}
         />
       );
     case 'checkbox':
@@ -82,6 +96,7 @@ export function renderTableUIViewCell(
           row={row}
           col={col}
           callbacks={callbacks}
+          disabled={disabled}
         />
       );
     case 'number':
@@ -92,6 +107,7 @@ export function renderTableUIViewCell(
           row={row}
           col={col}
           callbacks={callbacks}
+          disabled={disabled}
         />
       );
     default:
@@ -160,8 +176,73 @@ export function renderTableUIViewCellWithSchema(
   }
 }
 
-export interface TableUIViewSelection {
-  readonly origin: TableCellPoint;
+export interface TableUIViewState {
   readonly isMouseActive: boolean;
-  readonly range: TableCellRange;
+  readonly selection?: TableUISelection;
+}
+
+export function updateTableUIViewStateSelection(
+  prev: TableUIViewState,
+  updateSelection: (selection: TableUISelection) => TableUISelection,
+): TableUIViewState {
+  return prev.selection ? {...prev, selection: updateSelection(prev.selection)} : prev;
+}
+
+export function handleTableUIViewKeyboardInput(
+  e: KeyboardEvent | React.KeyboardEvent,
+  onMoveSelection: (direction: TableUIModelMoveDirection) => void,
+  onDelete: () => void,
+): boolean {
+  switch (e.key) {
+    case KeyValue_Tab:
+      if (withoutModifierKey(e)) {
+        onMoveSelection('right');
+        return true;
+      } else if (withShiftKey(e)) {
+        onMoveSelection('left');
+        return true;
+      }
+      break;
+    case KeyValue_Enter:
+      if (withoutModifierKey(e)) {
+        onMoveSelection('down');
+        return true;
+      } else if (withShiftKey(e)) {
+        onMoveSelection('up');
+        return true;
+      }
+      break;
+    case KeyValue_Delete:
+    case KeyValue_Backspace:
+      if (withoutModifierKey(e)) {
+        onDelete();
+        return true;
+      }
+      break;
+    case KeyValue_ArrowUp:
+      if (withoutModifierKey(e)) {
+        onMoveSelection('up');
+        return true;
+      }
+      break;
+    case KeyValue_ArrowRight:
+      if (withoutModifierKey(e)) {
+        onMoveSelection('right');
+        return true;
+      }
+      break;
+    case KeyValue_ArrowLeft:
+      if (withoutModifierKey(e)) {
+        onMoveSelection('left');
+        return true;
+      }
+      break;
+    case KeyValue_ArrowDown:
+      if (withoutModifierKey(e)) {
+        onMoveSelection('down');
+        return true;
+      }
+      break;
+  }
+  return false;
 }

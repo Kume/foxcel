@@ -1,12 +1,13 @@
 import {TextUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import React, {useCallback, useRef} from 'react';
+import React, {useCallback, useEffect, useRef} from 'react';
 import {UIViewProps} from './UIView';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from 'co-doc-editor-core/dist/UIModel/TextUIModel';
-import {ModelOrSchemaHolder, TableUIViewCellProps, TableUIViewCellSchemaInfo} from './TableUIViewCell';
+import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
 import {TextUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
+import {KeyValue_Enter, withAltKey} from '../../../common/Keybord';
 
 export interface TextUIViewProps extends UIViewProps {
   readonly model: TextUIModel;
@@ -29,6 +30,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,
   schema,
   isMainSelected,
+  disabled,
   row,
   col,
   callbacks,
@@ -63,6 +65,12 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
     }
   };
 
+  useEffect(() => {
+    if (isMainSelected) {
+      textAreaRef.current?.focus();
+    }
+  }, [isMainSelected]);
+
   return (
     <LayoutRootForTableCell
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
@@ -71,13 +79,26 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
       onDoubleClick={startEdit}
     >
       <TextWithBreak text={editingText ?? ''} />
-      {isMainSelected && (
+      {isMainSelected && !disabled && (
         <TextareaForTableCell
           isVisible={isEditing}
           ref={textAreaRef}
           onChange={change}
           onBlur={blur}
           value={(isEditing && editingText) || ''}
+          onKeyDown={(e) => {
+            if (!callbacks.onKeyDown(e)) {
+              // TODO multilineのときのみこの操作を許可
+              // TODO 改行した際にキャレットが最後尾になってしまう問題の対応
+              if (e.key === KeyValue_Enter && withAltKey(e) && textAreaRef.current) {
+                const start = textAreaRef.current.selectionStart;
+                const end = textAreaRef.current.selectionEnd;
+                dispatch(['changeText', editingText.slice(0, start) + '\n' + editingText.slice(end)]);
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }
+          }}
         />
       )}
     </LayoutRootForTableCell>

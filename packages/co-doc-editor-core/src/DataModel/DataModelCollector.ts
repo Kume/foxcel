@@ -351,11 +351,8 @@ function collectDataModelImpl2(
   originalModel: DataModel | undefined,
   root: DataModelRoot,
 ): DataModelCollectionItem[] {
-  if (!model) {
-    return [];
-  }
   if (dataPathLength(path) === 0) {
-    return [{data: model, context: currentContext}];
+    return model === undefined ? [] : [{data: model, context: currentContext}];
   }
   const head = headDataPathComponent(path);
   const result = digForPathComponent<DataModelCollectionItem[], MultiDataPathComponent>(model, head, {
@@ -496,11 +493,8 @@ function collectDataModelImpl(
   key: string | undefined,
   context: CollectDataModelContext,
 ): DataCollectionItem[] {
-  if (!model) {
-    return [];
-  }
   if (dataPathLength(path) === 0) {
-    return [{data: model, path: currentDataPath, key}];
+    return model === undefined ? [] : [{data: model, path: currentDataPath, key}];
   }
   const head = headDataPathComponent(path);
   switch (typeof head) {

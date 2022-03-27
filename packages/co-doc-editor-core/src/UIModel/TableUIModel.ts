@@ -28,6 +28,11 @@ export interface TableCellRange {
   readonly col: TableRange;
 }
 
+export interface TableUISelection {
+  readonly origin: TableCellPoint;
+  readonly range: TableCellRange;
+}
+
 export function tableRangeContains(range: TableRange | undefined, target: number): boolean {
   return !!range && target >= range.start && target < range.start + range.size;
 }
@@ -67,7 +72,7 @@ export function tableUIModelMakeNewRow(
   model: TableUIModel | MappingTableUIModel,
   defaultValues: ValueWithColumnIndex[],
   root: DataModelRoot,
-): AppAction {
+): NewRow {
   let rowData = emptyMapModel;
   let key: string | null | undefined;
 
@@ -117,7 +122,7 @@ export function tableUIModelMakeNewRow(
     }
   }
 
-  return {type: 'data', action: {type: 'push', data: rowData, path: model.dataPath, key}};
+  return {data: rowData, key};
 }
 
 export function tableUIModelPasteCellAction(
@@ -171,16 +176,15 @@ export function tableUIModelPaste(
         }
       }
     } else {
-      actions.push(
-        tableUIModelMakeNewRow(
-          model,
-          data[rowDataIndex].map((value, columnDataIndex) => ({
-            columnIndex: columnDataIndex + selection.col.start,
-            value,
-          })),
-          root,
-        ),
+      const {data: newRowData, key} = tableUIModelMakeNewRow(
+        model,
+        data[rowDataIndex].map((value, columnDataIndex) => ({
+          columnIndex: columnDataIndex + selection.col.start,
+          value,
+        })),
+        root,
       );
+      actions.push({type: 'data', action: {type: 'push', data: newRowData, path: model.dataPath, key}});
     }
   }
 
@@ -232,6 +236,13 @@ interface CutResult {
 }
 
 export function tableUIModelCut(model: TableUIModel, selection: TableCellRange): CutResult {
+  return {
+    action: tableUIModelDelete(model, selection),
+    data: tableUIModelCopy(model, selection),
+  };
+}
+
+export function tableUIModelDelete(model: TableUIModel, selection: TableCellRange): AppAction {
   const actions: AppAction[] = [];
 
   for (let selectionRowIndex = 0; selectionRowIndex < selection.row.size; selectionRowIndex++) {
@@ -249,8 +260,70 @@ export function tableUIModelCut(model: TableUIModel, selection: TableCellRange):
     }
   }
 
-  return {
-    action: {type: 'batch', actions},
-    data: tableUIModelCopy(model, selection),
-  };
+  return {type: 'batch', actions};
+}
+
+export type TableUIModelMoveDirection = 'up' | 'right' | 'left' | 'down';
+
+export function tableUIModelMoveSelection(
+  prev: TableUISelection,
+  direction: TableUIModelMoveDirection,
+  rowSize: number,
+  colSize: number,
+): TableUISelection;
+export function tableUIModelMoveSelection(
+  prev: TableUISelection | undefined,
+  direction: TableUIModelMoveDirection,
+  rowSize: number,
+  colSize: number,
+): TableUISelection | undefined;
+export function tableUIModelMoveSelection(
+  prev: TableUISelection | undefined,
+  direction: TableUIModelMoveDirection,
+  rowSize: number,
+  colSize: number,
+): TableUISelection | undefined {
+  if (!prev) {
+    return undefined;
+  }
+  const {origin, range} = prev;
+  if (range.col.size === 1 && range.row.size === 1) {
+    switch (direction) {
+      case 'up':
+        if (origin.row === 0) {
+          return prev;
+        }
+        return {
+          origin: {row: origin.row - 1, col: origin.col},
+          range: {row: {start: range.row.start - 1, size: range.row.size}, col: range.col},
+        };
+      case 'right':
+        if (origin.col + 1 >= colSize) {
+          return prev;
+        }
+        return {
+          origin: {row: origin.row, col: origin.col + 1},
+          range: {row: range.row, col: {start: range.col.start + 1, size: range.col.size}},
+        };
+      case 'left':
+        if (origin.col === 0) {
+          return prev;
+        }
+        return {
+          origin: {row: origin.row, col: origin.col - 1},
+          range: {row: range.row, col: {start: range.col.start - 1, size: range.col.size}},
+        };
+      case 'down':
+        if (origin.row + 1 >= rowSize) {
+          return prev;
+        }
+        return {
+          origin: {row: origin.row + 1, col: origin.col},
+          range: {row: {start: range.row.start + 1, size: range.row.size}, col: range.col},
+        };
+    }
+  } else {
+    // TODO
+    return prev;
+  }
 }

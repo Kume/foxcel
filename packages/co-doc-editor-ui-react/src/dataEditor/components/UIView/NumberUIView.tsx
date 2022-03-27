@@ -108,6 +108,7 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
           ref={textAreaRef}
           onChange={changeTextInput}
           onBlur={blur}
+          onKeyDown={callbacks.onKeyDown}
           value={(isEditing && editingText) || ''}
         />
       )}

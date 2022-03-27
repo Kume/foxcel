@@ -5,9 +5,7 @@ import {
   TableUIModelPasteResult,
   tableUIModelPasteCellAction,
   tableUIModelMakeNewRow,
-  tableUIModelCopyCell,
   tableUIModelStringToDataModelWithSchema,
-  tableUIModelCopy,
 } from './TableUIModel';
 import {AppAction} from '../App/AppState';
 import {DataModelRoot} from '../DataModel/DataModelContext';
@@ -38,16 +36,15 @@ export function mappingTableUIModelPaste(
     const row = model.rows[selection.row.start + rowDataIndex];
     if (row) {
       if (row.isEmpty) {
-        actions.push(
-          tableUIModelMakeNewRow(
-            model,
-            data[rowDataIndex].map((value, columnDataIndex) => ({
-              columnIndex: columnDataIndex + selection.col.start,
-              value,
-            })),
-            root,
-          ),
+        const {data: newRowData} = tableUIModelMakeNewRow(
+          model,
+          data[rowDataIndex].map((value, columnDataIndex) => ({
+            columnIndex: columnDataIndex + selection.col.start,
+            value,
+          })),
+          root,
         );
+        actions.push({type: 'data', action: {type: 'push', data: newRowData, path: model.dataPath, key: row.key}});
       } else {
         for (let columnDataIndex = 0; columnDataIndex < pasteColumnSize; columnDataIndex++) {
           const columnIndex = selection.col.start + columnDataIndex;
@@ -125,6 +122,13 @@ interface CutResult {
 }
 
 export function mappingTableUIModelCut(model: MappingTableUIModel, selection: TableCellRange): CutResult {
+  return {
+    action: mappingTableUIModelDelete(model, selection),
+    data: mappingTableUIModelCopy(model, selection),
+  };
+}
+
+export function mappingTableUIModelDelete(model: MappingTableUIModel, selection: TableCellRange): AppAction {
   const actions: AppAction[] = [];
 
   const rowSize = Math.min(selection.row.size, model.rows.length - selection.row.start);
@@ -142,8 +146,5 @@ export function mappingTableUIModelCut(model: MappingTableUIModel, selection: Ta
     }
   }
 
-  return {
-    action: {type: 'batch', actions},
-    data: mappingTableUIModelCopy(model, selection),
-  };
+  return {type: 'batch', actions};
 }

@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {
   MappingTableUIModel,
@@ -7,6 +7,7 @@ import {
   TableUIModelRow,
 } from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {
+  handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
   renderTableUIViewCellWithSchema,
   TableUIViewCellLayout,
@@ -14,43 +15,59 @@ import {
   TableUIViewIndexCell,
   TableUIViewLayoutRoot,
   TableUIViewRow,
-  TableUIViewSelection,
+  TableUIViewState,
+  updateTableUIViewStateSelection,
 } from './TablueUIViewCommon';
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
 import {
   mappingTableUIModelCopy,
   mappingTableUIModelCut,
+  mappingTableUIModelDelete,
   mappingTableUIModelPaste,
 } from 'co-doc-editor-core/dist/UIModel/MappingTableUIModel';
 import {parseTsv, stringifyTsv} from 'co-doc-editor-core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
-import {selectingTableCellRange, TableRange, tableRangeContains} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
+import {
+  selectingTableCellRange,
+  TableCellRange,
+  TableRange,
+  tableRangeContains,
+  tableUIModelMoveSelection,
+  TableUISelection,
+} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
 import styled from 'styled-components';
 import {ForwardDataPath} from 'co-doc-editor-core';
 
 interface ActionRef {
-  readonly selection: TableUIViewSelection | undefined;
+  readonly selection: TableUISelection | undefined;
   readonly model: MappingTableUIModel;
 }
+
+const updateSelection = updateTableUIViewStateSelection;
+const makeUpdateRange = (range: TableCellRange) => (prev: TableUIViewState) =>
+  updateSelection(prev, ({origin}) => ({origin, range}));
+const makeUpdateRangeByCallback = (updateRange: (prevSelection: TableUISelection) => TableCellRange) => (
+  prev: TableUIViewState,
+) => updateSelection(prev, (prevSelection) => ({origin: prevSelection.origin, range: updateRange(prevSelection)}));
 
 interface Props extends UIViewProps {
   readonly model: MappingTableUIModel;
 }
 
 export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
-  const [selection, setSelection] = useState<TableUIViewSelection>();
+  const [state, setState] = useState<TableUIViewState>({isMouseActive: false});
   const layoutRootRef = useRef<HTMLTableElement | null>(null);
-  const endMouseMove = useCallback(() => setSelection((origin) => origin && {...origin, isMouseActive: false}), []);
+  const endMouseMove = useCallback(() => setState((origin) => origin && {...origin, isMouseActive: false}), []);
   const startMouseUpTracking = useMouseUpTracking(endMouseMove);
-  const actionRef_: ActionRef = {selection, model};
+  const actionRef_: ActionRef = {selection: state?.selection, model};
   const actionRef = useRef(actionRef_);
   actionRef.current = actionRef_;
 
   const editFocusCallbacks = useMemo<EditFocusCallbacks>(
     () => ({
       onLostFocus: () => {
-        setSelection(undefined);
+        setState({isMouseActive: false});
       },
       onPaste(data) {
         if (actionRef.current.selection) {
@@ -63,7 +80,7 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
           if (result) {
             onAction(result.action);
             if (result.changedSelection) {
-              setSelection({...actionRef.current.selection, range: result.changedSelection});
+              setState(makeUpdateRange(result.changedSelection));
             }
           }
           return true;
@@ -102,23 +119,70 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
       onMouseDown(e, row, col) {
         const point = {row, col};
         if (e.shiftKey) {
-          setSelection((prev) => (prev ? {...prev, range: selectingTableCellRange(prev.origin, point)} : undefined));
+          setState(makeUpdateRangeByCallback((prev) => selectingTableCellRange(prev.origin, point)));
         } else {
-          setSelection({origin: point, isMouseActive: true, range: selectingTableCellRange(point, point)});
+          setState({isMouseActive: true, selection: {origin: point, range: selectingTableCellRange(point, point)}});
           startMouseUpTracking();
           startFocus();
         }
       },
       onMouseOver(e, row, col) {
-        setSelection((prev) =>
-          prev?.isMouseActive ? {...prev, range: selectingTableCellRange(prev.origin, {row, col})} : prev,
+        setState((prev) =>
+          prev.isMouseActive
+            ? makeUpdateRangeByCallback(({origin}) => selectingTableCellRange(origin, {row, col}))(prev)
+            : prev,
         );
+      },
+      onKeyDown(e) {
+        return handleKey(e);
       },
     }),
     // getRoot, onAction, startFocus, startMouseUpTracking は更新されることが無い仕様なので、deps指定は不要
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
+
+  const handleKey = useCallback((e: KeyboardEvent | React.KeyboardEvent): boolean => {
+    if (!actionRef.current.selection) {
+      return false;
+    }
+    const selection = actionRef.current.selection;
+    const model = actionRef.current.model;
+    const handled = handleTableUIViewKeyboardInput(
+      e,
+      (direction) =>
+        setState((prev) =>
+          updateSelection(prev, (prevSelection) =>
+            tableUIModelMoveSelection(
+              prevSelection,
+              direction,
+              model.rows.length + model.danglingRows.length,
+              model.columns.length,
+            ),
+          ),
+        ),
+      () => onAction(mappingTableUIModelDelete(model, selection.range)),
+    );
+    if (handled) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    return handled;
+    // onAction は更新されることが無い仕様なので、deps指定は不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const keyDownEventHandler = (e: KeyboardEvent) => {
+      if (!layoutRootRef.current?.contains(e.target as any)) {
+        handleKey(e);
+      }
+    };
+    document.addEventListener('keydown', keyDownEventHandler);
+    return () => {
+      document.removeEventListener('keydown', keyDownEventHandler);
+    };
+  });
 
   return (
     <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
@@ -138,8 +202,10 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
               tableDataPath={model.dataPath}
               row={row}
               rowNumber={index}
-              mainSelectedColumn={selection?.origin.row === index ? selection?.origin.col : undefined}
-              selectionRange={tableRangeContains(selection?.range.row, index) ? selection?.range.col : undefined}
+              mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
+              selectionRange={
+                tableRangeContains(state.selection?.range.row, index) ? state.selection?.range.col : undefined
+              }
               callbacks={callbacks}
             />
           ) : (
@@ -147,8 +213,10 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
               key={row.key}
               row={row}
               rowNumber={index}
-              mainSelectedColumn={selection?.origin.row === index ? selection?.origin.col : undefined}
-              selectionRange={tableRangeContains(selection?.range.row, index) ? selection?.range.col : undefined}
+              mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
+              selectionRange={
+                tableRangeContains(state.selection?.range.row, index) ? state.selection?.range.col : undefined
+              }
               callbacks={callbacks}
             />
           ),
@@ -158,8 +226,11 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
             key={row.key}
             row={row}
             rowNumber={index + model.rows.length}
+            mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
             selectionRange={
-              tableRangeContains(selection?.range.row, index + model.rows.length) ? selection?.range.col : undefined
+              tableRangeContains(state.selection?.range.row, index + model.rows.length)
+                ? state.selection?.range.col
+                : undefined
             }
             callbacks={callbacks}
           />
@@ -244,6 +315,7 @@ interface MappingTableDanglingRowViewProps {
   readonly row: TableUIModelRow;
   readonly rowNumber: number;
   readonly selectionRange: TableRange | undefined;
+  readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
 }
 
@@ -253,7 +325,7 @@ const DanglingIndexCell = styled(TableUIViewIndexCell)`
 `;
 
 const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>(
-  ({row, rowNumber, selectionRange, callbacks}) => {
+  ({row, rowNumber, selectionRange, mainSelectedColumn, callbacks}) => {
     const removeRow = () => callbacks.onAction({type: 'data', action: {type: 'delete', path: row.dataPath}});
     return (
       <TableUIViewRow>
@@ -263,9 +335,10 @@ const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>
         </DanglingIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
+          const isMainSelected = mainSelectedColumn === index;
           return (
             <TableUIViewCellLayout key={index} selected={isSelected}>
-              {renderTableUIViewCell(cell, false, rowNumber, index, callbacks)}
+              {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks, true)}
             </TableUIViewCellLayout>
           );
         })}

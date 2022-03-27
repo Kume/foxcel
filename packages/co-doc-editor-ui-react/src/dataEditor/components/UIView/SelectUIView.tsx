@@ -193,6 +193,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,
   schema,
   isMainSelected,
+  disabled,
   row,
   col,
   callbacks,
@@ -213,27 +214,34 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       setOptions(getSelectUIOptionsWithSchema(schema.schema, schema.dataContext, callbacks.getRoot()));
     }
   };
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditingText(e.target.value);
-    setIsEditing(true);
-    setDropDownIsOpen((prev) => {
-      if (!prev) {
-        refreshOptions();
-      }
-      return true;
-    });
+    if (!disabled) {
+      setEditingText(e.target.value);
+      setIsEditing(true);
+      setDropDownIsOpen((prev) => {
+        if (!prev) {
+          refreshOptions();
+        }
+        return true;
+      });
+    }
   };
   useEffect(() => {
     if (!isMainSelected) {
       setDropDownIsOpen(false);
       setIsEditing(false);
       setEditingText('');
+    } else {
+      textAreaRef.current?.focus();
     }
-  }, [callbacks, isMainSelected, model]);
+  }, [isMainSelected, model]);
   const openDropdown = () => {
-    setDropDownIsOpen(true);
-    refreshOptions();
+    if (!disabled) {
+      setDropDownIsOpen(true);
+      refreshOptions();
+    }
   };
   const select = (value: SelectUIOption | null) => {
     if (model) {
@@ -267,9 +275,10 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         {isMainSelected && (
           <TextareaForTableCell
             isVisible={isEditing}
-            ref={(ref) => ref?.focus()}
+            ref={textAreaRef}
             onChange={change}
             onBlur={blur}
+            onKeyDown={(e) => callbacks.onKeyDown(e)}
             value={(isEditing && editingText) || ''}
           />
         )}
