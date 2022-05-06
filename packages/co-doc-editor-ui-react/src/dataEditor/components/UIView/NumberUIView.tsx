@@ -27,7 +27,11 @@ export const NumberUIView: React.FC<Props> = ({model, onAction}) => {
       onChange={(e) => setEditingText(e.target.value)}
       onBlur={() => {
         const action = numberUIModelSetText(model, editingText);
-        if (action) onAction(action);
+        if (action) {
+          onAction(action);
+        } else {
+          setEditingText('');
+        }
       }}
     />
   );
