@@ -1,4 +1,4 @@
-import {ContentListIndex, MappingTableUIModelRow, SelectUIModel, TableUIModelRow, UIModel} from './UIModelTypes';
+import {ContentListIndex, MappingTableUIModelRow, TableUIModelRow, UIModel} from './UIModelTypes';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {
@@ -11,7 +11,6 @@ import {
 } from '../DataModel/DataPath';
 import {UISchemaContext} from './UISchemaContext';
 import {
-  dataModelEqualsToUnknown,
   dataModelIsBoolean,
   dataModelIsList,
   dataModelIsMap,
@@ -58,8 +57,7 @@ import {
   pushUiSchemaKeyToDataModelContext,
   undefinedDataModelContextPathComponent,
 } from '../DataModel/DataModelContext';
-import {findDataModel} from '../DataModel/DataModelSearcher';
-import {formatDynamicSelectUIOption} from './SelectUIModel';
+import {selectUIModelGetCurrent} from './SelectUIModel';
 import {getDataModelBySinglePath} from '../DataModel/DataModelCollector';
 
 function getMapChildContextForFlattenable(
@@ -763,43 +761,38 @@ export function buildUIModel(
 
     case 'select': {
       const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
-      let current: SelectUIModel['current'];
-      if (dataModel) {
-        for (const option of currentSchema.options) {
-          if (option.label === undefined) {
-            // Dynamic option
-            const findResult = findDataModel(
-              dataModel,
-              // TODO matcherは暫定対応なので、後でちゃんと実装する
-              {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
-              dataContext,
-              dataRoot,
-              {} as any, // TODO ちゃんとログの仕組みを整える
-            );
-            if (findResult) {
-              current = formatDynamicSelectUIOption(option, findResult.data, findResult.context, dataRoot);
-              break;
-            }
-          } else {
-            // Static option
-            if (dataModelEqualsToUnknown(dataModel, option.value)) {
-              current = {label: option.label, value: option.value.toString(), data: dataModel};
-              break;
-            }
-          }
-        }
+      if (currentSchema.isMulti) {
+        const listOrUndefined = dataModelIsList(dataModel) ? dataModel : undefined;
+        return {
+          type: 'select',
+          isMulti: true,
+          schema: currentSchema,
+          data: listOrUndefined,
+          dataPath,
+          dataContext,
+          dataPathFocus,
+          dataFocusLog,
+          schemaFocusLog,
+          currents: listOrUndefined
+            ? mapListDataModelWithPointer(listOrUndefined, (item, pointer) => ({
+                ...selectUIModelGetCurrent(currentSchema, item, dataContext, dataRoot),
+                dataPath: pushDataPath(dataPath, toPointerPathComponent(pointer)),
+              }))
+            : [],
+        };
+      } else {
+        return {
+          type: 'select',
+          schema: currentSchema,
+          data: dataModel,
+          dataPath,
+          dataContext,
+          dataPathFocus,
+          dataFocusLog,
+          schemaFocusLog,
+          current: selectUIModelGetCurrent(currentSchema, dataModel, dataContext, dataRoot),
+        };
       }
-      return {
-        type: 'select',
-        schema: currentSchema,
-        data: dataModel,
-        dataPath,
-        dataContext,
-        dataPathFocus,
-        dataFocusLog,
-        schemaFocusLog,
-        current,
-      };
     }
   }
 }

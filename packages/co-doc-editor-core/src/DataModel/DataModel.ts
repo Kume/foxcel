@@ -200,6 +200,28 @@ export function dataModelToString(model: DataModel | undefined): string {
     return dataModelToJson(model);
   } else if (dataModelIsBoolean(model)) {
     return model ? 'TRUE' : 'FALSE';
+  } else if (dataModelIsNull(model)) {
+    return 'NULL';
+  } else {
+    return '';
+  }
+}
+
+export function dataModelToLabelString(model: DataModel | undefined): string {
+  if (dataModelIsString(model)) {
+    return stringDataModelToString(model);
+  } else if (dataModelIsInteger(model)) {
+    return numberDataModelToNumber(model).toString();
+  } else if (dataModelIsMapOrList(model)) {
+    if (dataModelIsList(model)) {
+      return '[List]';
+    } else {
+      return '{Object}';
+    }
+  } else if (dataModelIsBoolean(model)) {
+    return model ? 'TRUE' : 'FALSE';
+  } else if (dataModelIsNull(model)) {
+    return 'NULL';
   } else {
     return '';
   }
@@ -552,7 +574,7 @@ function forceInsertToListData(list: ListDataModel, value: DataModel, index: num
   return [...list.slice(0, index), [generateDataModelId(), value], ...list.slice(index)];
 }
 
-function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
+export function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
   return [...list, [generateDataModelId(), value]];
 }
 

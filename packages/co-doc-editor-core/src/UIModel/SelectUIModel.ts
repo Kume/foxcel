@@ -1,10 +1,16 @@
-import {SelectUIModel} from './UIModelTypes';
+import {SelectUIModel, SelectUIModelCurrentValue} from './UIModelTypes';
 import {AppAction} from '../App/AppState';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {
+  dataModelEquals,
   dataModelEqualsToUnknown,
+  dataModelIsList,
+  dataModelToLabelString,
   dataModelToString,
+  emptyListModel,
+  mapListDataModel,
   nullDataModel,
+  pushToListData,
   stringToDataModel,
   stringToNumberDataModel,
   unknownToDataModel,
@@ -33,21 +39,28 @@ function getSelectUIOptionsImpl(
   root: DataModelRoot,
 ): SelectUIOption[] {
   const options: SelectUIOption[] = [];
+  const excludeOptions: DataModel[] =
+    schema.isMulti && dataModelIsList(data) ? mapListDataModel(data, (data) => data) : [];
 
   for (const optionSchema of schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
       const collectResults = collectDataModel2(data, optionSchema.path, dataContext, root);
       for (const {data, context} of collectResults) {
-        options.push(formatDynamicSelectUIOption(optionSchema, data, context, root));
+        if (excludeOptions.every((excludeOption) => !dataModelEquals(excludeOption, data))) {
+          options.push(formatDynamicSelectUIOption(optionSchema, data, context, root));
+        }
       }
     } else {
       // Static option
-      options.push({
-        label: optionSchema.label,
-        value: optionSchema.value.toString(),
-        data: unknownToDataModel(optionSchema.value),
-      });
+      const data = unknownToDataModel(optionSchema.value);
+      if (excludeOptions.every((excludeOption) => !dataModelEquals(excludeOption, data))) {
+        options.push({
+          label: optionSchema.label,
+          value: optionSchema.value.toString(),
+          data,
+        });
+      }
     }
   }
 
@@ -63,18 +76,50 @@ export function getSelectUIOptionsWithSchema(
 }
 
 export function selectUIModelDefaultOptions(model: SelectUIModel): SelectUIOption[] {
-  return model.current ? [model.current] : [];
+  // React-Selectやめたので、このメソッド要らなくなってるかも
+  // 元々は選択肢が0だと現在の値の初期表示ができないからこういう仕組みを作ったはずなので
+  if (model.isMulti) {
+    return [];
+  } else {
+    return model.current && !model.current.isInvalid ? [model.current] : [];
+  }
 }
 
 export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOption | null): AppAction {
-  return {
-    type: 'data',
-    action: {
-      type: 'set',
-      path: model.dataPath,
-      data: value === null ? nullDataModel : value.data,
-    },
-  };
+  if (model.isMulti) {
+    if (value === null) {
+      throw new Error('MultiSelectで選択解除はこのメソッドでは行わない想定。(View側で制御)');
+    }
+    if (model.data) {
+      return {
+        type: 'data',
+        action: {
+          type: 'push',
+          path: model.dataPath,
+          data: value.data,
+        },
+      };
+    } else {
+      // もともと対象データが配列でなければ、今回選択した要素を一つ持った配列で初期化する。
+      return {
+        type: 'data',
+        action: {
+          type: 'set',
+          path: model.dataPath,
+          data: pushToListData(emptyListModel, value.data),
+        },
+      };
+    }
+  } else {
+    return {
+      type: 'data',
+      action: {
+        type: 'set',
+        path: model.dataPath,
+        data: value === null ? nullDataModel : value.data,
+      },
+    };
+  }
 }
 
 export function selectUIModelSetString(
@@ -100,6 +145,51 @@ export function formatDynamicSelectUIOption(
     value: stringValue,
     data: data,
   };
+}
+
+export function selectUIModelGetCurrent(
+  schema: SelectUISchema,
+  dataModel: DataModel,
+  context: DataModelContext,
+  dataRoot: DataModelRoot,
+): SelectUIModelCurrentValue;
+export function selectUIModelGetCurrent(
+  schema: SelectUISchema,
+  dataModel: DataModel | undefined,
+  context: DataModelContext,
+  dataRoot: DataModelRoot,
+): SelectUIModelCurrentValue | undefined;
+export function selectUIModelGetCurrent(
+  schema: SelectUISchema,
+  dataModel: DataModel | undefined,
+  context: DataModelContext,
+  dataRoot: DataModelRoot,
+): SelectUIModelCurrentValue | undefined {
+  if (dataModel === undefined) {
+    return undefined;
+  }
+  for (const option of schema.options) {
+    if (option.label === undefined) {
+      // Dynamic option
+      const findResult = findDataModel(
+        dataModel,
+        // TODO matcherは暫定対応なので、後でちゃんと実装する
+        {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
+        context,
+        dataRoot,
+        {} as any, // TODO ちゃんとログの仕組みを整える
+      );
+      if (findResult) {
+        return formatDynamicSelectUIOption(option, findResult.data, findResult.context, dataRoot);
+      }
+    } else {
+      // Static option
+      if (dataModelEqualsToUnknown(dataModel, option.value)) {
+        return {label: option.label, value: option.value.toString(), data: dataModel};
+      }
+    }
+  }
+  return {isInvalid: true, data: dataModel};
 }
 
 export function filterSelectUIOptionsByText(options: readonly SelectUIOption[], text: string): SelectUIOption[] {
@@ -147,4 +237,12 @@ export function selectUIModelHandleInputForSchema(
     }
   }
   return undefined;
+}
+
+export function selectUIModelCurrentLabel(current: SelectUIModelCurrentValue | undefined): string | undefined {
+  if (current?.isInvalid) {
+    return dataModelToLabelString(current?.data);
+  } else {
+    return current?.label;
+  }
 }

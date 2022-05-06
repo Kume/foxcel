@@ -1,10 +1,11 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
-import {SelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {MultiSelectUIModel, SelectUIModel, SingleSelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {
   filterSelectUIOptionsByText,
   getSelectUIOptions,
   getSelectUIOptionsWithSchema,
+  selectUIModelCurrentLabel,
   selectUIModelDefaultOptions,
   selectUIModelHandleInputForSchema,
   selectUIModelSetValue,
@@ -15,10 +16,8 @@ import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {TextareaForTableCell} from './TableUIViewCellCommon';
 import {SelectUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
-
-interface Props extends UIViewProps {
-  readonly model: SelectUIModel;
-}
+import {VscClose} from 'react-icons/vsc';
+import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
 
 const dropDownButtonStyle = `
   height: 16pt;
@@ -40,6 +39,7 @@ const dropDownButtonHoverIconStyle = `border-color: gray transparent transparent
 
 const LayoutRoot = styled.div`
   position: relative;
+  display: flex;
 
   .dropdown {
     ${dropDownButtonStyle}
@@ -47,18 +47,38 @@ const LayoutRoot = styled.div`
       ${dropDownButtonIconStyle}
     }
   }
+`;
+
+const InnerLayout = styled.div`
+  min-width: 100px;
+  border: 1px solid gray;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
   &:hover .dropdown div {
     ${dropDownButtonHoverIconStyle}
   }
 `;
 
 const InputArea = styled.div`
-  min-width: 100px;
-  border: 1px solid gray;
+  padding-left: 4px;
+  position: relative;
+  overflow-wrap: break-word;
+  word-break: keep-all;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-wrap: wrap;
 `;
+
+const TextArea = styled.div<{isMulti: boolean | undefined}>`
+  min-width: ${({isMulti}) => (isMulti ? '40px' : '0')};
+  position: relative;
+  display: flex;
+`;
+
+interface Props extends UIViewProps {
+  readonly model: SelectUIModel;
+}
 
 export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -77,9 +97,12 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
       }
       return true;
     });
+    textareaRef.current?.focus();
   };
   const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditingText(e.target.value);
+    setDropDownIsOpen(true);
+    textareaRef.current?.focus();
   };
   const blur = () => {
     setDropDownIsOpen(false);
@@ -92,27 +115,28 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   };
   return (
     <LayoutRoot ref={reference}>
-      <InputArea onClick={openDropdown}>
-        <TableCellLabel>
-          {editingText ? '　' : model.current?.label}
-          <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
-          {dropDownIsOpen && (
+      <InnerLayout onClick={openDropdown}>
+        <InputArea>
+          {model.isMulti ? (
+            <MultiSelectInput model={model} onAction={onAction} />
+          ) : (
+            renderSingleLabel(editingText, model)
+          )}
+          <TextArea isMulti={model.isMulti}>
+            <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
             <TextareaForTableCell
               isVisible={!!editingText}
-              ref={(ref) => {
-                ref?.focus();
-                textareaRef.current = ref;
-              }}
+              ref={textareaRef}
               onChange={change}
               onBlur={blur}
               value={(dropDownIsOpen && editingText) || ''}
             />
-          )}
-        </TableCellLabel>
+          </TextArea>
+        </InputArea>
         <div className="dropdown">
           <div />
         </div>
-      </InputArea>
+      </InnerLayout>
       {dropDownIsOpen && (
         <DropDownMenuLayout
           ref={floating}
@@ -175,7 +199,7 @@ const TableCellLabel = styled.div`
 `;
 
 const BackgroundTextPlace = styled.span`
-  padding-right: 4px;
+  padding: 0 4px;
   color: transparent;
 `;
 
@@ -185,6 +209,10 @@ const DropDownMenuItem = styled.div`
   &:hover {
     background-color: lightblue;
   }
+`;
+
+const InputAreaForTableCell = styled(TableCellLabel)`
+  display: flex;
 `;
 
 type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<SelectUIModel, SelectUISchema>;
@@ -269,20 +297,26 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
       onDoubleClick={() => setIsEditing(true)}
     >
-      <TableCellLabel>
-        {editingText ? '' : model?.current?.label}
-        <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
-        {isMainSelected && (
-          <TextareaForTableCell
-            isVisible={isEditing}
-            ref={textAreaRef}
-            onChange={change}
-            onBlur={blur}
-            onKeyDown={(e) => callbacks.onKeyDown(e, isEditing)}
-            value={(isEditing && editingText) || ''}
-          />
+      <InputAreaForTableCell>
+        {model?.isMulti ? (
+          <MultiSelectInput model={model} onAction={callbacks.onAction} />
+        ) : (
+          renderSingleLabel(editingText, model)
         )}
-      </TableCellLabel>
+        <TextArea isMulti={model?.isMulti || schema?.schema.isMulti}>
+          <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
+          {isMainSelected && (
+            <TextareaForTableCell
+              isVisible={isEditing}
+              ref={textAreaRef}
+              onChange={change}
+              onBlur={blur}
+              onKeyDown={(e) => callbacks.onKeyDown(e, isEditing)}
+              value={(isEditing && editingText) || ''}
+            />
+          )}
+        </TextArea>
+      </InputAreaForTableCell>
       <DropDownButton onClick={openDropdown}>
         <div />
       </DropDownButton>
@@ -300,3 +334,73 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
     </LayoutRootForTableCell>
   );
 };
+
+const MultiSelectInputSelectedItem = styled.span<{hasError?: boolean}>`
+  border: ${({hasError}) => (hasError ? 'red 2px solid' : 'darkgray 1px solid')};
+  border-radius: 4px;
+  margin: 2px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+`;
+
+const CloseItemIconArea = styled.div`
+  margin-left: 4px;
+  display: flex;
+  justify-content: center;
+  &:hover {
+    background-color: #ddd;
+  }
+`;
+
+const ErrorLabel = styled.span`
+  text-decoration: underline wavy red;
+`;
+
+interface MultiSelectInputProps {
+  readonly model: MultiSelectUIModel;
+  onAction(action: AppAction): void;
+}
+
+const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) => {
+  return (
+    <>
+      {model.currents.map((current) => {
+        if (current.isInvalid) {
+          return (
+            <MultiSelectInputSelectedItem hasError={true}>
+              <ErrorLabel>{selectUIModelCurrentLabel(current)}</ErrorLabel>
+              <CloseItemIconArea
+                onClick={() => onAction({type: 'data', action: {type: 'delete', path: current.dataPath}})}
+              >
+                <VscClose />
+              </CloseItemIconArea>
+            </MultiSelectInputSelectedItem>
+          );
+        } else {
+          return (
+            <MultiSelectInputSelectedItem>
+              {selectUIModelCurrentLabel(current)}
+              <CloseItemIconArea
+                onClick={() => onAction({type: 'data', action: {type: 'delete', path: current.dataPath}})}
+              >
+                <VscClose />
+              </CloseItemIconArea>
+            </MultiSelectInputSelectedItem>
+          );
+        }
+      })}
+    </>
+  );
+};
+
+function renderSingleLabel(editingText: string, model: SingleSelectUIModel | undefined): React.ReactNode {
+  if (editingText || model === undefined) {
+    return '';
+  }
+  if (model.current?.isInvalid) {
+    return <ErrorLabel>Error</ErrorLabel>;
+  } else {
+    return selectUIModelCurrentLabel(model.current);
+  }
+}

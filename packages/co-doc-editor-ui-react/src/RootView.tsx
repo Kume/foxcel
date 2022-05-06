@@ -38,6 +38,7 @@ const initialDataModel = unknownToDataModel({
         testA5_01: {testA8a: 'testA8a'},
         testA8_dangling: {testA8a: 'testA8_dang'},
       },
+      testA9: ['testA9_one', 'testA5_01', 'invalid'],
     },
     testA_value2: {
       testA1: 'aaa2',

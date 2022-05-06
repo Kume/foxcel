@@ -155,17 +155,39 @@ export interface MappingTableUIModelEmptyCell {
   readonly dataContext: DataModelContext;
 }
 
-export interface SelectUIModel extends UIModelCommon {
+export interface SelectUIModelCommon extends UIModelCommon {
   readonly type: 'select';
   readonly isKey?: void;
   readonly schema: SelectUISchema;
-  readonly data: DataModel | undefined;
-  readonly current?: {
-    readonly label: string;
-    readonly value: string;
-    readonly data: DataModel;
-  };
 }
+
+export interface SingleSelectUIModel extends SelectUIModelCommon {
+  readonly isMulti?: false;
+  readonly data: DataModel | undefined;
+  readonly current?: SelectUIModelCurrentValue;
+}
+
+export interface MultiSelectUIModel extends SelectUIModelCommon {
+  readonly isMulti: true;
+  readonly data: ListDataModel | undefined;
+  readonly currents: readonly (SelectUIModelCurrentValue & {readonly dataPath: ForwardDataPath})[];
+}
+
+export type SelectUIModel = SingleSelectUIModel | MultiSelectUIModel;
+
+export interface ValidSelectUIModelCurrentValue {
+  readonly isInvalid?: false;
+  readonly label: string;
+  readonly value: string;
+  readonly data: DataModel;
+}
+
+export interface InvalidSelectUIModelCurrentValue {
+  readonly isInvalid: true;
+  readonly data: DataModel;
+}
+
+export type SelectUIModelCurrentValue = ValidSelectUIModelCurrentValue | InvalidSelectUIModelCurrentValue;
 
 export interface CheckboxUIModel extends UIModelCommon {
   readonly type: 'checkbox';

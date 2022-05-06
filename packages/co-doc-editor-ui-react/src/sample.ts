@@ -87,6 +87,14 @@ export const sampleConfig: RootSchemaConfig = {
                   testA5c: {type: 'string', label: 'テストA5c', in: ['AAAA', 'BBBB']},
                   testA5d: {type: 'boolean', label: 'テストA5d'},
                   testA5e: {type: 'number', label: 'テストA5e'},
+                  testA5f: {
+                    type: 'list',
+                    label: '複数選択',
+                    item: {
+                      type: 'string',
+                      in: ['testA5f_one', {label: 'testA5f_two', value: 'A5f-2'}, {path: '../testA5/*/$key'}],
+                    },
+                  },
                 },
               },
             },
@@ -118,6 +126,14 @@ export const sampleConfig: RootSchemaConfig = {
                   },
                   testA8d: {type: 'boolean', label: 'テストA8d'},
                 },
+              },
+            },
+            testA9: {
+              type: 'list',
+              label: '複数選択',
+              item: {
+                type: 'string',
+                in: ['testA9_one', {label: 'testA9_two', value: 'A9-2'}, {path: '../testA5/*/$key'}],
               },
             },
           },
@@ -213,6 +229,7 @@ export const sampleConfig: RootSchemaConfig = {
                 {type: 'select', key: 'testA5c'},
                 {type: 'checkbox', key: 'testA5d'},
                 {type: 'number', key: 'testA5e'},
+                {type: 'select', key: 'testA5f', isMulti: true},
               ],
             },
             {
@@ -233,6 +250,11 @@ export const sampleConfig: RootSchemaConfig = {
                 {type: 'select', key: 'testA8c'},
                 {type: 'checkbox', key: 'testA8d'},
               ],
+            },
+            {
+              type: 'select',
+              key: 'testA9',
+              isMulti: true,
             },
           ],
         },
