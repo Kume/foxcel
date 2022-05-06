@@ -123,8 +123,8 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
             : prev,
         );
       },
-      onKeyDown(e) {
-        return handleKey(e);
+      onKeyDown(e, isEditing) {
+        return handleKey(e, isEditing);
       },
     }),
     // getRoot, onAction, startFocus, startMouseUpTracking は更新されることが無い仕様なので、deps指定は不要
@@ -132,7 +132,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
     [],
   );
 
-  const handleKey = useCallback((e: KeyboardEvent | React.KeyboardEvent): boolean => {
+  const handleKey = useCallback((e: KeyboardEvent | React.KeyboardEvent, isEditing: boolean): boolean => {
     if (!actionRef.current.selection) {
       return false;
     }
@@ -140,6 +140,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
     const model = actionRef.current.model;
     const handled = handleTableUIViewKeyboardInput(
       e,
+      isEditing,
       (direction) =>
         setState((prev) =>
           updateSelection(prev, (prevSelection) =>
@@ -160,7 +161,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
   useEffect(() => {
     const keyDownEventHandler = (e: KeyboardEvent) => {
       if (!layoutRootRef.current?.contains(e.target as any)) {
-        handleKey(e);
+        handleKey(e, false);
       }
     };
     document.addEventListener('keydown', keyDownEventHandler);

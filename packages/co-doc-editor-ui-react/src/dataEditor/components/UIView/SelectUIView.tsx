@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {SelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {
@@ -278,7 +278,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
             ref={textAreaRef}
             onChange={change}
             onBlur={blur}
-            onKeyDown={(e) => callbacks.onKeyDown(e)}
+            onKeyDown={(e) => callbacks.onKeyDown(e, isEditing)}
             value={(isEditing && editingText) || ''}
           />
         )}

@@ -60,7 +60,7 @@ export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({
           checked={model ? checkboxUIModelValue(model) : false}
           tabIndex={-1}
           onKeyDown={(e) => {
-            if (!callbacks.onKeyDown(e)) {
+            if (!callbacks.onKeyDown(e, false)) {
               if (e.key === 'Space' && withoutModifierKey(e)) {
                 if (model) {
                   callbacks.onAction(checkboxUIModelSetValue(!checkboxRef.current?.checked, model));

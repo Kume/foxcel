@@ -8,7 +8,7 @@ export interface TableCellCallbacks {
   readonly getRoot: () => DataModelRoot;
   readonly onMouseDown: (e: React.MouseEvent, row: number, column: number) => void;
   readonly onMouseOver: (e: React.MouseEvent, row: number, column: number) => void;
-  readonly onKeyDown: (e: KeyboardEvent | React.KeyboardEvent) => boolean;
+  readonly onKeyDown: (e: KeyboardEvent | React.KeyboardEvent, isEditing: boolean) => boolean;
 }
 
 export interface TableUIViewCellProps {

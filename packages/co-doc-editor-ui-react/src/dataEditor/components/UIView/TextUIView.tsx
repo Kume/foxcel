@@ -87,7 +87,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
           onBlur={blur}
           value={(isEditing && editingText) || ''}
           onKeyDown={(e) => {
-            if (!callbacks.onKeyDown(e)) {
+            if (!callbacks.onKeyDown(e, isEditing)) {
               // TODO multilineのときのみこの操作を許可
               // TODO 改行した際にキャレットが最後尾になってしまう問題の対応
               if (e.key === KeyValue_Enter && withAltKey(e) && textAreaRef.current) {

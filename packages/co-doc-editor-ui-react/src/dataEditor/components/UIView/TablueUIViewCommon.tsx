@@ -190,6 +190,7 @@ export function updateTableUIViewStateSelection(
 
 export function handleTableUIViewKeyboardInput(
   e: KeyboardEvent | React.KeyboardEvent,
+  isEditing: boolean,
   onMoveSelection: (direction: TableUIModelMoveDirection) => void,
   onDelete: () => void,
 ): boolean {
@@ -214,7 +215,7 @@ export function handleTableUIViewKeyboardInput(
       break;
     case KeyValue_Delete:
     case KeyValue_Backspace:
-      if (withoutModifierKey(e)) {
+      if (!isEditing && withoutModifierKey(e)) {
         onDelete();
         return true;
       }
