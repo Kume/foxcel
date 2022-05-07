@@ -111,14 +111,24 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
       };
     }
   } else {
-    return {
-      type: 'data',
-      action: {
-        type: 'set',
-        path: model.dataPath,
-        data: value === null ? nullDataModel : value.data,
-      },
-    };
+    if (value === null) {
+      return {
+        type: 'data',
+        action: {
+          type: 'delete',
+          path: model.dataPath,
+        },
+      };
+    } else {
+      return {
+        type: 'data',
+        action: {
+          type: 'set',
+          path: model.dataPath,
+          data: value === null ? nullDataModel : value.data,
+        },
+      };
+    }
   }
 }
 

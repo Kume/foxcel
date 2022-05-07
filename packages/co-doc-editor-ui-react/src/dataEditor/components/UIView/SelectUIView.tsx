@@ -21,6 +21,8 @@ import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext'
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowUp,
+  KeyValue_Backspace,
+  KeyValue_Delete,
   KeyValue_Enter,
   KeyValue_Escape,
   KeyValue_Tab,
@@ -227,6 +229,11 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
       case KeyValue_Tab:
         e.preventDefault();
         break;
+      case KeyValue_Delete:
+      case KeyValue_Backspace:
+        select(null);
+        dispatch(['blur']);
+        break;
     }
   };
   return (
@@ -260,6 +267,11 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           style={{position: strategy, top: y ?? '', left: x ?? ''}}
           onMouseDown={(e) => e.preventDefault()}
         >
+          {!model.isMulti && (
+            <DropDownMenuItem hasFocus={undefined === state.currentIndex} onClick={() => select(null)}>
+              {'　'}
+            </DropDownMenuItem>
+          )}
           {filteredOptions.map((option, index) => {
             return (
               <DropDownMenuItem key={index} hasFocus={index === state.currentIndex} onClick={() => select(option)}>
@@ -415,11 +427,17 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         case KeyValue_Tab:
           e.preventDefault();
           break;
+        case KeyValue_Delete:
+        case KeyValue_Backspace:
+          select(null);
+          dispatch(['blur']);
+          break;
       }
     } else {
       callbacks.onKeyDown(e, state.isEditing);
     }
   };
+  const isMulti = model?.isMulti || schema?.schema.isMulti;
 
   return (
     <LayoutRootForTableCell
@@ -434,7 +452,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         ) : (
           renderSingleLabel(state.editingText, model)
         )}
-        <TextArea isMulti={model?.isMulti || schema?.schema.isMulti}>
+        <TextArea isMulti={isMulti}>
           <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
           {isMainSelected && (
             <TextareaForTableCell
@@ -452,10 +470,15 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       </DropDownButton>
       {state.isOpen && (
         <DropDownMenuLayout ref={floating} style={{position: strategy, top: y ?? '', left: x ?? ''}}>
+          {!isMulti && (
+            <DropDownMenuItem hasFocus={undefined === state.currentIndex} onClick={() => select(null)}>
+              {'　'}
+            </DropDownMenuItem>
+          )}
           {filteredOptions.map((option, index) => {
             return (
               <DropDownMenuItem key={index} hasFocus={index === state.currentIndex} onClick={() => select(option)}>
-                {option.label}
+                {option.label ?? '　'}
               </DropDownMenuItem>
             );
           })}
