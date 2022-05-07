@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
-import {TableUIModel, TableUIModelRow} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {getIdFromDataPointer} from 'co-doc-editor-core';
+import {TableUIModel, TableUIModelRow} from '@foxcel/core/dist/UIModel/UIModelTypes';
+import {getIdFromDataPointer} from '@foxcel/core';
 import {
   selectingTableCellRange,
   TableCellRange,
@@ -13,10 +13,10 @@ import {
   tableUIModelMoveSelection,
   tableUIModelPaste,
   TableUISelection,
-} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
+} from '@foxcel/core/dist/UIModel/TableUIModel';
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
-import {parseTsv, stringifyTsv} from 'co-doc-editor-core/dist/common/tsv';
+import {parseTsv, stringifyTsv} from '@foxcel/core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
 import {
   handleTableUIViewKeyboardInput,

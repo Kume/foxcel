@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useReducer, useRef} from 'react';
 import {UIViewProps} from './UIView';
-import {MultiSelectUIModel, SelectUIModel, SingleSelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {MultiSelectUIModel, SelectUIModel, SingleSelectUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {
   filterSelectUIOptionsByText,
   getSelectUIOptions,
@@ -9,15 +9,15 @@ import {
   selectUIModelHandleInputForSchema,
   selectUIModelSetValue,
   SelectUIOption,
-} from 'co-doc-editor-core/dist/UIModel/SelectUIModel';
+} from '@foxcel/core/dist/UIModel/SelectUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps, TableUIViewCellSchemaInfo} from './TableUIViewCell';
 import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {TextareaForTableCell} from './TableUIViewCellCommon';
-import {SelectUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
+import {SelectUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {VscClose} from 'react-icons/vsc';
-import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
-import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {AppAction} from '@foxcel/core/dist/App/AppState';
+import {DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowUp,

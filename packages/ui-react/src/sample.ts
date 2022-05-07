@@ -1,4 +1,4 @@
-import {RootSchemaConfig} from 'co-doc-editor-core';
+import {RootSchemaConfig} from '@foxcel/core';
 
 export const sampleConfig: RootSchemaConfig = {
   dataSchema: {

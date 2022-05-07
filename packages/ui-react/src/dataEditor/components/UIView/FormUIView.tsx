@@ -1,5 +1,5 @@
 import React from 'react';
-import {FormUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {FormUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {UIView, UIViewProps} from './UIView';
 import styled from 'styled-components';
 

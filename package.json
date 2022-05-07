@@ -1,15 +1,14 @@
 {
-  "name": "co-doc-editor",
+  "name": "foxcel",
   "version": "0.0.1",
   "author": "makoto.kume",
   "license": "MIT",
   "private": true,
   "scripts": {
-    "web": "yarn workspace co-doc-editor-web",
-    "uir": "yarn workspace co-doc-editor-ui-react",
-    "core": "yarn workspace co-doc-editor-core",
-    "dev": "lerna run dev --parallel",
-    "core:lint": "eslint --fix --ext .jsx,.js,.tsx,.ts ./packages/co-doc-editor-core/src"
+    "web": "yarn workspace @foxcel/web",
+    "uir": "yarn workspace @foxcel/ui-react",
+    "core": "yarn workspace @foxcel/core",
+    "dev": "lerna run dev --parallel"
   },
   "workspaces": {
     "packages": [

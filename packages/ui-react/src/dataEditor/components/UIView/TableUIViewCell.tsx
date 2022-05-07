@@ -1,7 +1,7 @@
 import React from 'react';
-import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
-import {DataModelContext, DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
-import {DataModel} from 'co-doc-editor-core';
+import {AppAction} from '@foxcel/core/dist/App/AppState';
+import {DataModelContext, DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
+import {DataModel} from '@foxcel/core';
 
 export interface TableCellCallbacks {
   readonly onAction: (action: AppAction) => void;

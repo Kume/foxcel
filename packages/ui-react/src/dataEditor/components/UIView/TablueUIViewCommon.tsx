@@ -5,11 +5,11 @@ import {SelectUIViewForTableCell} from './SelectUIView';
 import {CheckboxUIViewForTableCell} from './CheckboxUIView';
 import {NumberUIViewForTableCell} from './NumberUIView';
 import React from 'react';
-import {UIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {TableUIModelMoveDirection, TableUISelection} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
-import {DataModel, emptyMapModel, ForwardDataPath, setToMapDataModel} from 'co-doc-editor-core';
-import {UISchemaExcludeRecursive} from 'co-doc-editor-core/dist/UIModel/UISchema';
-import {DataModelContext} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {UIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
+import {TableUIModelMoveDirection, TableUISelection} from '@foxcel/core/dist/UIModel/TableUIModel';
+import {DataModel, emptyMapModel, ForwardDataPath, setToMapDataModel} from '@foxcel/core';
+import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
+import {DataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowLeft,

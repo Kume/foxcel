@@ -1,4 +1,4 @@
-import DataStorage from 'co-doc-editor-core/dist/Storage/DataStorage';
+import DataStorage from '@foxcel/core/dist/Storage/DataStorage';
 import type {} from 'wicg-file-system-access';
 
 interface FileSystemDirectoryNode {

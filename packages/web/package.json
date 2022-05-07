@@ -1,5 +1,5 @@
 {
-  "name": "co-doc-editor-web",
+  "name": "@foxcel/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@floating-ui/react-dom": "^0.5.0",
-    "co-doc-editor-ui-react": "^0.0.1",
+    "@foxcel/ui-react": "^0.0.1",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-icons": "^4.3.1",

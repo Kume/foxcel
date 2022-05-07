@@ -1,14 +1,14 @@
 import React, {useCallback, useReducer, useRef} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {DataModel, unknownToDataModel} from 'co-doc-editor-core';
-import {buildSimpleUISchema} from 'co-doc-editor-core/dist/UIModel/UISchema';
-import {buildSimpleDataSchema} from 'co-doc-editor-core/dist/DataModel/DataSchema';
-import {buildUIModel} from 'co-doc-editor-core/dist/UIModel/UIModel';
-import {UISchemaContext} from 'co-doc-editor-core/dist/UIModel/UISchemaContext';
+import {DataModel, unknownToDataModel} from '@foxcel/core';
+import {buildSimpleUISchema} from '@foxcel/core/dist/UIModel/UISchema';
+import {buildSimpleDataSchema} from '@foxcel/core/dist/DataModel/DataSchema';
+import {buildUIModel} from '@foxcel/core/dist/UIModel/UIModel';
+import {UISchemaContext} from '@foxcel/core/dist/UIModel/UISchemaContext';
 import {sampleConfig} from './sample';
-import {applyAppActionToState, AppState, AppInitializeAction} from 'co-doc-editor-core/dist/App/AppState';
+import {applyAppActionToState, AppState, AppInitializeAction} from '@foxcel/core/dist/App/AppState';
 import styled from 'styled-components';
-import {DataModelRoot, emptyDataModelContext} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {DataModelRoot, emptyDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 
 const dataSchema = buildSimpleDataSchema(sampleConfig);
 const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);

@@ -1,11 +1,11 @@
 import React, {useEffect, useRef} from 'react';
 import {UIViewProps} from './UIView';
-import {CheckboxUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
-import {checkboxUIModelValue, checkboxUIModelSetValue} from 'co-doc-editor-core/dist/UIModel/CheckboxUIModel';
+import {CheckboxUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
+import {checkboxUIModelValue, checkboxUIModelSetValue} from '@foxcel/core/dist/UIModel/CheckboxUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
-import {CheckBoxUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
-import {trueDataModel} from 'co-doc-editor-core';
+import {CheckBoxUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
+import {trueDataModel} from '@foxcel/core';
 import {withoutModifierKey} from '../../../common/Keybord';
 
 interface Props extends UIViewProps {

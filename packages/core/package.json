@@ -1,7 +1,7 @@
 {
-  "name": "co-doc-editor-core",
+  "name": "@foxcel/core",
   "version": "0.0.1",
-  "description": "Core module for co-doc-editor",
+  "description": "Core module for foxcel",
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
   "author": "makoto.kume",

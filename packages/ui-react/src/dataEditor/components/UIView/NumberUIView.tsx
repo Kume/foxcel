@@ -1,16 +1,16 @@
 import {UIViewProps} from './UIView';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {NumberUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {NumberUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {
   numberUIModelDisplayText,
   numberUIModelHandleInputForSchema,
   numberUIModelSetText,
-} from 'co-doc-editor-core/dist/UIModel/NumberUIModel';
+} from '@foxcel/core/dist/UIModel/NumberUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
 import styled from 'styled-components';
-import {NumberUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
+import {NumberUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 
 interface Props extends UIViewProps {
   readonly model: NumberUIModel;

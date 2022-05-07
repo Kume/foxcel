@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
-import {RootView} from 'co-doc-editor-ui-react';
+import {RootView} from '@foxcel/ui-react';
 import {NativeFileSystemDataStorage} from './Models/NativeFileSystemDataStorage';
-import YamlDataFormatter from 'co-doc-editor-core/dist/Storage/YamlDataFormatter';
-import {loadFile} from 'co-doc-editor-core/dist/FileLoader';
-import {AppInitializeAction} from 'co-doc-editor-core/dist/App/AppState';
+import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
+import {loadFile} from '@foxcel/core/dist/FileLoader';
+import {AppInitializeAction} from '@foxcel/core/dist/App/AppState';
 
 async function loadFile_(): Promise<AppInitializeAction> {
   const storage = new NativeFileSystemDataStorage();

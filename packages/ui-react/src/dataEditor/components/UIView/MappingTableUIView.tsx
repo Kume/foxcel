@@ -5,7 +5,7 @@ import {
   MappingTableUIModelEmptyRow,
   MappingTableUIModelNotEmptyRow,
   TableUIModelRow,
-} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
@@ -25,8 +25,8 @@ import {
   mappingTableUIModelCut,
   mappingTableUIModelDelete,
   mappingTableUIModelPaste,
-} from 'co-doc-editor-core/dist/UIModel/MappingTableUIModel';
-import {parseTsv, stringifyTsv} from 'co-doc-editor-core/dist/common/tsv';
+} from '@foxcel/core/dist/UIModel/MappingTableUIModel';
+import {parseTsv, stringifyTsv} from '@foxcel/core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
 import {
   selectingTableCellRange,
@@ -35,9 +35,9 @@ import {
   tableRangeContains,
   tableUIModelMoveSelection,
   TableUISelection,
-} from 'co-doc-editor-core/dist/UIModel/TableUIModel';
+} from '@foxcel/core/dist/UIModel/TableUIModel';
 import styled from 'styled-components';
-import {ForwardDataPath} from 'co-doc-editor-core';
+import {ForwardDataPath} from '@foxcel/core';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;

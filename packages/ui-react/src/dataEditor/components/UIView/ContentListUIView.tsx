@@ -1,14 +1,14 @@
 import React, {useCallback, useState} from 'react';
 import {UIView, UIViewProps} from './UIView';
-import {ContentListUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {ContentListUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import styled from 'styled-components';
 import {ContextMenu, ContextMenuProps} from './ContextMenu';
-import {getIdFromDataPointer} from 'co-doc-editor-core';
+import {getIdFromDataPointer} from '@foxcel/core';
 import {
   contentListAddAfterAction,
   contentListAddBeforeAction,
   contentListRemoveAtAction,
-} from 'co-doc-editor-core/dist/UIModel/ContentListUIModel';
+} from '@foxcel/core/dist/UIModel/ContentListUIModel';
 
 const LayoutRoot = styled.div`
   display: flex;

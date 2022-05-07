@@ -1,7 +1,7 @@
 import {UIView, UIViewProps} from './UIView';
 import styled from 'styled-components';
 import React from 'react';
-import {TabUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {TabUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 
 const LayoutRoot = styled.div``;
 

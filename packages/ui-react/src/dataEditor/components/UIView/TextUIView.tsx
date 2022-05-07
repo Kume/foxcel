@@ -1,12 +1,12 @@
-import {TextUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
+import {TextUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import React, {useCallback, useEffect, useRef} from 'react';
 import {UIViewProps} from './UIView';
-import {textUIModelHandleInputForSchema, textUIModelSetText} from 'co-doc-editor-core/dist/UIModel/TextUIModel';
+import {textUIModelHandleInputForSchema, textUIModelSetText} from '@foxcel/core/dist/UIModel/TextUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
-import {TextUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
+import {TextUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {KeyValue_Enter, withAltKey} from '../../../common/Keybord';
 
 export interface TextUIViewProps extends UIViewProps {

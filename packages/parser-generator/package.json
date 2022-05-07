@@ -6,7 +6,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "generate": "peggy --format es -o ../co-doc-editor-core/src/DataModel/DataPath/DataPathParser.js data-path.peggy"
+    "generate": "peggy --format es -o ../core/src/DataModel/DataPath/DataPathParser.js data-path.peggy"
   },
   "dependencies": {
     "peggy": "^1.2.0"
