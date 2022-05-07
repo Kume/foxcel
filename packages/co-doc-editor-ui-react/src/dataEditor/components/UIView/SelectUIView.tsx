@@ -156,6 +156,8 @@ const InnerLayout = styled.div`
   justify-content: space-between;
   align-items: flex-start;
 
+  position: relative;
+
   &:hover .dropdown div {
     ${dropDownButtonHoverIconStyle}
   }
@@ -237,8 +239,8 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
     }
   };
   return (
-    <LayoutRoot ref={reference}>
-      <InnerLayout onClick={openDropdown}>
+    <LayoutRoot>
+      <InnerLayout ref={reference} onClick={openDropdown}>
         <InputArea>
           {model.isMulti ? (
             <MultiSelectInput model={model} onAction={onAction} />
@@ -260,30 +262,56 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
         <div className="dropdown">
           <div />
         </div>
+        {state.isOpen && (
+          <DropDownMenuLayout
+            ref={floating}
+            style={{position: strategy, top: y ?? '', left: x ?? ''}}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            {renderDropDownItems(model.isMulti, state.currentIndex, filteredOptions, select)}
+          </DropDownMenuLayout>
+        )}
       </InnerLayout>
-      {state.isOpen && (
-        <DropDownMenuLayout
-          ref={floating}
-          style={{position: strategy, top: y ?? '', left: x ?? ''}}
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {!model.isMulti && (
-            <DropDownMenuItem hasFocus={undefined === state.currentIndex} onClick={() => select(null)}>
-              {'　'}
-            </DropDownMenuItem>
-          )}
-          {filteredOptions.map((option, index) => {
-            return (
-              <DropDownMenuItem key={index} hasFocus={index === state.currentIndex} onClick={() => select(option)}>
-                {option.label}
-              </DropDownMenuItem>
-            );
-          })}
-        </DropDownMenuLayout>
-      )}
     </LayoutRoot>
   );
 };
+
+function renderDropDownItems(
+  isMulti: boolean | undefined,
+  currentIndex: number | undefined,
+  filteredOptions: readonly SelectUIOption[],
+  select: (value: SelectUIOption | null) => void,
+): React.ReactNode {
+  return (
+    <>
+      {!isMulti && (
+        <DropDownMenuItem
+          hasFocus={undefined === currentIndex}
+          onClick={(e) => {
+            e.stopPropagation();
+            select(null);
+          }}
+        >
+          {'　'}
+        </DropDownMenuItem>
+      )}
+      {filteredOptions.map((option, index) => {
+        return (
+          <DropDownMenuItem
+            key={index}
+            hasFocus={index === currentIndex}
+            onClick={(e) => {
+              e.stopPropagation();
+              select(option);
+            }}
+          >
+            {option.label}
+          </DropDownMenuItem>
+        );
+      })}
+    </>
+  );
+}
 
 const LayoutRootForTableCell = styled.div`
   position: relative;
@@ -470,18 +498,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       </DropDownButton>
       {state.isOpen && (
         <DropDownMenuLayout ref={floating} style={{position: strategy, top: y ?? '', left: x ?? ''}}>
-          {!isMulti && (
-            <DropDownMenuItem hasFocus={undefined === state.currentIndex} onClick={() => select(null)}>
-              {'　'}
-            </DropDownMenuItem>
-          )}
-          {filteredOptions.map((option, index) => {
-            return (
-              <DropDownMenuItem key={index} hasFocus={index === state.currentIndex} onClick={() => select(option)}>
-                {option.label ?? '　'}
-              </DropDownMenuItem>
-            );
-          })}
+          {renderDropDownItems(isMulti, state.currentIndex, filteredOptions, select)}
         </DropDownMenuLayout>
       )}
     </LayoutRootForTableCell>
@@ -518,14 +535,14 @@ interface MultiSelectInputProps {
 const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) => {
   return (
     <>
-      {model.currents.map((current) => {
+      {model.currents.map((current, index) => {
         const click = (e: React.MouseEvent) => {
           e.stopPropagation();
           onAction({type: 'data', action: {type: 'delete', path: current.dataPath}});
         };
         if (current.isInvalid) {
           return (
-            <MultiSelectInputSelectedItem hasError={true}>
+            <MultiSelectInputSelectedItem hasError={true} key={index}>
               <ErrorLabel>{selectUIModelCurrentLabel(current)}</ErrorLabel>
               <CloseItemIconArea onClick={click}>
                 <VscClose />
@@ -534,7 +551,7 @@ const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) =>
           );
         } else {
           return (
-            <MultiSelectInputSelectedItem>
+            <MultiSelectInputSelectedItem key={index}>
               {selectUIModelCurrentLabel(current)}
               <CloseItemIconArea onClick={click}>
                 <VscClose />
