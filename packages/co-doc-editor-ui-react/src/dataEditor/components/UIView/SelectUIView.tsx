@@ -63,7 +63,7 @@ function getOptions(
   return [];
 }
 
-const initialState: State = {isEditing: false, editingText: '', options: [], isOpen: true};
+const initialState: State = {isEditing: false, editingText: '', options: [], isOpen: false};
 
 function reducer(prev: State, action: Action): State {
   switch (action[0]) {
