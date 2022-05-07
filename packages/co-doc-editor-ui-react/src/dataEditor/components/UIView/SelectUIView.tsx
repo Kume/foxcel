@@ -47,8 +47,8 @@ type Action =
   | [type: 'blur']
   | ['change', string, ...GetOptionParams]
   | ['open', ...GetOptionParams]
-  | ['up', ...GetOptionParams]
-  | ['down', ...GetOptionParams];
+  | ['up', readonly SelectUIOption[], ...GetOptionParams]
+  | ['down', readonly SelectUIOption[], ...GetOptionParams];
 
 function getOptions(
   getRoot: () => DataModelRoot,
@@ -97,7 +97,7 @@ function reducer(prev: State, action: Action): State {
       };
     }
     case 'up': {
-      const [, getRoot, model, schema] = action;
+      const [, , getRoot, model, schema] = action;
       return {
         ...prev,
         isEditing: true,
@@ -107,13 +107,13 @@ function reducer(prev: State, action: Action): State {
       };
     }
     case 'down': {
-      const [, getRoot, model, schema] = action;
+      const [, filteredOptions, getRoot, model, schema] = action;
       return {
         ...prev,
         isEditing: true,
         options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
         isOpen: true,
-        currentIndex: prev.currentIndex === undefined ? 0 : Math.min(prev.currentIndex + 1, prev.options.length - 1),
+        currentIndex: prev.currentIndex === undefined ? 0 : Math.min(prev.currentIndex + 1, filteredOptions.length - 1),
       };
     }
   }
@@ -206,16 +206,16 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const keyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {
       case KeyValue_ArrowUp:
-        dispatch(['up', getRoot, model]);
+        dispatch(['up', filteredOptions, getRoot, model]);
         e.preventDefault();
         break;
       case KeyValue_ArrowDown:
-        dispatch(['down', getRoot, model]);
+        dispatch(['down', filteredOptions, getRoot, model]);
         e.preventDefault();
         break;
       case KeyValue_Enter: {
         e.preventDefault();
-        const value = state.currentIndex !== undefined && state.options[state.currentIndex];
+        const value = state.currentIndex !== undefined && filteredOptions[state.currentIndex];
         if (value) {
           onAction(selectUIModelSetValue(model, value));
           dispatch(['blur']);
@@ -405,16 +405,16 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
     if (state.isOpen) {
       switch (e.key) {
         case KeyValue_ArrowUp:
-          dispatch(['up', callbacks.getRoot, model, schema]);
+          dispatch(['up', filteredOptions, callbacks.getRoot, model, schema]);
           e.preventDefault();
           break;
         case KeyValue_ArrowDown:
-          dispatch(['down', callbacks.getRoot, model, schema]);
+          dispatch(['down', filteredOptions, callbacks.getRoot, model, schema]);
           e.preventDefault();
           break;
         case KeyValue_Enter: {
           e.preventDefault();
-          const value = state.currentIndex !== undefined && state.options[state.currentIndex];
+          const value = state.currentIndex !== undefined && filteredOptions[state.currentIndex];
           if (value) {
             select(value);
           }
