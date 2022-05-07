@@ -193,10 +193,10 @@ export function selectUIModelGetCurrent(
 }
 
 export function filterSelectUIOptionsByText(options: readonly SelectUIOption[], text: string): SelectUIOption[] {
+  const searchText = text.toLocaleLowerCase().trim();
   return options.filter(
     ({label, value}) =>
-      label.toLocaleLowerCase().indexOf(text.toLocaleLowerCase()) >= 0 ||
-      value.toLocaleLowerCase().indexOf(text.toLocaleLowerCase()) >= 0,
+      label.toLocaleLowerCase().indexOf(searchText) >= 0 || value.toLocaleLowerCase().indexOf(searchText) >= 0,
   );
 }
 

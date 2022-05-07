@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useReducer, useRef} from 'react';
 import {UIViewProps} from './UIView';
 import {MultiSelectUIModel, SelectUIModel, SingleSelectUIModel} from 'co-doc-editor-core/dist/UIModel/UIModelTypes';
 import {
@@ -6,18 +6,116 @@ import {
   getSelectUIOptions,
   getSelectUIOptionsWithSchema,
   selectUIModelCurrentLabel,
-  selectUIModelDefaultOptions,
   selectUIModelHandleInputForSchema,
   selectUIModelSetValue,
   SelectUIOption,
 } from 'co-doc-editor-core/dist/UIModel/SelectUIModel';
-import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
+import {ModelOrSchemaHolder, TableUIViewCellProps, TableUIViewCellSchemaInfo} from './TableUIViewCell';
 import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {TextareaForTableCell} from './TableUIViewCellCommon';
 import {SelectUISchema} from 'co-doc-editor-core/dist/UIModel/UISchemaTypes';
 import {VscClose} from 'react-icons/vsc';
 import {AppAction} from 'co-doc-editor-core/dist/App/AppState';
+import {DataModelRoot} from 'co-doc-editor-core/dist/DataModel/DataModelContext';
+import {
+  KeyValue_ArrowDown,
+  KeyValue_ArrowUp,
+  KeyValue_Enter,
+  KeyValue_Escape,
+  KeyValue_Tab,
+} from '../../../common/Keybord';
+
+interface State {
+  readonly isEditing: boolean;
+  readonly editingText: string;
+  readonly options: readonly SelectUIOption[];
+  readonly isOpen: boolean;
+  readonly currentIndex?: number;
+}
+
+type GetOptionParams = [
+  getRoot: () => DataModelRoot,
+  model: SelectUIModel | undefined,
+  schema?: TableUIViewCellSchemaInfo<SelectUISchema>,
+];
+
+type Action =
+  | [type: 'setOptions', options: readonly SelectUIOption[]]
+  | [type: 'blur']
+  | ['change', string, ...GetOptionParams]
+  | ['open', ...GetOptionParams]
+  | ['up', ...GetOptionParams]
+  | ['down', ...GetOptionParams];
+
+function getOptions(
+  getRoot: () => DataModelRoot,
+  model: SelectUIModel | undefined,
+  schema: TableUIViewCellSchemaInfo<SelectUISchema> | undefined,
+): readonly SelectUIOption[] {
+  if (model) {
+    return getSelectUIOptions(model, getRoot());
+  } else if (schema) {
+    return getSelectUIOptionsWithSchema(schema.schema, schema.dataContext, getRoot());
+  }
+  return [];
+}
+
+const initialState: State = {isEditing: false, editingText: '', options: [], isOpen: true};
+
+function reducer(prev: State, action: Action): State {
+  switch (action[0]) {
+    case 'blur':
+      return {
+        ...prev,
+        isEditing: false,
+        editingText: '',
+        isOpen: false,
+        currentIndex: undefined,
+      };
+    case 'setOptions':
+      return {...prev, options: action[1]};
+    case 'change': {
+      const [, value, getRoot, model, schema] = action;
+      return {
+        isEditing: true,
+        editingText: value,
+        options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
+        isOpen: true,
+        currentIndex: undefined,
+      };
+    }
+    case 'open': {
+      const [, getRoot, model, schema] = action;
+      return {
+        ...prev,
+        options: getOptions(getRoot, model, schema),
+        isOpen: true,
+        currentIndex: undefined,
+      };
+    }
+    case 'up': {
+      const [, getRoot, model, schema] = action;
+      return {
+        ...prev,
+        isEditing: true,
+        options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
+        isOpen: true,
+        currentIndex: prev.currentIndex === undefined ? 0 : Math.max(prev.currentIndex - 1, 0),
+      };
+    }
+    case 'down': {
+      const [, getRoot, model, schema] = action;
+      return {
+        ...prev,
+        isEditing: true,
+        options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
+        isOpen: true,
+        currentIndex: prev.currentIndex === undefined ? 0 : Math.min(prev.currentIndex + 1, prev.options.length - 1),
+      };
+    }
+  }
+}
 
 const dropDownButtonStyle = `
   height: 16pt;
@@ -82,36 +180,54 @@ interface Props extends UIViewProps {
 
 export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const [editingText, setEditingText] = useState<string>('');
-  const [dropDownIsOpen, setDropDownIsOpen] = useState<boolean>(false);
-  const [options, setOptions] = useState<SelectUIOption[]>(selectUIModelDefaultOptions(model));
-  const filteredOptions = useMemo(() => filterSelectUIOptionsByText(options, editingText), [options, editingText]);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const filteredOptions = useMemo(() => filterSelectUIOptionsByText(state.options, state.editingText), [
+    state.options,
+    state.editingText,
+  ]);
   const {x, y, reference, floating, strategy} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
   const openDropdown = () => {
-    setDropDownIsOpen((prev) => {
-      if (!prev) {
-        setOptions(getSelectUIOptions(model, getRoot()));
-      }
-      return true;
-    });
+    dispatch(['open', getRoot, model]);
     textareaRef.current?.focus();
   };
   const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEditingText(e.target.value);
-    setDropDownIsOpen(true);
+    dispatch(['change', e.target.value, getRoot, model]);
     textareaRef.current?.focus();
-  };
-  const blur = () => {
-    setDropDownIsOpen(false);
-    setEditingText('');
   };
   const select = (value: SelectUIOption | null) => {
     onAction(selectUIModelSetValue(model, value));
-    setDropDownIsOpen(false);
-    setEditingText('');
+    dispatch(['blur']);
+  };
+  const keyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case KeyValue_ArrowUp:
+        dispatch(['up', getRoot, model]);
+        e.preventDefault();
+        break;
+      case KeyValue_ArrowDown:
+        dispatch(['down', getRoot, model]);
+        e.preventDefault();
+        break;
+      case KeyValue_Enter: {
+        e.preventDefault();
+        const value = state.currentIndex !== undefined && state.options[state.currentIndex];
+        if (value) {
+          onAction(selectUIModelSetValue(model, value));
+          dispatch(['blur']);
+        }
+        break;
+      }
+      case KeyValue_Escape:
+        e.preventDefault();
+        dispatch(['blur']);
+        break;
+      case KeyValue_Tab:
+        e.preventDefault();
+        break;
+    }
   };
   return (
     <LayoutRoot ref={reference}>
@@ -120,16 +236,17 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           {model.isMulti ? (
             <MultiSelectInput model={model} onAction={onAction} />
           ) : (
-            renderSingleLabel(editingText, model)
+            renderSingleLabel(state.editingText, model)
           )}
           <TextArea isMulti={model.isMulti}>
-            <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
+            <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
             <TextareaForTableCell
-              isVisible={!!editingText}
+              isVisible={!!state.editingText}
               ref={textareaRef}
               onChange={change}
-              onBlur={blur}
-              value={(dropDownIsOpen && editingText) || ''}
+              onBlur={() => dispatch(['blur'])}
+              value={(state.isOpen && state.editingText) || ''}
+              onKeyDown={keyDown}
             />
           </TextArea>
         </InputArea>
@@ -137,7 +254,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           <div />
         </div>
       </InnerLayout>
-      {dropDownIsOpen && (
+      {state.isOpen && (
         <DropDownMenuLayout
           ref={floating}
           style={{position: strategy, top: y ?? '', left: x ?? ''}}
@@ -145,7 +262,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
         >
           {filteredOptions.map((option, index) => {
             return (
-              <DropDownMenuItem key={index} onClick={() => select(option)} tabIndex={-1}>
+              <DropDownMenuItem key={index} hasFocus={index === state.currentIndex} onClick={() => select(option)}>
                 {option.label}
               </DropDownMenuItem>
             );
@@ -203,12 +320,13 @@ const BackgroundTextPlace = styled.span`
   color: transparent;
 `;
 
-const DropDownMenuItem = styled.div`
+const DropDownMenuItem = styled.div<{hasFocus: boolean}>`
   padding: 2px 4px;
   white-space: nowrap;
   &:hover {
     background-color: lightblue;
   }
+  background-color: ${({hasFocus}) => (hasFocus ? '#ddd' : 'white')};
 `;
 
 const InputAreaForTableCell = styled(TableCellLabel)`
@@ -226,49 +344,32 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   col,
   callbacks,
 }) => {
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editingText, setEditingText] = useState<string>('');
-  const [dropDownIsOpen, setDropDownIsOpen] = useState<boolean>(false);
-  const [options, setOptions] = useState<SelectUIOption[]>(model ? selectUIModelDefaultOptions(model) : []);
-  const filteredOptions = useMemo(() => filterSelectUIOptionsByText(options, editingText), [options, editingText]);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const filteredOptions = useMemo(() => filterSelectUIOptionsByText(state.options, state.editingText), [
+    state.options,
+    state.editingText,
+  ]);
   const {x, y, reference, floating, strategy} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
-  const refreshOptions = () => {
-    if (model) {
-      setOptions(getSelectUIOptions(model, callbacks.getRoot()));
-    } else if (schema) {
-      setOptions(getSelectUIOptionsWithSchema(schema.schema, schema.dataContext, callbacks.getRoot()));
-    }
-  };
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!disabled) {
-      setEditingText(e.target.value);
-      setIsEditing(true);
-      setDropDownIsOpen((prev) => {
-        if (!prev) {
-          refreshOptions();
-        }
-        return true;
-      });
+      dispatch(['change', e.target.value, callbacks.getRoot, model, schema]);
     }
   };
   useEffect(() => {
     if (!isMainSelected) {
-      setDropDownIsOpen(false);
-      setIsEditing(false);
-      setEditingText('');
+      dispatch(['blur']);
     } else {
       textAreaRef.current?.focus();
     }
   }, [isMainSelected, model]);
   const openDropdown = () => {
     if (!disabled) {
-      setDropDownIsOpen(true);
-      refreshOptions();
+      dispatch(['open', callbacks.getRoot, model, schema]);
     }
   };
   const select = (value: SelectUIOption | null) => {
@@ -285,9 +386,39 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         schema.onEdit(result);
       }
     }
-    setDropDownIsOpen(false);
-    setIsEditing(false);
-    setEditingText('');
+    dispatch(['blur']);
+  };
+
+  const keyDown = (e: React.KeyboardEvent) => {
+    if (state.isOpen) {
+      switch (e.key) {
+        case KeyValue_ArrowUp:
+          dispatch(['up', callbacks.getRoot, model, schema]);
+          e.preventDefault();
+          break;
+        case KeyValue_ArrowDown:
+          dispatch(['down', callbacks.getRoot, model, schema]);
+          e.preventDefault();
+          break;
+        case KeyValue_Enter: {
+          e.preventDefault();
+          const value = state.currentIndex !== undefined && state.options[state.currentIndex];
+          if (value) {
+            select(value);
+          }
+          break;
+        }
+        case KeyValue_Escape:
+          e.preventDefault();
+          dispatch(['blur']);
+          break;
+        case KeyValue_Tab:
+          e.preventDefault();
+          break;
+      }
+    } else {
+      callbacks.onKeyDown(e, state.isEditing);
+    }
   };
 
   return (
@@ -295,24 +426,23 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       ref={reference}
       onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
-      onDoubleClick={() => setIsEditing(true)}
+      onDoubleClick={() => dispatch(['open', callbacks.getRoot, model, schema])}
     >
       <InputAreaForTableCell>
         {model?.isMulti ? (
           <MultiSelectInput model={model} onAction={callbacks.onAction} />
         ) : (
-          renderSingleLabel(editingText, model)
+          renderSingleLabel(state.editingText, model)
         )}
         <TextArea isMulti={model?.isMulti || schema?.schema.isMulti}>
-          <BackgroundTextPlace>{editingText}</BackgroundTextPlace>
+          <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
           {isMainSelected && (
             <TextareaForTableCell
-              isVisible={isEditing}
+              isVisible={state.isEditing}
               ref={textAreaRef}
               onChange={change}
-              onBlur={blur}
-              onKeyDown={(e) => callbacks.onKeyDown(e, isEditing)}
-              value={(isEditing && editingText) || ''}
+              onKeyDown={keyDown}
+              value={(state.isEditing && state.editingText) || ''}
             />
           )}
         </TextArea>
@@ -320,11 +450,11 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       <DropDownButton onClick={openDropdown}>
         <div />
       </DropDownButton>
-      {dropDownIsOpen && (
+      {state.isOpen && (
         <DropDownMenuLayout ref={floating} style={{position: strategy, top: y ?? '', left: x ?? ''}}>
           {filteredOptions.map((option, index) => {
             return (
-              <DropDownMenuItem key={index} onClick={() => select(option)}>
+              <DropDownMenuItem key={index} hasFocus={index === state.currentIndex} onClick={() => select(option)}>
                 {option.label}
               </DropDownMenuItem>
             );
@@ -366,13 +496,15 @@ const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) =>
   return (
     <>
       {model.currents.map((current) => {
+        const click = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          onAction({type: 'data', action: {type: 'delete', path: current.dataPath}});
+        };
         if (current.isInvalid) {
           return (
             <MultiSelectInputSelectedItem hasError={true}>
               <ErrorLabel>{selectUIModelCurrentLabel(current)}</ErrorLabel>
-              <CloseItemIconArea
-                onClick={() => onAction({type: 'data', action: {type: 'delete', path: current.dataPath}})}
-              >
+              <CloseItemIconArea onClick={click}>
                 <VscClose />
               </CloseItemIconArea>
             </MultiSelectInputSelectedItem>
@@ -381,9 +513,7 @@ const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) =>
           return (
             <MultiSelectInputSelectedItem>
               {selectUIModelCurrentLabel(current)}
-              <CloseItemIconArea
-                onClick={() => onAction({type: 'data', action: {type: 'delete', path: current.dataPath}})}
-              >
+              <CloseItemIconArea onClick={click}>
                 <VscClose />
               </CloseItemIconArea>
             </MultiSelectInputSelectedItem>
