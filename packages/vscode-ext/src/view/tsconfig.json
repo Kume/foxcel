@@ -1,0 +1,12 @@
+{
+  "extends": "../../../../configs/tsconfig.json",
+  "compilerOptions": {
+    "lib": ["dom", "esnext"],
+    "rootDir": "./src",
+    "noEmit": true,
+    "jsx": "react"
+  },
+  "include": [
+    "./"
+  ]
+}
