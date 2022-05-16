@@ -52,6 +52,15 @@
         "command": "@foxcel/vscode-ext.showsample",
         "title": "foxcel sample"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "resourceExtname == .cds",
+          "command": "@foxcel/vscode-ext.showsample",
+          "group": "navigation"
+        }
+      ]
+    }
   }
 }
