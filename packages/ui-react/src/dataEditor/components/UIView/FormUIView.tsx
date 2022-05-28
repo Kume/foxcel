@@ -2,16 +2,16 @@ import React from 'react';
 import {FormUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {UIView, UIViewProps} from './UIView';
 import styled from 'styled-components';
+import {breakableTextStyle, labelTextStyle} from '../../../common/components/commonStyles';
 
 const Table = styled.table``;
 
 const LabelCell = styled.td`
-  font-size: var(--basic-font-size);
-  background-color: lightgray;
+  ${({theme}) => labelTextStyle(theme)});
+  background-color: ${({theme}) => theme.color.bg.label};
   min-width: 80px;
   max-width: 160px;
-  overflow-wrap: break-word;
-  word-break: keep-all;
+  ${breakableTextStyle}
 `;
 
 export interface FormUIViewProps extends UIViewProps {

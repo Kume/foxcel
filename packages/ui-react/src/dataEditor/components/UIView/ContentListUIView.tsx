@@ -9,13 +9,14 @@ import {
   contentListAddBeforeAction,
   contentListRemoveAtAction,
 } from '@foxcel/core/dist/UIModel/ContentListUIModel';
+import {labelTextStyle} from '../../../common/components/commonStyles';
 
 const LayoutRoot = styled.div`
   display: flex;
 `;
 const ListArea = styled.div``;
 const List = styled.ul`
-  border: black 1px solid;
+  border: ${({theme}) => theme.color.border.list} 1px solid;
   list-style-type: none;
   padding: 0;
   margin: 0;
@@ -23,8 +24,8 @@ const List = styled.ul`
   max-width: 160px;
 `;
 const ListItem = styled.li<{selected: boolean}>`
-  border-bottom: gray 1px solid;
-  background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
+  background-color: ${({selected, theme}) => (selected ? theme.color.bg.itemSelection : theme.color.bg.normal)};
+  ${({theme}) => labelTextStyle(theme)}
   height: 20px;
   white-space: nowrap;
   text-overflow: ellipsis;

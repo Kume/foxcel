@@ -5,16 +5,28 @@ import {textUIModelHandleInputForSchema, textUIModelSetText} from '@foxcel/core/
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
-import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
+import {makeUseTableCellEditState} from './TableUIViewCellCommon';
 import {TextUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {KeyValue_Enter, withAltKey} from '../../../common/Keybord';
+import {BackgroundTextarea} from '../BackgroundTextarea';
+import {inputTextStyle} from '../../../common/components/commonStyles';
 
 export interface TextUIViewProps extends UIViewProps {
   readonly model: TextUIModel;
 }
 
+const Input = styled.input`
+  background-color: ${({theme}) => theme.color.bg.input};
+  border: solid 1px ${({theme}) => theme.color.border.input};
+  ${({theme}) => inputTextStyle(theme)}
+  &:focus {
+    border-color: ${({theme}) => theme.color.border.inputFocus};
+    outline: none;
+  }
+`;
+
 export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
-  return <input value={model.value ?? ''} onChange={(e) => onAction(textUIModelSetText(model, e.target.value))} />;
+  return <Input value={model.value ?? ''} onChange={(e) => onAction(textUIModelSetText(model, e.target.value))} />;
 };
 
 type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<TextUIModel, TextUISchema>;
@@ -80,7 +92,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
     >
       <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && !disabled && (
-        <TextareaForTableCell
+        <BackgroundTextarea
           isVisible={isEditing}
           ref={textAreaRef}
           onChange={change}

@@ -13,7 +13,6 @@ import {
 import {ModelOrSchemaHolder, TableUIViewCellProps, TableUIViewCellSchemaInfo} from './TableUIViewCell';
 import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
-import {TextareaForTableCell} from './TableUIViewCellCommon';
 import {SelectUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {VscClose} from 'react-icons/vsc';
 import {AppAction} from '@foxcel/core/dist/App/AppState';
@@ -27,6 +26,9 @@ import {
   KeyValue_Escape,
   KeyValue_Tab,
 } from '../../../common/Keybord';
+import {BackgroundTextarea} from '../BackgroundTextarea';
+import {breakableTextStyle, inputTextStyle, labelTextStyle} from '../../../common/components/commonStyles';
+import {Theme} from '../../../types';
 
 interface State {
   readonly isEditing: boolean;
@@ -127,15 +129,16 @@ const dropDownButtonStyle = `
   align-items: center;
 `;
 
-const dropDownButtonIconStyle = `
+const dropDownButtonIconStyle = (theme: Theme) => `
   width: 0;
   height: 0;
   border-style: solid;
   border-width: 8px 6px 0 6px;
-  border-color: lightgray transparent transparent transparent;
+  border-color: ${theme.font.color.input} transparent transparent transparent;
  `;
 
-const dropDownButtonHoverIconStyle = `border-color: gray transparent transparent transparent;`;
+const dropDownButtonHoverIconStyle = (theme: Theme) =>
+  `border-color: ${theme.font.color.placeholder} transparent transparent transparent;`;
 
 const LayoutRoot = styled.div`
   position: relative;
@@ -144,7 +147,7 @@ const LayoutRoot = styled.div`
   .dropdown {
     ${dropDownButtonStyle}
     div {
-      ${dropDownButtonIconStyle}
+      ${({theme}) => dropDownButtonIconStyle(theme)}
     }
   }
 `;
@@ -159,17 +162,17 @@ const InnerLayout = styled.div`
   position: relative;
 
   &:hover .dropdown div {
-    ${dropDownButtonHoverIconStyle}
+    ${({theme}) => dropDownButtonHoverIconStyle(theme)}
   }
 `;
 
 const InputArea = styled.div`
   padding-left: 4px;
   position: relative;
-  overflow-wrap: break-word;
-  word-break: keep-all;
   display: flex;
   flex-wrap: wrap;
+  ${({theme}) => inputTextStyle(theme)}
+  ${breakableTextStyle}
 `;
 
 const TextArea = styled.div<{isMulti: boolean | undefined}>`
@@ -249,7 +252,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           )}
           <TextArea isMulti={model.isMulti}>
             <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
-            <TextareaForTableCell
+            <BackgroundTextarea
               isVisible={!!state.editingText}
               ref={textareaRef}
               onChange={change}
@@ -328,10 +331,10 @@ const DropDownButton = styled.div`
   ${dropDownButtonStyle}
 
   div {
-    ${dropDownButtonIconStyle}
+    ${({theme}) => dropDownButtonIconStyle(theme)}
   }
   &:hover div {
-    ${dropDownButtonHoverIconStyle}
+    ${({theme}) => dropDownButtonHoverIconStyle(theme)}
   }
 `;
 
@@ -343,30 +346,36 @@ const DropDownMenuLayout = styled.div`
   max-height: 500px;
   overflow-x: hidden;
   overflow-y: auto;
-  background-color: white;
-  border: lightgray 1px solid;
+  background-color: ${({theme}) => theme.color.bg.popup};
+  border: ${({theme}) => theme.color.border.popup} 1px solid;
+  font-size: ${({theme}) => theme.font.size.input};
+  font-family: ${({theme}) => theme.font.family.input};
+  color: ${({theme}) => theme.font.color.popup};
   box-shadow: 2px 2px 6px 2px rgba(0, 0, 0, 0.1);
 `;
 
 const TableCellLabel = styled.div`
   padding-left: 4px;
   position: relative;
-  overflow-wrap: break-word;
-  word-break: keep-all;
+  ${({theme}) => inputTextStyle(theme)}
+  ${breakableTextStyle}
 `;
 
 const BackgroundTextPlace = styled.span`
   padding: 0 4px;
   color: transparent;
+  ${({theme}) => inputTextStyle(theme)}
+  ${breakableTextStyle}
 `;
 
 const DropDownMenuItem = styled.div<{hasFocus: boolean}>`
   padding: 2px 4px;
+  ${({theme}) => labelTextStyle(theme)}
   white-space: nowrap;
   &:hover {
-    background-color: lightblue;
+    background-color: ${({theme}) => theme.color.bg.itemHover};
   }
-  background-color: ${({hasFocus}) => (hasFocus ? '#ddd' : 'white')};
+  background-color: ${({hasFocus, theme}) => (hasFocus ? theme.color.bg.itemSelection : theme.color.bg.popup)};
 `;
 
 const InputAreaForTableCell = styled(TableCellLabel)`
@@ -483,7 +492,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         <TextArea isMulti={isMulti}>
           <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
           {isMainSelected && (
-            <TextareaForTableCell
+            <BackgroundTextarea
               isVisible={state.isEditing}
               ref={textAreaRef}
               onChange={change}
@@ -507,6 +516,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
 
 const MultiSelectInputSelectedItem = styled.span<{hasError?: boolean}>`
   border: ${({hasError}) => (hasError ? 'red 2px solid' : 'darkgray 1px solid')};
+  ${({theme}) => labelTextStyle(theme)}
   border-radius: 4px;
   margin: 2px;
   padding: 0 4px;
@@ -519,7 +529,7 @@ const CloseItemIconArea = styled.div`
   display: flex;
   justify-content: center;
   &:hover {
-    background-color: #ddd;
+    background-color: ${({theme}) => theme.color.bg.itemHover};
   }
 `;
 

@@ -75,6 +75,7 @@ function buildInitialState(data: DataModel): AppState {
 const LayoutRoot = styled.div`
   --basic-font-size: 16px;
   --label-font-weight: 500;
+  background-color: ${({theme}) => theme.color.bg.normal};
 `;
 
 const initialState = buildInitialState(initialDataModel);

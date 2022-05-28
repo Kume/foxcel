@@ -1,9 +1,10 @@
 import React, {useMemo} from 'react';
 import styled from 'styled-components';
+import {breakableTextStyle, inputTextStyle} from './components/commonStyles';
 
 const Line = styled.p`
-  overflow-wrap: break-word;
-  word-break: keep-all;
+  ${({theme}) => inputTextStyle(theme)}
+  ${breakableTextStyle}
   margin: 0;
   max-width: 400px;
 `;

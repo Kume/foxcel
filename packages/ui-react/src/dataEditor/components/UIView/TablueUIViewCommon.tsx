@@ -22,14 +22,15 @@ import {
   withoutModifierKey,
   withShiftKey,
 } from '../../../common/Keybord';
+import {breakableTextStyle, labelTextStyle} from '../../../common/components/commonStyles';
 
 export const TableUIViewLayoutRoot = styled.table`
-  background-color: gray;
+  background-color: ${({theme}) => theme.color.border.table};
 `;
 
 export const TableUIViewCellLayout = styled.td<{readonly selected: boolean}>`
   padding: 0 0;
-  background-color: ${({selected}) => (selected ? 'lightblue' : 'white')};
+  background-color: ${({selected, theme}) => (selected ? theme.color.bg.active : theme.color.bg.normal)};
   user-select: none;
   -moz-user-select: none;
   -webkit-user-select: none;
@@ -38,23 +39,23 @@ export const TableUIViewCellLayout = styled.td<{readonly selected: boolean}>`
 
 export const TableUIViewHeaderCell = styled.th`
   font-weight: normal;
-  background-color: lightgray;
-  overflow-wrap: break-word;
-  word-break: keep-all;
+  background-color: ${({theme}) => theme.color.bg.label};
+  ${({theme}) => labelTextStyle(theme)}
+  ${breakableTextStyle}
   padding: 0 4px;
 `;
 
 export const TableUIViewIndexCell = styled.th`
   font-weight: normal;
-  background-color: #ddd;
+  background-color: ${({theme}) => theme.color.bg.label};
+  ${({theme}) => labelTextStyle(theme)}
+  ${breakableTextStyle}
   text-align: left;
-  overflow-wrap: break-word;
-  word-break: keep-all;
   padding: 0 4px;
 `;
 
 export const TableUIViewRow = styled.tr`
-  border-bottom: 1px solid gray;
+  border-bottom: 1px solid ${({theme}) => theme.color.border.table};
 `;
 
 export function renderTableUIViewCell(

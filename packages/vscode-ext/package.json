@@ -6,9 +6,7 @@
   },
   "main": "./dist/extension.js",
   "scripts": {
-    "build": "",
-    "build:extension": "cd src/extension && webpack",
-    "build:view": "cd src/view && webpack --mode production"
+    "build": "webpack"
   },
   "dependencies": {
     "@floating-ui/react-dom": "^0.5.0",

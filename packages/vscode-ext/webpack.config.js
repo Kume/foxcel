@@ -7,6 +7,7 @@ module.exports = [
   {
     entry: './src/view/index.tsx',
 
+    mode: 'production',
     output: {
       filename: 'view.js',
       path: distDirPath,

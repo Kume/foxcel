@@ -8,9 +8,21 @@ import {
 } from '@foxcel/core/dist/UIModel/NumberUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
-import {makeUseTableCellEditState, TextareaForTableCell} from './TableUIViewCellCommon';
+import {makeUseTableCellEditState} from './TableUIViewCellCommon';
 import styled from 'styled-components';
 import {NumberUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
+import {BackgroundTextarea} from '../BackgroundTextarea';
+import {inputTextStyle} from '../../../common/components/commonStyles';
+
+const Input = styled.input`
+  background-color: ${({theme}) => theme.color.bg.input};
+  border: solid 1px ${({theme}) => theme.color.border.input};
+  ${({theme}) => inputTextStyle(theme)}
+  &:focus {
+    border-color: ${({theme}) => theme.color.border.inputFocus};
+    outline: none;
+  }
+`;
 
 interface Props extends UIViewProps {
   readonly model: NumberUIModel;
@@ -22,7 +34,7 @@ export const NumberUIView: React.FC<Props> = ({model, onAction}) => {
     setEditingText(numberUIModelDisplayText(model));
   }, [model]);
   return (
-    <input
+    <Input
       value={editingText}
       onChange={(e) => setEditingText(e.target.value)}
       onBlur={() => {
@@ -107,7 +119,7 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
     >
       <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && (
-        <TextareaForTableCell
+        <BackgroundTextarea
           isVisible={isEditing}
           ref={textAreaRef}
           onChange={changeTextInput}
