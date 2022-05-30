@@ -21,6 +21,7 @@
   },
   "plugins": ["@typescript-eslint", "react"],
   "rules": {
+    // typescriptを使うのでprop-typesによるバリデーションは不要
     "react/prop-types": "off",
 
     // 基本的にconsole.logは使わない。cliで使いたい場合はそれぞれの設定で上書きする。
