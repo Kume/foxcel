@@ -12,10 +12,10 @@ import {UISchemaExcludeRecursive} from '../UIModel/UISchema';
 import {emptyDataModelContext} from '../DataModel/DataModelContext';
 
 export interface AppState {
-  data: DataModel;
-  uiModel: UIModel;
-  uiSchema: UISchema;
-  dataSchema: DataSchemaExcludeRecursive;
+  data: DataModel | undefined;
+  uiModel: UIModel | undefined;
+  uiSchema: UISchema | undefined;
+  dataSchema: DataSchemaExcludeRecursive | undefined;
   rootUISchemaContext: UISchemaContext;
   focus?: ForwardDataPath;
   schemaFocusLog?: UISchemaFocusLogNode;
@@ -77,6 +77,8 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         state.uiModel,
         undefined,
         emptyDataModelContext,
+        // TODO
+        // @ts-ignore
         {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
         action.path,
         state.dataFocusLog,
@@ -91,6 +93,9 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
       };
     }
     case 'data': {
+      if (!state.dataSchema) {
+        return state;
+      }
       const data = applyDataModelAction(state.data, state.dataSchema, action.action);
       if (!data) {
         return state;
@@ -102,6 +107,8 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         state.uiModel,
         undefined,
         emptyDataModelContext,
+        // TODO
+        // @ts-ignore
         {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
         focus,
         state.dataFocusLog,

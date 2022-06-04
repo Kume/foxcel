@@ -8,6 +8,10 @@ import {loadFile} from '@foxcel/core/dist/FileLoader';
 import {AppInitializeAction} from '@foxcel/core/dist/App/AppState';
 import {ThemeProvider} from 'styled-components';
 import {Theme} from '@foxcel/ui-react/dist/types';
+import {sampleConfig} from '@foxcel/ui-react/dist/sample';
+import {buildSimpleDataSchema} from '@foxcel/core/dist/DataModel/DataSchema';
+import {buildSimpleUISchema} from '@foxcel/core/dist/UIModel/UISchema';
+import {unknownToDataModel} from '@foxcel/core';
 
 async function loadFile_(): Promise<AppInitializeAction> {
   const storage = new NativeFileSystemDataStorage();
@@ -16,18 +20,70 @@ async function loadFile_(): Promise<AppInitializeAction> {
   return {type: 'init', uiSchema, dataSchema, data};
 }
 
+const dataSchema = buildSimpleDataSchema(sampleConfig);
+const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);
+const initialDataModel = unknownToDataModel({
+  testA: {
+    testA_value1: {
+      testA1: 'aaa',
+      testA2: 'A2-2',
+      testA3: {
+        testA3a: {
+          testA3a1: 'testA3a1サンプルデータ',
+          testA3a2: 'testA3a2サンプルデータ',
+        },
+        testA3b: {
+          testA3b3: {
+            value1: {},
+            value2: {},
+          },
+        },
+      },
+      testA5: {
+        testA5_01: {testA5a: 'testA5a_01', testA5b: 'testA5b_01', testA5c: 'AAAA'},
+        testA5_02: {testA5a: 'testA5a_02', testA5b: 'testA5b_02', testA5c: 'CCCC'},
+        testA5_03: {testA5a: 'testA5a_03', testA5b: 'testA5b_03'},
+      },
+      testA8: {
+        testA5_01: {testA8a: 'testA8a'},
+        testA8_dangling: {testA8a: 'testA8_dang'},
+      },
+      testA9: ['testA9_one', 'testA5_01', 'invalid'],
+    },
+    testA_value2: {
+      testA1: 'aaa2',
+      testA3: {
+        testA3b: {
+          testA3b3: {
+            value1: {},
+            value2: {},
+          },
+        },
+      },
+    },
+  },
+  testB: {},
+});
+
 const defaultTheme: Theme = {
   color: {
     bg: {
       normal: 'white',
       active: 'lightblue',
       label: 'lightgray',
-      disabled: 'lightgray',
+      inactiveTab: 'lightgray',
       input: 'white',
+      popup: 'white',
+      itemHover: 'lightgray',
+      itemSelection: 'lightblue',
     },
     border: {
-      inputFocus: 'black',
+      inputFocus: 'blue',
       input: 'gray',
+      popup: 'lightgray',
+      tab: 'lightgray',
+      list: 'lightgray',
+      table: 'lightgray',
     },
   },
   font: {
@@ -42,6 +98,8 @@ const defaultTheme: Theme = {
     color: {
       label: 'black',
       input: 'black',
+      popup: 'black',
+      placeholder: 'gray',
     },
   },
 };
@@ -112,7 +170,7 @@ const vsCodeTheme: Theme = {
 ReactDOM.render(
   <React.StrictMode>
     <ThemeProvider theme={vsCodeTheme}>
-      <RootView loadFile={loadFile_} />
+      <RootView loadFile={loadFile_} loaded={{uiSchema, dataSchema, data: initialDataModel}} />
     </ThemeProvider>
   </React.StrictMode>,
   document.getElementById('root'),
