@@ -1,9 +1,7 @@
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
-  const disposable = vscode.commands.registerCommand('@foxcel/vscode-ext.showsample', () => {
-    vscode.window.showInformationMessage('foxcel extension sample');
-
+  const disposable = vscode.commands.registerCommand('@foxcel/vscode-ext.showsample', (a, b) => {
     const panel = vscode.window.createWebviewPanel('@foxcel/vscode-ext.view', 'foxcel', vscode.ViewColumn.One, {
       enableScripts: true,
     });
@@ -21,8 +19,20 @@ export function activate(context: vscode.ExtensionContext) {
     <body><div id="root" /></body>
     </html>
     `;
+
+    console.log('xxxx args', a.path, a.fsPath);
+    
+    setTimeout(() => {
+      console.log('xxxx');
+      panel.webview.postMessage('hello world from ext.');
+      (async () => {
+        const content = new TextDecoder().decode((await vscode.workspace.fs.readFile(vscode.Uri.parse(a.path))));
+        panel.webview.postMessage(content);
+      })();
+    }, 1000);
   });
   context.subscriptions.push(disposable);
+
 }
 
 export function deactivate() {}

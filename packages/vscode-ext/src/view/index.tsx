@@ -4,6 +4,10 @@ import {RootView} from '@foxcel/ui-react';
 import {Theme} from '@foxcel/ui-react/dist/types';
 import {ThemeProvider} from 'styled-components';
 
+window.addEventListener('message', event => {
+  console.log('xxxx message', event);
+})
+
 const defaultTheme: Theme = {
   color: {
     bg: {
