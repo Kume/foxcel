@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
+import {dirUri, fileNameOfUri, VSCodeStorage} from './VSCodeStorage';
+import {loadFile} from '@foxcel/core/dist/FileLoader';
+import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
 
 export function activate(context: vscode.ExtensionContext) {
-  const disposable = vscode.commands.registerCommand('@foxcel/vscode-ext.showsample', (a, b) => {
+  const disposable = vscode.commands.registerCommand('@foxcel/vscode-ext.showsample', (a: vscode.Uri, b) => {
     const panel = vscode.window.createWebviewPanel('@foxcel/vscode-ext.view', 'foxcel', vscode.ViewColumn.One, {
       enableScripts: true,
     });
@@ -20,19 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
     </html>
     `;
 
-    console.log('xxxx args', a.path, a.fsPath);
-    
-    setTimeout(() => {
-      console.log('xxxx');
-      panel.webview.postMessage('hello world from ext.');
-      (async () => {
-        const content = new TextDecoder().decode((await vscode.workspace.fs.readFile(vscode.Uri.parse(a.path))));
-        panel.webview.postMessage(content);
-      })();
-    }, 1000);
+    const storage = new VSCodeStorage(dirUri(a));
+    (async () => {
+      const result = await loadFile(storage, [fileNameOfUri(a)], new YamlDataFormatter());
+      console.log(result);
+      panel.webview.postMessage({t: 'loadFull', result});
+    })();
   });
   context.subscriptions.push(disposable);
-
 }
 
 export function deactivate() {}

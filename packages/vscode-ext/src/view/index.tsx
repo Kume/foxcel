@@ -3,10 +3,7 @@ import * as ReactDOM from 'react-dom';
 import {RootView} from '@foxcel/ui-react';
 import {Theme} from '@foxcel/ui-react/dist/types';
 import {ThemeProvider} from 'styled-components';
-
-window.addEventListener('message', event => {
-  console.log('xxxx message', event);
-})
+import {useEffect, useState} from 'react';
 
 const defaultTheme: Theme = {
   color: {
@@ -49,10 +46,25 @@ const defaultTheme: Theme = {
   },
 };
 
+const App: React.FC = () => {
+  const [loaded, setLoaded] = useState();
+  useEffect(() => {
+    const listener = (event) => {
+      setLoaded(event.data.result);
+    };
+    window.addEventListener('message', listener);
+    return () => {
+      window.removeEventListener('message', listener);
+    };
+  });
+
+  return <RootView loaded={loaded} />;
+};
+
 ReactDOM.render(
   <React.StrictMode>
     <ThemeProvider theme={defaultTheme}>
-      <RootView />
+      <App />
     </ThemeProvider>
   </React.StrictMode>,
   document.getElementById('root'),
