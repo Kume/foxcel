@@ -5,7 +5,8 @@ export interface StorageDataTrait<T> {
   convertBack(model: T): unknown;
   setForPath(destination: T, model: T, path: readonly string[]): T;
   getForPath(model: T, path: readonly string[]): T | undefined;
-  mapModelForEach(model: T, callback: (value: T, key: string) => Promise<void>): Promise<void>;
+  mapModelForEachAsync(model: T, callback: (value: T, key: string) => Promise<void>): Promise<void>;
+  mapModelForEach(model: T, callback: (value: T, key: string) => void): void;
   modelEquals(a: T, b: T): boolean;
   stringModel(str: string): T;
 }
@@ -19,7 +20,14 @@ export const RawStorageDataTrait: StorageDataTrait<unknown> = {
   },
   setForPath,
   getForPath,
-  async mapModelForEach(model: unknown, callback: (value: unknown, key: string) => Promise<void>): Promise<void> {
+  mapModelForEach(model: unknown, callback: (value: unknown, key: string) => void): void {
+    if (typeof model === 'object' && model !== null) {
+      for (const key of Object.keys(model)) {
+        callback((model as {[key: string]: unknown})[key], key);
+      }
+    }
+  },
+  async mapModelForEachAsync(model: unknown, callback: (value: unknown, key: string) => Promise<void>): Promise<void> {
     if (typeof model === 'object' && model !== null) {
       for (const key of Object.keys(model)) {
         await callback((model as {[key: string]: unknown})[key], key);

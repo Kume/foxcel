@@ -16,8 +16,8 @@ export async function loadFile(
   const rootSchema = formatter.parse(rootSchemaContent) as RootSchemaConfig; // TODO バリデーション
   const rootDataSchema = await buildDataSchema(rootSchema, storage, formatter);
   const rootUiSchema = await buildUISchema(rootSchema, rootDataSchema, storage, formatter);
-  const mapper = DataMapper.build(rootSchema.fileMap, storage, dataModelStorageDataTrait);
-  const loaded = await mapper.loadAsync();
+  const mapper = DataMapper.build(rootSchema.fileMap);
+  const loaded = await mapper.loadAsync(storage, dataModelStorageDataTrait);
   // console.log('xxxx loaded', {rootUiSchema, rootDataSchema, rootSchemaPath, rootSchemaContent, data: loaded?.model});
   return {uiSchema: rootUiSchema, dataSchema: rootDataSchema, data: loaded?.model};
 }

@@ -5,5 +5,5 @@ export default interface DataStorage {
 
   deleteAsync(paths: readonly string[]): Promise<void>;
 
-  exists(paths: readonly string[]): Promise<boolean>;
+  // exists(paths: readonly string[]): Promise<boolean>;
 }

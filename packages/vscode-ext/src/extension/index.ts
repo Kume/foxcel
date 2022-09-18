@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import {dirUri, fileNameOfUri, VSCodeStorage} from './VSCodeStorage';
-import {loadFile} from '@foxcel/core/dist/FileLoader';
-import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
+import {BackToFrontMessage, FrontToBackMessage} from '@foxcel/core/dist/messages';
+import {loadFile} from './loadFile';
+import {saveFile} from './saveFile';
 
 export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand('@foxcel/vscode-ext.showsample', (a: vscode.Uri, b) => {
@@ -9,6 +9,9 @@ export function activate(context: vscode.ExtensionContext) {
       enableScripts: true,
     });
     const scriptUrl = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist/view.js'));
+    const sendMessage = (message: BackToFrontMessage) => {
+      panel.webview.postMessage(message);
+    };
 
     panel.webview.html = `
     <!DOCTYPE html>
@@ -23,12 +26,20 @@ export function activate(context: vscode.ExtensionContext) {
     </html>
     `;
 
-    const storage = new VSCodeStorage(dirUri(a));
     (async () => {
-      const result = await loadFile(storage, [fileNameOfUri(a)], new YamlDataFormatter());
-      console.log(result);
-      panel.webview.postMessage({t: 'loadFull', result});
+      const result = await loadFile(a);
+      // console.log(result);
+      sendMessage(result);
     })();
+
+    panel.webview.onDidReceiveMessage(async (message: FrontToBackMessage) => {
+      // console.log(message)
+      switch (message.type) {
+        case 'saveFile':
+          await saveFile(a, message);
+          break;
+      }
+    });
   });
   context.subscriptions.push(disposable);
 }

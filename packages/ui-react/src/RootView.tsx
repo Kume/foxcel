@@ -1,11 +1,10 @@
 import React, {useCallback, useEffect, useReducer, useRef} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {DataModel} from '@foxcel/core';
-import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
-import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema';
 import {applyAppActionToState, AppState, AppInitializeAction} from '@foxcel/core/dist/App/AppState';
 import styled from 'styled-components';
 import {DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
+import {LoadedData} from './types';
+import {DataModel} from '@foxcel/core';
 
 const LayoutRoot = styled.div`
   --basic-font-size: 16px;
@@ -15,11 +14,8 @@ const LayoutRoot = styled.div`
 
 interface Props {
   loadFile?(): Promise<AppInitializeAction>;
-  readonly loaded?: {
-    readonly uiSchema: UISchemaExcludeRecursive;
-    readonly dataSchema: DataSchemaExcludeRecursive;
-    readonly data: DataModel;
-  };
+  saveFile?(model: DataModel | undefined): void;
+  readonly loaded?: LoadedData;
 }
 
 const initialState: AppState = {
@@ -30,7 +26,7 @@ const initialState: AppState = {
   rootUISchemaContext: undefined,
 };
 
-export const RootView: React.FC<Props> = ({loadFile, loaded}) => {
+export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded}) => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
@@ -55,7 +51,8 @@ export const RootView: React.FC<Props> = ({loadFile, loaded}) => {
 
   return (
     <LayoutRoot>
-      {loadFile && <div onClick={async () => dispatch(await loadFile())}>LOAD</div>}
+      {loadFile && <button onClick={async () => dispatch(await loadFile())}>LOAD</button>}
+      {saveFile && <button onClick={() => saveFile(state.data)}>SAVE</button>}
       {state.uiModel && <UIView model={state.uiModel} onAction={dispatch} getRoot={getRoot} />}
     </LayoutRoot>
   );

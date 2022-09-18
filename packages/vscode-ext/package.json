@@ -30,6 +30,7 @@
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
     "@types/vscode": "1.59.0",
+    "@types/vscode-webview": "^1.57.0",
     "babel-loader": "^8.2.4",
     "eslint": "^6.6.0",
     "eslint-config-prettier": "^6.11.0",
