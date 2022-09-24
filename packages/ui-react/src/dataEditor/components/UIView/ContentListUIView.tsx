@@ -10,6 +10,7 @@ import {
   contentListRemoveAtAction,
 } from '@foxcel/core/dist/UIModel/ContentListUIModel';
 import {labelTextStyle} from '../../../common/components/commonStyles';
+import {AppAction} from '@foxcel/core/dist/App/AppState';
 
 const LayoutRoot = styled.div`
   display: flex;
@@ -45,12 +46,16 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
   const closeContextMenu = useCallback(() => setContextMenuProp(undefined), []);
   const openContextMenu = useCallback(
     (index: number, event: React.MouseEvent<HTMLElement>) => {
+      const actionAndClose = (action: AppAction) => {
+        onAction(action);
+        setContextMenuProp(undefined);
+      };
       setContextMenuProp({
         anchorPoint: {x: event.pageX, y: event.pageY},
         items: [
-          {label: '上に追加', onClick: () => onAction(contentListAddBeforeAction(model, index))},
-          {label: '下に追加', onClick: () => onAction(contentListAddAfterAction(model, index))},
-          {label: '削除', onClick: () => onAction(contentListRemoveAtAction(model, index))},
+          {label: '上に追加', onClick: () => actionAndClose(contentListAddBeforeAction(model, index))},
+          {label: '下に追加', onClick: () => actionAndClose(contentListAddAfterAction(model, index))},
+          {label: '削除', onClick: () => actionAndClose(contentListRemoveAtAction(model, index))},
         ],
       });
       event.preventDefault();

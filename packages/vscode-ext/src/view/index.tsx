@@ -23,7 +23,7 @@ const defaultTheme: Theme = {
       input: 'var(--vscode-input-background)',
       popup: 'var(--vscode-editorWidget-background)',
       itemHover: 'var(--vscode-list-hoverBackground)',
-      itemSelection: 'var(--vscode-list-inactiveSelectionBackground)',
+      itemSelection: 'var(--vscode-list-activeSelectionBackground)',
     },
     border: {
       inputFocus: 'var(--vscode-focusBorder)',
@@ -50,6 +50,7 @@ const defaultTheme: Theme = {
       input: 'var(--vscode-input-foreground)',
       popup: 'var(--vscode-editorWidget-foreground)',
       placeholder: 'var(--vscode-input-placeholderForeground)',
+      itemSelection: 'var(--vscode-input-activeSelectionForeground)',
     },
   },
 };

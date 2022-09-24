@@ -1,14 +1,20 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import styled from 'styled-components';
 
 const LayoutRoot = styled.div``;
 
-const ContextMenuBox = styled.div`
-  position: absolute;
-  background-color: white;
-  box-shadow: 1px 3px 6px rgba(0, 0, 0, 0.4);
+const ContextMenuBox = styled.div<{x: number; y: number}>`
+  position: fixed;
   z-index: 100;
   border-radius: 5px;
+  padding-top: 0.6em;
+  padding-bottom: 0.6em;
+  background-color: ${({theme}) => theme.color.bg.popup};
+  font-size: ${({theme}) => theme.font.size.input};
+  font-family: ${({theme}) => theme.font.family.input};
+  color: ${({theme}) => theme.font.color.popup};
+  top: ${({y}) => y}px;
+  left: ${({x}) => x}px;
 `;
 
 const ContextMenuItemBox = styled.div`
@@ -18,7 +24,8 @@ const ContextMenuItemBox = styled.div`
   align-items: center;
   padding-left: 5px;
   &:hover {
-    background-color: lightblue;
+    background-color: ${({theme}) => theme.color.bg.itemSelection};
+    color: ${({theme}) => theme.font.color.itemSelection};
   }
 `;
 
@@ -43,10 +50,18 @@ export interface ContextMenuProps {
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({anchorPoint, items, onClose}) => {
+  const contextMenuCallback = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      e.preventDefault();
+      onClose();
+    },
+    [onClose],
+  );
+
   if (anchorPoint) {
     return (
-      <LayoutRoot>
-        <ContextMenuBox>
+      <LayoutRoot onContextMenu={contextMenuCallback}>
+        <ContextMenuBox {...anchorPoint}>
           {items?.map(({label, onClick}, index) => (
             <ContextMenuItemBox key={index} onClick={onClick}>
               {label}
