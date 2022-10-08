@@ -58,6 +58,7 @@ const defaultTheme: Theme = {
 
 interface InitialLoadItems {
   readonly data: DataModel;
+  readonly rawData: unknown;
   readonly dataMapper: DataMapper;
   readonly uiSchema: UISchemaExcludeRecursive;
   readonly dataSchema: DataSchemaExcludeRecursive;
@@ -71,7 +72,7 @@ function sendMessage(message: FrontToBackMessage): void {
 
 interface SavedState {
   readonly initial: {
-    readonly data: DataModel;
+    readonly rawData: unknown;
     readonly dataMapper: DataMapper;
     readonly uiSchema: UISchemaExcludeRecursive;
   };
@@ -97,7 +98,13 @@ const App: React.FC = () => {
           const dataModel = unknownToDataModel(message.data);
           const dataMapper = DataMapper.build(message.dataMapperConfig);
           const fileDataMap = dataMapper.makeFileDataMap(dataModel, dataModelStorageDataTrait);
-          setLoaded({data: dataModel, dataMapper, dataSchema: message.uiSchema.dataSchema, uiSchema: message.uiSchema});
+          setLoaded({
+            data: dataModel,
+            rawData: message.data,
+            dataMapper,
+            dataSchema: message.uiSchema.dataSchema,
+            uiSchema: message.uiSchema,
+          });
           setLastFileMap(fileDataMap);
           break;
       }
@@ -112,7 +119,8 @@ const App: React.FC = () => {
     const restoredState = loadStateFromVsCode();
     if (restoredState) {
       setLoaded({
-        data: restoredState.initial.data,
+        data: unknownToDataModel(restoredState.initial.rawData),
+        rawData: restoredState.initial.rawData,
         dataMapper: restoredState.initial.dataMapper,
         dataSchema: restoredState.initial.uiSchema.dataSchema,
         uiSchema: restoredState.initial.uiSchema,
@@ -149,7 +157,7 @@ const App: React.FC = () => {
         saveStateToVsCode({
           actions: state.actions,
           initial: {
-            data: loaded.data,
+            rawData: loaded.rawData,
             dataMapper: loaded.dataMapper,
             uiSchema: loaded.uiSchema,
           },
