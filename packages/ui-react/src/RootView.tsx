@@ -15,6 +15,7 @@ const LayoutRoot = styled.div`
 interface Props {
   loadFile?(): Promise<AppInitializeAction>;
   saveFile?(model: DataModel | undefined): void;
+  onChangeState?(state: AppState): void;
   readonly loaded?: LoadedData;
 }
 
@@ -24,9 +25,10 @@ const initialState: AppState = {
   uiSchema: undefined,
   dataSchema: undefined,
   rootUISchemaContext: undefined,
+  actions: [],
 };
 
-export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded}) => {
+export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeState}) => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
@@ -46,6 +48,9 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded}) => {
       dispatch({type: 'init', ...loaded});
     }
   }, [loaded]);
+  useEffect(() => {
+    onChangeState?.(state);
+  }, [onChangeState, state]);
 
   console.log('root', state);
 

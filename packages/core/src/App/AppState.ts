@@ -20,6 +20,7 @@ export interface AppState {
   focus?: ForwardDataPath;
   schemaFocusLog?: UISchemaFocusLogNode;
   dataFocusLog?: UIDataFocusLogNode;
+  actions: AppAction[];
 }
 
 export interface AppFocusAction {
@@ -32,6 +33,7 @@ export interface AppInitializeAction {
   readonly uiSchema: UISchemaExcludeRecursive;
   readonly dataSchema: DataSchemaExcludeRecursive;
   readonly data: DataModel | undefined;
+  readonly restoredActions?: AppAction[];
 }
 
 export interface AppDataModelAction {
@@ -62,13 +64,22 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         undefined,
         undefined,
       );
-      return {
+      let initializingState: AppState = {
         data,
         uiSchema: action.uiSchema,
         dataSchema: action.dataSchema,
         rootUISchemaContext: rootSchemaContext,
         uiModel,
+        actions: [],
       };
+
+      if (action.restoredActions) {
+        for (const restoredAction of action.restoredActions) {
+          initializingState = applyAppActionToState(initializingState, restoredAction);
+        }
+      }
+
+      return initializingState;
     }
     case 'focus': {
       const uiModel = buildUIModel(
@@ -90,6 +101,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         uiModel,
         schemaFocusLog: logSchemaFocus(uiModel, state.rootUISchemaContext, state.schemaFocusLog),
         dataFocusLog: logDataFocus(uiModel, state.rootUISchemaContext, state.dataFocusLog),
+        actions: [...state.actions, action],
       };
     }
     case 'data': {
@@ -121,6 +133,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         focus,
         schemaFocusLog: logSchemaFocus(uiModel, state.rootUISchemaContext, state.schemaFocusLog),
         dataFocusLog: logDataFocus(uiModel, state.rootUISchemaContext, state.dataFocusLog),
+        actions: [...state.actions, action],
       };
     }
     case 'batch': {
