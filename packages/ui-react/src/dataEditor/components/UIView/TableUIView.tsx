@@ -3,6 +3,8 @@ import {UIViewProps} from './UIView';
 import {TableUIModel, TableUIModelRow} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {getIdFromDataPointer} from '@foxcel/core';
 import {
+  isEndOfTableRange,
+  isStartOfTableRange,
   selectingTableCellRange,
   TableCellRange,
   TableRange,
@@ -22,7 +24,9 @@ import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
   TableUIViewCellLayout,
+  TableUIViewCellLayout2,
   TableUIViewHeaderCell,
+  TableUIViewIndexCell,
   TableUIViewLayoutRoot,
   TableUIViewRow,
   TableUIViewState,
@@ -170,28 +174,36 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
     };
   });
 
+  const selectionRange = state.selection?.range;
+  const isRowFullySelected = selectionRange?.col.start === 0 && selectionRange?.col.size === model.columns.length;
+
   return (
     <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
       <thead>
         <TableUIViewRow>
+          <TableUIViewHeaderCell />
           {model.columns.map((column, index) => (
             <TableUIViewHeaderCell key={index}>{column.label}</TableUIViewHeaderCell>
           ))}
         </TableUIViewRow>
       </thead>
       <tbody>
-        {model.rows.map((row, index) => (
-          <TableRowView
-            key={getIdFromDataPointer(row.pointer)}
-            row={row}
-            rowNumber={index}
-            mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
-            selectionRange={
-              tableRangeContains(state.selection?.range.row, index) ? state.selection?.range.col : undefined
-            }
-            callbacks={callbacks}
-          />
-        ))}
+        {model.rows.map((row, index) => {
+          const isSelected = tableRangeContains(selectionRange?.row, index);
+          return (
+            <TableRowView
+              key={getIdFromDataPointer(row.pointer)}
+              row={row}
+              rowNumber={index}
+              mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
+              selectionRange={isSelected ? selectionRange?.col : undefined}
+              isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
+              isSelectionEnd={isEndOfTableRange(selectionRange?.row, index)}
+              isFullySelected={isSelected && isRowFullySelected}
+              callbacks={callbacks}
+            />
+          );
+        })}
       </tbody>
     </TableUIViewLayoutRoot>
   );
@@ -203,21 +215,40 @@ interface TableRowViewProps {
   readonly row: TableUIModelRow;
   readonly rowNumber: number;
   readonly selectionRange: TableRange | undefined;
+  readonly isSelectionStart: boolean;
+  readonly isSelectionEnd: boolean;
+  readonly isFullySelected: boolean;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
 }
 
 const TableRowView = React.memo<TableRowViewProps>(
-  ({row, rowNumber, selectionRange, mainSelectedColumn, callbacks}) => {
+  ({
+    row,
+    rowNumber,
+    selectionRange,
+    isFullySelected,
+    isSelectionStart,
+    isSelectionEnd,
+    mainSelectedColumn,
+    callbacks,
+  }) => {
     return (
       <TableUIViewRow>
+        <TableUIViewIndexCell selected={isFullySelected}>{rowNumber + 1}</TableUIViewIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
+          const border = [
+            isSelected && isSelectionStart,
+            isEndOfTableRange(selectionRange, index),
+            isSelected && isSelectionEnd,
+            isStartOfTableRange(selectionRange, index),
+          ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout key={index} selected={isSelected}>
+            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
               {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks)}
-            </TableUIViewCellLayout>
+            </TableUIViewCellLayout2>
           );
         })}
       </TableUIViewRow>

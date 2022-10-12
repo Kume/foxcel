@@ -37,6 +37,14 @@ export function tableRangeContains(range: TableRange | undefined, target: number
   return !!range && target >= range.start && target < range.start + range.size;
 }
 
+export function isStartOfTableRange(range: TableRange | undefined, target: number): boolean {
+  return !!range && target === range.start;
+}
+
+export function isEndOfTableRange(range: TableRange | undefined, target: number): boolean {
+  return !!range && target === range.start + range.size - 1;
+}
+
 function makeRange(start: number, end: number): TableRange {
   if (start > end) {
     return {start: end, size: start - end + 1};
