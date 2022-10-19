@@ -1,9 +1,9 @@
-import React, {useCallback} from 'react';
+import React, {ComponentType, CSSProperties, forwardRef, useCallback} from 'react';
 import styled from 'styled-components';
 
 const LayoutRoot = styled.div``;
 
-const ContextMenuBox = styled.div<{x: number; y: number}>`
+const ContextMenuBox = styled.div`
   position: fixed;
   z-index: 100;
   border-radius: 5px;
@@ -13,8 +13,6 @@ const ContextMenuBox = styled.div<{x: number; y: number}>`
   font-size: ${({theme}) => theme.font.size.input};
   font-family: ${({theme}) => theme.font.family.input};
   color: ${({theme}) => theme.font.color.popup};
-  top: ${({y}) => y}px;
-  left: ${({x}) => x}px;
 `;
 
 const ContextMenuItemBox = styled.div`
@@ -44,12 +42,14 @@ export interface ContextMenuItem {
 }
 
 export interface ContextMenuProps {
-  readonly anchorPoint?: Record<'x' | 'y', number>;
+  readonly isOpen?: boolean;
   readonly items?: readonly ContextMenuItem[];
+  readonly style?: CSSProperties;
   readonly onClose: () => void;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({anchorPoint, items, onClose}) => {
+export const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(function ContextMenu(props, ref) {
+  const {isOpen, items, style, onClose} = props;
   const contextMenuCallback = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {
       e.preventDefault();
@@ -58,10 +58,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({anchorPoint, items, onC
     [onClose],
   );
 
-  if (anchorPoint) {
+  if (isOpen) {
     return (
       <LayoutRoot onContextMenu={contextMenuCallback}>
-        <ContextMenuBox {...anchorPoint}>
+        <ContextMenuBox ref={ref} style={style}>
           {items?.map(({label, onClick}, index) => (
             <ContextMenuItemBox key={index} onClick={onClick}>
               {label}
@@ -74,4 +74,4 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({anchorPoint, items, onC
   } else {
     return null;
   }
-};
+});

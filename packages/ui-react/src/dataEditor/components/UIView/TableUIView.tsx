@@ -9,6 +9,7 @@ import {
   TableCellRange,
   TableRange,
   tableRangeContains,
+  tableUIModelContextMenus,
   tableUIModelCopy,
   tableUIModelCut,
   tableUIModelDelete,
@@ -23,7 +24,6 @@ import {TableCellCallbacks} from './TableUIViewCell';
 import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
-  TableUIViewCellLayout,
   TableUIViewCellLayout2,
   TableUIViewHeaderCell,
   TableUIViewIndexCell,
@@ -32,6 +32,9 @@ import {
   TableUIViewState,
   updateTableUIViewStateSelection,
 } from './TablueUIViewCommon';
+import {flip, shift, useFloating} from '@floating-ui/react-dom';
+import {ContextMenu, ContextMenuProps} from './ContextMenu';
+import {AppAction} from '@foxcel/core/dist/App/AppState';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;
@@ -57,6 +60,43 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
   const actionRef_: ActionRef = {selection: state.selection, model};
   const actionRef = useRef(actionRef_);
   actionRef.current = actionRef_;
+
+  const [contextMenuProp, setContextMenuProp] = useState<Omit<ContextMenuProps, 'onClose'>>();
+  const {x, y, reference, floating, strategy} = useFloating({
+    placement: 'bottom-start',
+    middleware: [shift(), flip()],
+  });
+  const openContextMenu = useCallback(
+    (rowNumber: number, e: React.MouseEvent<HTMLElement>) => {
+      e.preventDefault();
+      setContextMenuProp({
+        isOpen: true,
+        items: tableUIModelContextMenus(actionRef.current.model, rowNumber, actionRef.current.selection).map(
+          ({label, action}) => ({
+            label,
+            onClick: () => {
+              onAction(action);
+              setContextMenuProp(undefined);
+            },
+          }),
+        ),
+      });
+      reference({
+        getBoundingClientRect: () => ({
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          left: e.clientX,
+          right: e.clientX,
+          bottom: e.clientY,
+          top: e.clientY,
+        }),
+      });
+    },
+    [onAction, reference],
+  );
+  const closeContextMenu = useCallback(() => setContextMenuProp(undefined), []);
 
   const editFocusCallbacks = useMemo<EditFocusCallbacks>(
     () => ({
@@ -178,34 +218,43 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
   const isRowFullySelected = selectionRange?.col.start === 0 && selectionRange?.col.size === model.columns.length;
 
   return (
-    <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
-      <thead>
-        <TableUIViewRow>
-          <TableUIViewHeaderCell />
-          {model.columns.map((column, index) => (
-            <TableUIViewHeaderCell key={index}>{column.label}</TableUIViewHeaderCell>
-          ))}
-        </TableUIViewRow>
-      </thead>
-      <tbody>
-        {model.rows.map((row, index) => {
-          const isSelected = tableRangeContains(selectionRange?.row, index);
-          return (
-            <TableRowView
-              key={getIdFromDataPointer(row.pointer)}
-              row={row}
-              rowNumber={index}
-              mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
-              selectionRange={isSelected ? selectionRange?.col : undefined}
-              isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
-              isSelectionEnd={isEndOfTableRange(selectionRange?.row, index)}
-              isFullySelected={isSelected && isRowFullySelected}
-              callbacks={callbacks}
-            />
-          );
-        })}
-      </tbody>
-    </TableUIViewLayoutRoot>
+    <>
+      <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
+        <thead>
+          <TableUIViewRow>
+            <TableUIViewHeaderCell />
+            {model.columns.map((column, index) => (
+              <TableUIViewHeaderCell key={index}>{column.label}</TableUIViewHeaderCell>
+            ))}
+          </TableUIViewRow>
+        </thead>
+        <tbody>
+          {model.rows.map((row, index) => {
+            const isSelected = tableRangeContains(selectionRange?.row, index);
+            return (
+              <TableRowView
+                key={getIdFromDataPointer(row.pointer)}
+                row={row}
+                rowNumber={index}
+                mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
+                selectionRange={isSelected ? selectionRange?.col : undefined}
+                isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
+                isSelectionEnd={isEndOfTableRange(selectionRange?.row, index)}
+                isFullySelected={isSelected && isRowFullySelected}
+                callbacks={callbacks}
+                onContextMenu={openContextMenu}
+              />
+            );
+          })}
+        </tbody>
+      </TableUIViewLayoutRoot>
+      <ContextMenu
+        ref={floating}
+        style={{position: strategy, left: x ?? 0, top: y ?? 0}}
+        {...contextMenuProp}
+        onClose={closeContextMenu}
+      />
+    </>
   );
 });
 
@@ -220,6 +269,7 @@ interface TableRowViewProps {
   readonly isFullySelected: boolean;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
+  readonly onContextMenu: (rowNumber: number, event: React.MouseEvent<HTMLElement>) => void;
 }
 
 const TableRowView = React.memo<TableRowViewProps>(
@@ -232,9 +282,16 @@ const TableRowView = React.memo<TableRowViewProps>(
     isSelectionEnd,
     mainSelectedColumn,
     callbacks,
+    onContextMenu,
   }) => {
+    const openContextMenu = useCallback(
+      (event: React.MouseEvent<HTMLElement>) => {
+        onContextMenu(rowNumber, event);
+      },
+      [onContextMenu, rowNumber],
+    );
     return (
-      <TableUIViewRow>
+      <TableUIViewRow onContextMenu={openContextMenu}>
         <TableUIViewIndexCell selected={isFullySelected}>{rowNumber + 1}</TableUIViewIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);

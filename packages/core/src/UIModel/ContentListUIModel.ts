@@ -4,7 +4,7 @@ import {DataModel} from '../DataModel/DataModelTypes';
 import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
 
 function initialData(model: ContentListUIModel): DataModel {
-  // このdataSchemaにrecursiveは入ってはいけないのでは？
+  // TODO このdataSchemaにrecursiveは入ってはいけないのでは？
   // => いや、contentのschemaだからありうる。そうすると、そのスキーマ情報を解決するためにDataSchemaContextが必要になるか？
   // => modelにデフォルトデータをセットしとくのが良いかも？
   return defaultDataModelForSchema(model.schema.content.dataSchema);

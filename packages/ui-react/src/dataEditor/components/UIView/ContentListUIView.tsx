@@ -11,6 +11,7 @@ import {
 } from '@foxcel/core/dist/UIModel/ContentListUIModel';
 import {labelTextStyle} from '../../../common/components/commonStyles';
 import {AppAction} from '@foxcel/core/dist/App/AppState';
+import {flip, shift, useFloating} from '@floating-ui/react-dom';
 
 const LayoutRoot = styled.div`
   display: flex;
@@ -42,7 +43,11 @@ interface Props extends UIViewProps {
 }
 
 export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
-  const [contextMenuProp, setContextMenuProp] = useState<Omit<ContextMenuProps, 'onClose'>>();
+  const [contextMenuProp, setContextMenuProp] = useState<Pick<ContextMenuProps, 'isOpen' | 'items'>>();
+  const {x, y, reference, floating, strategy} = useFloating({
+    placement: 'bottom-start',
+    middleware: [shift(), flip()],
+  });
   const closeContextMenu = useCallback(() => setContextMenuProp(undefined), []);
   const openContextMenu = useCallback(
     (index: number, event: React.MouseEvent<HTMLElement>) => {
@@ -51,12 +56,24 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
         setContextMenuProp(undefined);
       };
       setContextMenuProp({
-        anchorPoint: {x: event.pageX, y: event.pageY},
+        isOpen: true,
         items: [
-          {label: '上に追加', onClick: () => actionAndClose(contentListAddBeforeAction(model, index))},
-          {label: '下に追加', onClick: () => actionAndClose(contentListAddAfterAction(model, index))},
-          {label: '削除', onClick: () => actionAndClose(contentListRemoveAtAction(model, index))},
+          {label: 'Insert above', onClick: () => actionAndClose(contentListAddBeforeAction(model, index))},
+          {label: 'Insert below', onClick: () => actionAndClose(contentListAddAfterAction(model, index))},
+          {label: 'Delete', onClick: () => actionAndClose(contentListRemoveAtAction(model, index))},
         ],
+      });
+      reference({
+        getBoundingClientRect: () => ({
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          left: event.clientX,
+          right: event.clientX,
+          bottom: event.clientY,
+          top: event.clientY,
+        }),
       });
       event.preventDefault();
     },
@@ -80,7 +97,12 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
             </ListItem>
           ))}
         </List>
-        <ContextMenu {...contextMenuProp} onClose={closeContextMenu} />
+        <ContextMenu
+          ref={floating}
+          style={{position: strategy, left: x ?? 0, top: y ?? 0}}
+          {...contextMenuProp}
+          onClose={closeContextMenu}
+        />
       </ListArea>
       <ContentArea>
         {model.content ? (
