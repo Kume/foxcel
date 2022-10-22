@@ -12,6 +12,7 @@ import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema
 import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
 import {WriteOnlyRemoteDataStorage} from '@foxcel/core/dist/Storage/WriteOnlyRemoteDataStorage';
 import {JsonDataFormatter} from '@foxcel/core/dist/Storage/JsonDataFormatter';
+import {AppAction, AppState} from '@foxcel/core/dist/App/AppState';
 
 const defaultTheme: Theme = {
   color: {
@@ -60,11 +61,29 @@ interface InitialLoadItems {
   readonly dataMapper: DataMapper;
   readonly uiSchema: UISchemaExcludeRecursive;
   readonly dataSchema: DataSchemaExcludeRecursive;
+  readonly restoredActions?: AppAction[];
 }
 
 const vscode = acquireVsCodeApi();
 function sendMessage(message: FrontToBackMessage): void {
   vscode.postMessage(message);
+}
+
+interface SavedState {
+  readonly initial: {
+    readonly data: DataModel;
+    readonly dataMapper: DataMapper;
+    readonly uiSchema: UISchemaExcludeRecursive;
+  };
+  readonly actions: AppAction[];
+}
+
+function saveStateToVsCode(state: SavedState) {
+  vscode.setState(state);
+}
+
+function loadStateFromVsCode(): SavedState | undefined {
+  return vscode.getState() as SavedState | undefined;
 }
 
 const App: React.FC = () => {
@@ -87,7 +106,20 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('message', listener);
     };
-  });
+  }, []);
+
+  useEffect(() => {
+    const restoredState = loadStateFromVsCode();
+    if (restoredState) {
+      setLoaded({
+        data: restoredState.initial.data,
+        dataMapper: restoredState.initial.dataMapper,
+        dataSchema: restoredState.initial.uiSchema.dataSchema,
+        uiSchema: restoredState.initial.uiSchema,
+        restoredActions: restoredState.actions,
+      });
+    }
+  }, []);
 
   const save = useCallback(
     async (model: DataModel) => {
@@ -111,7 +143,23 @@ const App: React.FC = () => {
     [lastFileMap, loaded],
   );
 
-  return <RootView loaded={loaded} saveFile={save} />;
+  const saveState = useCallback(
+    (state: AppState) => {
+      if (loaded) {
+        saveStateToVsCode({
+          actions: state.actions,
+          initial: {
+            data: loaded.data,
+            dataMapper: loaded.dataMapper,
+            uiSchema: loaded.uiSchema,
+          },
+        });
+      }
+    },
+    [loaded],
+  );
+
+  return <RootView loaded={loaded} saveFile={save} onChangeState={saveState} />;
 };
 
 ReactDOM.render(
