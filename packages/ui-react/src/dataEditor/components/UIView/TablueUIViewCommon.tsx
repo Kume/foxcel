@@ -28,28 +28,94 @@ export const TableUIViewLayoutRoot = styled.table`
   background-color: ${({theme}) => theme.color.border.table};
 `;
 
-export const TableUIViewCellLayout = styled.td<{readonly selected: boolean}>`
-  padding: 0 0;
-  background-color: ${({selected, theme}) => (selected ? theme.color.bg.active : theme.color.bg.normal)};
+const disableUserSelectStyle = `
   user-select: none;
   -moz-user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
 `;
 
+export const TableUIViewCellLayout = styled.td<{readonly selected: boolean}>`
+  padding: 0 0;
+  position: relative;
+  // background-color: ${({selected, theme}) => (selected ? theme.color.bg.active : theme.color.bg.normal)};
+  background-color: ${({theme}) => theme.color.bg.normal};
+  ${disableUserSelectStyle}
+`;
+
+const CellSelectionBorderWidth = '2px';
+
+const CellSelectionBorderTop = styled.div`
+  position: absolute;
+  top: -${CellSelectionBorderWidth};
+  left: -${CellSelectionBorderWidth};
+  height: ${CellSelectionBorderWidth};
+  width: calc(100% + ${CellSelectionBorderWidth} + ${CellSelectionBorderWidth});
+  background-color: ${({theme}) => theme.color.border.inputFocus};
+`;
+
+const CellSelectionBorderRight = styled.div`
+  position: absolute;
+  top: -${CellSelectionBorderWidth};
+  right: -${CellSelectionBorderWidth};
+  height: calc(100% + ${CellSelectionBorderWidth} + ${CellSelectionBorderWidth});
+  width: ${CellSelectionBorderWidth};
+  background-color: ${({theme}) => theme.color.border.inputFocus};
+  z-index: 1;
+`;
+
+const CellSelectionBorderBottom = styled.div`
+  position: absolute;
+  bottom: -${CellSelectionBorderWidth};
+  left: -${CellSelectionBorderWidth};
+  height: ${CellSelectionBorderWidth};
+  width: calc(100% + ${CellSelectionBorderWidth} + ${CellSelectionBorderWidth});
+  background-color: ${({theme}) => theme.color.border.inputFocus};
+`;
+
+const CellSelectionBorderLeft = styled.div`
+  position: absolute;
+  top: -${CellSelectionBorderWidth};
+  left: -${CellSelectionBorderWidth};
+  height: calc(100% + ${CellSelectionBorderWidth} + ${CellSelectionBorderWidth});
+  width: ${CellSelectionBorderWidth};
+  background-color: ${({theme}) => theme.color.border.inputFocus};
+`;
+
+type BorderVisibility = readonly [top?: boolean, right?: boolean, bottom?: boolean, left?: boolean];
+
+interface TableUIViewCellLayout2Props {
+  readonly selected: boolean;
+  readonly border: BorderVisibility;
+}
+
+export const TableUIViewCellLayout2: React.FC<TableUIViewCellLayout2Props> = ({selected, border, children}) => {
+  return (
+    <TableUIViewCellLayout selected={selected}>
+      {border[0] && <CellSelectionBorderTop />}
+      {border[1] && <CellSelectionBorderRight />}
+      {border[2] && <CellSelectionBorderBottom />}
+      {border[3] && <CellSelectionBorderLeft />}
+      {children}
+    </TableUIViewCellLayout>
+  );
+};
+
 export const TableUIViewHeaderCell = styled.th`
   font-weight: normal;
   background-color: ${({theme}) => theme.color.bg.label};
   ${({theme}) => labelTextStyle(theme)}
   ${breakableTextStyle}
+  ${disableUserSelectStyle}
   padding: 0 4px;
 `;
 
-export const TableUIViewIndexCell = styled.th`
+export const TableUIViewIndexCell = styled.th<{readonly selected?: boolean}>`
   font-weight: normal;
-  background-color: ${({theme}) => theme.color.bg.label};
+  background-color: ${({selected, theme}) => (selected ? theme.color.bg.active : theme.color.bg.label)};
   ${({theme}) => labelTextStyle(theme)}
   ${breakableTextStyle}
+  ${disableUserSelectStyle}
   text-align: left;
   padding: 0 4px;
 `;

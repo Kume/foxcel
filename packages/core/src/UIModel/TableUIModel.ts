@@ -12,6 +12,8 @@ import {
 import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} from './CheckboxUIModel';
 import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
 import {DataSchema, dataSchemaIsBoolean} from '../DataModel/DataSchema';
+import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
+import {UIModelContextMenuItem} from './UIModelCommon';
 
 export interface TableCellPoint {
   readonly row: number;
@@ -35,6 +37,14 @@ export interface TableUISelection {
 
 export function tableRangeContains(range: TableRange | undefined, target: number): boolean {
   return !!range && target >= range.start && target < range.start + range.size;
+}
+
+export function isStartOfTableRange(range: TableRange | undefined, target: number): boolean {
+  return !!range && target === range.start;
+}
+
+export function isEndOfTableRange(range: TableRange | undefined, target: number): boolean {
+  return !!range && target === range.start + range.size - 1;
 }
 
 function makeRange(start: number, end: number): TableRange {
@@ -326,4 +336,70 @@ export function tableUIModelMoveSelection(
     // TODO
     return prev;
   }
+}
+
+function initialData(model: TableUIModel): DataModel {
+  return defaultDataModelForSchema(model.schema.dataSchema);
+}
+
+export function tableUIModelAddRowBeforeAction(model: TableUIModel, index: number): AppAction {
+  return {
+    type: 'data',
+    action: {
+      type: 'insert',
+      path: model.dataPath,
+      after: index === 0 ? undefined : model.rows[index - 1].pointer,
+      data: initialData(model),
+    },
+  };
+}
+
+export function tableUIModelAddRowAfterAction(model: TableUIModel, index: number): AppAction {
+  return {
+    type: 'data',
+    action: {
+      type: 'insert',
+      path: model.dataPath,
+      after: model.rows[index]?.pointer,
+      data: initialData(model),
+    },
+  };
+}
+
+export function tableUIModelDeleteRowsBySelection(model: TableUIModel, selection: TableUISelection): AppAction {
+  const actions: AppAction[] = [];
+  for (let i = 0; i < selection.range.row.size; i++) {
+    actions.push({
+      type: 'data',
+      action: {
+        type: 'delete',
+        path: model.dataPath,
+        at: model.rows[i + selection.range.row.start].pointer,
+      },
+    });
+  }
+  return {type: 'batch', actions};
+}
+
+export function tableUIModelContextMenus(
+  model: TableUIModel,
+  rowIndex: number,
+  selection: TableUISelection | undefined,
+): UIModelContextMenuItem[] {
+  // console.log('xxxx tableUIModelContextMenus', model, rowIndex);
+  const items: UIModelContextMenuItem[] = [];
+
+  items.push({label: 'Insert above', action: tableUIModelAddRowBeforeAction(model, rowIndex)});
+  items.push({label: 'Insert below', action: tableUIModelAddRowAfterAction(model, rowIndex)});
+
+  if (selection) {
+    const deleteLabel =
+      selection.range.row.size === 1 ? 'Delete selected row' : `Delete selected ${selection.range.row.size} rows`;
+    items.push({
+      label: deleteLabel,
+      action: tableUIModelDeleteRowsBySelection(model, selection),
+    });
+  }
+
+  return items;
 }
