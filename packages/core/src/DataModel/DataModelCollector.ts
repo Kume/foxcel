@@ -63,6 +63,7 @@ import {
   DataModelContextPathComponent,
   DataModelRoot,
   getCurrentKeyOrUndefinedFromDataModelContext,
+  getDataModelByDataModelContext,
   getParentDataModelFromContext,
   popDataModelContextPath,
   pushDataModelContextPath,
@@ -99,6 +100,23 @@ function mapKeyDataPathComponentToContextPathComponent(
   const mapKey = dataPathComponentToMapKey(pathComponent);
   const indexCache = findMapDataIndexOfKey(data, mapKey);
   return indexCache === undefined ? undefined : {type: 'map', data, at: mapKey, indexCache};
+}
+
+/**
+ * rootDataModelを利用して
+ *
+ * TODO DataModelContextにdataがあるが、これは古いデータである可能性があるので、利用できない。DataModelContextのdataプロパティを無くす方向で検討
+ * @param context
+ * @param count
+ * @param rootDataModel
+ */
+export function getAncestorDataModel(
+  context: DataModelContext,
+  count: number,
+  rootDataModel: DataModel,
+): DataModel | undefined {
+  const ancestorContext = popDataModelContextPath(context, count);
+  return getDataModelByDataModelContext(ancestorContext, rootDataModel);
 }
 
 export function digForPathComponent<Return, PathComponent extends MultiDataPathComponent>(
@@ -222,7 +240,7 @@ function getDataModelBySinglePathImpl(
         case DataPathComponentType.Reverse: {
           const reverseCount = dataPathConsecutiveReverseCount(path);
           return getDataModelBySinglePathImpl(
-            getParentDataModelFromContext(currentContext, reverseCount),
+            getAncestorDataModel(currentContext, reverseCount, dataRoot.model),
             shiftDataPath(path, reverseCount),
             popDataModelContextPath(currentContext, reverseCount),
             originalContext,
@@ -445,7 +463,7 @@ function collectDataModelImpl2(
         case DataPathComponentType.Reverse: {
           const reverseCount = dataPathConsecutiveReverseCount(path);
           return collectDataModelImpl2(
-            getParentDataModelFromContext(currentContext, reverseCount),
+            getAncestorDataModel(currentContext, reverseCount, root.model),
             shiftDataPath(path, reverseCount),
             popDataModelContextPath(currentContext, reverseCount),
             originalContext,

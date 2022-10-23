@@ -4,7 +4,10 @@ import {
   dataModelIsList,
   dataModelIsMap,
   findMapDataIndexOfKey,
+  getListDataAt,
   getListDataIndexForPointer,
+  getMapDataAt,
+  getMapDataAtIndex,
   getMapDataIndexForPointer,
   getMapKeyAtIndex,
 } from './DataModel';
@@ -233,7 +236,53 @@ export function getCurrentKeyOrUndefinedFromDataModelContext(context: DataModelC
   }
 }
 
-export function getParentDataModelFromContext(context: DataModelContext, count = 1): DataModel | undefined {
+export function getParentDataModelFromContext(context: DataModelContext, count: number): DataModel | undefined {
   const component = dataModelContextPathComponentAt(context, dataModelContextDepth(context) - count);
   return component === undefined ? undefined : component.data;
+}
+
+export function getDataModelByDataModelContext(
+  context: DataModelContext,
+  rootDataModel: DataModel,
+): DataModel | undefined {
+  return getDataModelByDataModelContextImpl(context, rootDataModel, 0);
+}
+
+function getDataModelByDataModelContextImpl(
+  context: DataModelContext,
+  dataModel: DataModel,
+  currentDepth: number,
+): DataModel | undefined {
+  if (currentDepth >= dataModelContextDepth(context)) {
+    return dataModel;
+  }
+  const pathComponent = dataModelContextPathComponentAt(context, currentDepth);
+  switch (pathComponent.type) {
+    case 'undefined':
+      return undefined;
+    case 'list': {
+      if (pathComponent.at === undefined || !dataModelIsList(dataModel)) {
+        return undefined;
+      }
+      const childDataModel = getListDataAt(dataModel, pathComponent.at);
+      if (childDataModel === undefined) {
+        return undefined;
+      }
+      return getDataModelByDataModelContextImpl(context, childDataModel, currentDepth + 1);
+    }
+    case 'map': {
+      if (pathComponent.at === undefined || !dataModelIsMap(dataModel)) {
+        return undefined;
+      }
+      const cachedKey = getMapKeyAtIndex(dataModel, pathComponent.indexCache);
+      const childDataModel =
+        cachedKey === pathComponent.at
+          ? getMapDataAtIndex(dataModel, pathComponent.indexCache)
+          : getMapDataAt(dataModel, pathComponent.at);
+      if (childDataModel === undefined) {
+        return undefined;
+      }
+      return getDataModelByDataModelContextImpl(context, childDataModel, currentDepth + 1);
+    }
+  }
 }
