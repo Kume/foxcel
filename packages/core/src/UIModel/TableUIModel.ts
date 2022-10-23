@@ -20,9 +20,18 @@ export interface TableCellPoint {
   readonly col: number;
 }
 
+/**
+ * 表をクリックしたポイントを表す値で、各価がundefinedであればheaderをクリックしたことを表す。
+ */
+export type PartialTableCellPoint = Partial<TableCellPoint>;
+
 export interface TableRange {
   readonly start: number;
-  readonly size: number;
+
+  /**
+   * undefinedの場合は行(列)全体が範囲に入っていることを表す
+   */
+  readonly size: number | undefined;
 }
 
 export interface TableCellRange {
@@ -31,20 +40,36 @@ export interface TableCellRange {
 }
 
 export interface TableUISelection {
-  readonly origin: TableCellPoint;
+  readonly origin: PartialTableCellPoint;
   readonly range: TableCellRange;
 }
 
 export function tableRangeContains(range: TableRange | undefined, target: number): boolean {
-  return !!range && target >= range.start && target < range.start + range.size;
+  if (!range) {
+    return false;
+  }
+
+  if (range.size === undefined) {
+    return true;
+  }
+
+  return target >= range.start && target < range.start + range.size;
 }
 
 export function isStartOfTableRange(range: TableRange | undefined, target: number): boolean {
   return !!range && target === range.start;
 }
 
-export function isEndOfTableRange(range: TableRange | undefined, target: number): boolean {
-  return !!range && target === range.start + range.size - 1;
+export function isEndOfTableRange(range: TableRange | undefined, target: number, maxSize: number): boolean {
+  if (!range) {
+    return false;
+  }
+
+  if (range.size === undefined) {
+    return target === maxSize - 1;
+  }
+
+  return target === range.start + range.size - 1;
 }
 
 function makeRange(start: number, end: number): TableRange {
@@ -59,8 +84,8 @@ export function selectingTableCellRange(startPoint: TableCellPoint, currentPoint
   return {row: makeRange(startPoint.row, currentPoint.row), col: makeRange(startPoint.col, currentPoint.col)};
 }
 
-export function tableUIModelPasteRange(selectionRange: TableRange, dataSize: number): number {
-  return Math.max(dataSize, Math.floor(selectionRange.size / dataSize));
+export function tableUIModelPasteRange(selectionRange: TableRange, dataSize: number, maxSize: number): number {
+  return Math.max(dataSize, Math.floor(selectionRange.size ?? maxSize / dataSize));
 }
 
 export interface TableUIModelPasteResult {
@@ -168,9 +193,9 @@ export function tableUIModelPaste(
 
   const actions: AppAction[] = [];
 
-  const pasteRowSize = tableUIModelPasteRange(selection.row, dataRowSize);
+  const pasteRowSize = tableUIModelPasteRange(selection.row, dataRowSize, model.rows.length);
   const pasteColumnSize = Math.min(
-    tableUIModelPasteRange(selection.col, dataColumnSize),
+    tableUIModelPasteRange(selection.col, dataColumnSize, model.columns.length),
     model.columns.length - selection.col.start,
   );
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
@@ -229,11 +254,12 @@ export function tableUIModelStringToDataModelWithSchema(
 
 export function tableUIModelCopy(model: TableUIModel, selection: TableCellRange): string[][] {
   const data: string[][] = [];
-  for (let selectionRowIndex = 0; selectionRowIndex < selection.row.size; selectionRowIndex++) {
+  for (let selectionRowIndex = 0; selectionRowIndex < (selection.row.size ?? model.rows.length); selectionRowIndex++) {
     const rowData: string[] = [];
     const row = model.rows[selection.row.start + selectionRowIndex];
     data.push(rowData);
-    for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
+    const size = selection.col.size ?? model.columns.length;
+    for (let selectionColumnIndex = 0; selectionColumnIndex < size; selectionColumnIndex++) {
       rowData.push(tableUIModelCopyCell(row.cells[selection.col.start + selectionColumnIndex]));
     }
   }
@@ -255,9 +281,11 @@ export function tableUIModelCut(model: TableUIModel, selection: TableCellRange):
 export function tableUIModelDelete(model: TableUIModel, selection: TableCellRange): AppAction {
   const actions: AppAction[] = [];
 
-  for (let selectionRowIndex = 0; selectionRowIndex < selection.row.size; selectionRowIndex++) {
+  const selectionRowSize = selection.row.size ?? model.rows.length;
+  const selectionColumnSize = selection.col.size ?? model.columns.length;
+  for (let selectionRowIndex = 0; selectionRowIndex < selectionRowSize; selectionRowIndex++) {
     const row = model.rows[selection.row.start + selectionRowIndex];
-    for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
+    for (let selectionColumnIndex = 0; selectionColumnIndex < selectionColumnSize; selectionColumnIndex++) {
       const cell = row.cells[selection.col.start + selectionColumnIndex];
       if (cell.isKey) {
         actions.push({
@@ -274,6 +302,11 @@ export function tableUIModelDelete(model: TableUIModel, selection: TableCellRang
 }
 
 export type TableUIModelMoveDirection = 'up' | 'right' | 'left' | 'down';
+
+function increasePointValue(prev: number | undefined): number {
+  // 値がマイナスでも強制的に1にする。 (headerクリック後(-1の時)の移動を想定)
+  return prev === undefined ? 1 : prev + 1;
+}
 
 export function tableUIModelMoveSelection(
   prev: TableUISelection,
@@ -308,12 +341,12 @@ export function tableUIModelMoveSelection(
           range: {row: {start: range.row.start - 1, size: range.row.size}, col: range.col},
         };
       case 'right':
-        if (origin.col + 1 >= colSize) {
+        if (origin.col === undefined ? colSize <= 1 : origin.col + 1 >= colSize) {
           return prev;
         }
         return {
-          origin: {row: origin.row, col: origin.col + 1},
-          range: {row: range.row, col: {start: range.col.start + 1, size: range.col.size}},
+          origin: {row: origin.row, col: increasePointValue(origin.col)},
+          range: {row: range.row, col: {start: increasePointValue(range.col.start), size: range.col.size}},
         };
       case 'left':
         if (origin.col === 0) {
@@ -328,8 +361,8 @@ export function tableUIModelMoveSelection(
           return prev;
         }
         return {
-          origin: {row: origin.row + 1, col: origin.col},
-          range: {row: {start: range.row.start + 1, size: range.row.size}, col: range.col},
+          origin: {row: increasePointValue(origin.row + 1), col: origin.col},
+          range: {row: {start: increasePointValue(range.row.start), size: range.row.size}, col: range.col},
         };
     }
   } else {

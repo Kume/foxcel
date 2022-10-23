@@ -23,11 +23,11 @@ export function mappingTableUIModelPaste(
   }
   const dataColumnSize = data[0].length;
   const pasteRowSize = Math.min(
-    tableUIModelPasteRange(selection.row, dataRowSize),
+    tableUIModelPasteRange(selection.row, dataRowSize, model.rows.length),
     model.rows.length - selection.row.start,
   );
   const pasteColumnSize = Math.min(
-    tableUIModelPasteRange(selection.col, dataColumnSize),
+    tableUIModelPasteRange(selection.col, dataColumnSize, model.columns.length),
     model.columns.length - selection.col.start,
   );
 

@@ -1,5 +1,21 @@
 import React, {ComponentType, CSSProperties, forwardRef, useCallback} from 'react';
 import styled from 'styled-components';
+import {VirtualElement} from '@floating-ui/dom/src/types';
+
+export function makeClickPointVirtualElement(e: React.MouseEvent): VirtualElement {
+  return {
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      left: e.clientX,
+      right: e.clientX,
+      bottom: e.clientY,
+      top: e.clientY,
+    }),
+  };
+}
 
 const LayoutRoot = styled.div``;
 
@@ -48,7 +64,7 @@ export interface ContextMenuProps {
   readonly onClose: () => void;
 }
 
-export const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(function ContextMenu(props, ref) {
+export const ContextMenu = React.forwardRef<HTMLDivElement, ContextMenuProps>(function ContextMenu(props, ref) {
   const {isOpen, items, style, onClose} = props;
   const contextMenuCallback = useCallback(
     (e: React.MouseEvent<HTMLElement>) => {

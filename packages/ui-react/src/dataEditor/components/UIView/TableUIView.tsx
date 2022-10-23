@@ -33,8 +33,7 @@ import {
   updateTableUIViewStateSelection,
 } from './TablueUIViewCommon';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
-import {ContextMenu, ContextMenuProps} from './ContextMenu';
-import {AppAction} from '@foxcel/core/dist/App/AppState';
+import {ContextMenu, ContextMenuProps, makeClickPointVirtualElement} from './ContextMenu';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;
@@ -81,18 +80,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
           }),
         ),
       });
-      reference({
-        getBoundingClientRect: () => ({
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-          left: e.clientX,
-          right: e.clientX,
-          bottom: e.clientY,
-          top: e.clientY,
-        }),
-      });
+      reference(makeClickPointVirtualElement(e));
     },
     [onAction, reference],
   );
@@ -152,12 +140,23 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
       getRoot,
       onMouseDown(e, row, col) {
         const point = {row, col};
-        if (e.shiftKey) {
-          setState(makeUpdateRangeByCallback((prev) => selectingTableCellRange(prev.origin, point)));
-        } else {
-          setState({isMouseActive: true, selection: {origin: point, range: selectingTableCellRange(point, point)}});
-          startMouseUpTracking();
-          startFocus();
+        switch (e.button) {
+          case 0:
+            if (e.shiftKey) {
+              setState(makeUpdateRangeByCallback((prev) => selectingTableCellRange(prev.origin, point)));
+            } else {
+              setState({isMouseActive: true, selection: {origin: point, range: selectingTableCellRange(point, point)}});
+              startMouseUpTracking();
+              startFocus();
+            }
+            break;
+
+          case 2:
+            break;
+
+          default:
+            // ホイールボタンクリック等左右クリックでない場合は何もしない
+            break;
         }
       },
       onMouseOver(e, row, col) {
@@ -239,7 +238,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
                 mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
                 selectionRange={isSelected ? selectionRange?.col : undefined}
                 isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
-                isSelectionEnd={isEndOfTableRange(selectionRange?.row, index)}
+                isSelectionEnd={isEndOfTableRange(selectionRange?.row, index, model.rows.length)}
                 isFullySelected={isSelected && isRowFullySelected}
                 callbacks={callbacks}
                 onContextMenu={openContextMenu}
@@ -297,7 +296,7 @@ const TableRowView = React.memo<TableRowViewProps>(
           const isSelected = tableRangeContains(selectionRange, index);
           const border = [
             isSelected && isSelectionStart,
-            isEndOfTableRange(selectionRange, index),
+            isEndOfTableRange(selectionRange, index, row.cells.length),
             isSelected && isSelectionEnd,
             isStartOfTableRange(selectionRange, index),
           ] as const;
