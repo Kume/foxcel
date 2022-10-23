@@ -101,9 +101,9 @@ export const TableUIViewCellLayout2: React.FC<TableUIViewCellLayout2Props> = ({s
   );
 };
 
-export const TableUIViewHeaderCell = styled.th`
+export const TableUIViewHeaderCell = styled.th<{readonly selected?: boolean}>`
   font-weight: normal;
-  background-color: ${({theme}) => theme.color.bg.label};
+  background-color: ${({theme, selected}) => (selected ? theme.color.bg.active : theme.color.bg.label)};
   ${({theme}) => labelTextStyle(theme)}
   ${breakableTextStyle}
   ${disableUserSelectStyle}

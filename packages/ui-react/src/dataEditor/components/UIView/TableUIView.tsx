@@ -143,9 +143,16 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
         switch (e.button) {
           case 0:
             if (e.shiftKey) {
-              setState(makeUpdateRangeByCallback((prev) => selectingTableCellRange(prev.origin, point)));
+              setState(
+                makeUpdateRangeByCallback((prev) =>
+                  selectingTableCellRange(actionRef.current.model, prev.origin, point),
+                ),
+              );
             } else {
-              setState({isMouseActive: true, selection: {origin: point, range: selectingTableCellRange(point, point)}});
+              setState({
+                isMouseActive: true,
+                selection: {origin: point, range: selectingTableCellRange(actionRef.current.model, point, point)},
+              });
               startMouseUpTracking();
               startFocus();
             }
@@ -162,7 +169,9 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
       onMouseOver(e, row, col) {
         setState((prev) =>
           prev.isMouseActive
-            ? makeUpdateRangeByCallback(({origin}) => selectingTableCellRange(origin, {row, col}))(prev)
+            ? makeUpdateRangeByCallback(({origin}) =>
+                selectingTableCellRange(actionRef.current.model, origin, {row, col}),
+              )(prev)
             : prev,
         );
       },
@@ -213,6 +222,20 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
     };
   });
 
+  const headerCallbacks = useMemo(
+    () => ({
+      corner: {
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, undefined, undefined),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, undefined, undefined),
+      },
+      columns: model.columns.map((_, index) => ({
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, undefined, index),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, undefined, index),
+      })),
+    }),
+    [callbacks, model.columns],
+  );
+
   const selectionRange = state.selection?.range;
   const isRowFullySelected = selectionRange?.col.start === 0 && selectionRange?.col.size === model.columns.length;
 
@@ -221,9 +244,24 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
       <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
         <thead>
           <TableUIViewRow>
-            <TableUIViewHeaderCell />
+            <TableUIViewHeaderCell
+              selected={
+                selectionRange && selectionRange.row.size === undefined && selectionRange.col.size === undefined
+              }
+              {...headerCallbacks.corner}
+            />
             {model.columns.map((column, index) => (
-              <TableUIViewHeaderCell key={index}>{column.label}</TableUIViewHeaderCell>
+              <TableUIViewHeaderCell
+                selected={
+                  tableRangeContains(selectionRange?.col, index) &&
+                  selectionRange &&
+                  selectionRange.row.size === undefined
+                }
+                {...headerCallbacks.columns[index]}
+                key={index}
+              >
+                {column.label}
+              </TableUIViewHeaderCell>
             ))}
           </TableUIViewRow>
         </thead>
@@ -239,7 +277,6 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
                 selectionRange={isSelected ? selectionRange?.col : undefined}
                 isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
                 isSelectionEnd={isEndOfTableRange(selectionRange?.row, index, model.rows.length)}
-                isFullySelected={isSelected && isRowFullySelected}
                 callbacks={callbacks}
                 onContextMenu={openContextMenu}
               />
@@ -265,7 +302,6 @@ interface TableRowViewProps {
   readonly selectionRange: TableRange | undefined;
   readonly isSelectionStart: boolean;
   readonly isSelectionEnd: boolean;
-  readonly isFullySelected: boolean;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
   readonly onContextMenu: (rowNumber: number, event: React.MouseEvent<HTMLElement>) => void;
@@ -276,7 +312,6 @@ const TableRowView = React.memo<TableRowViewProps>(
     row,
     rowNumber,
     selectionRange,
-    isFullySelected,
     isSelectionStart,
     isSelectionEnd,
     mainSelectedColumn,
@@ -289,9 +324,22 @@ const TableRowView = React.memo<TableRowViewProps>(
       },
       [onContextMenu, rowNumber],
     );
+    const headerCallbacks = useMemo(
+      () => ({
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, rowNumber, undefined),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, rowNumber, undefined),
+      }),
+      [callbacks, rowNumber],
+    );
     return (
       <TableUIViewRow onContextMenu={openContextMenu}>
-        <TableUIViewIndexCell selected={isFullySelected}>{rowNumber + 1}</TableUIViewIndexCell>
+        <TableUIViewIndexCell
+          onMouseDown={headerCallbacks.onMouseDown}
+          onMouseOver={headerCallbacks.onMouseOver}
+          selected={selectionRange && selectionRange.size === undefined}
+        >
+          {rowNumber + 1}
+        </TableUIViewIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
           const border = [

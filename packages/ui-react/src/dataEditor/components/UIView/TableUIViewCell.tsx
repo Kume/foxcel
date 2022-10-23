@@ -6,8 +6,8 @@ import {DataModel} from '@foxcel/core';
 export interface TableCellCallbacks {
   readonly onAction: (action: AppAction) => void;
   readonly getRoot: () => DataModelRoot;
-  readonly onMouseDown: (e: React.MouseEvent, row: number, column: number) => void;
-  readonly onMouseOver: (e: React.MouseEvent, row: number, column: number) => void;
+  readonly onMouseDown: (e: React.MouseEvent, row: number | undefined, column: number | undefined) => void;
+  readonly onMouseOver: (e: React.MouseEvent, row: number | undefined, column: number | undefined) => void;
   readonly onKeyDown: (e: KeyboardEvent | React.KeyboardEvent, isEditing: boolean) => boolean;
 }
 

@@ -1,5 +1,5 @@
 import {AppAction} from '../App/AppState';
-import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
+import {MappingTableUIModel, TableUIModel, TableUIModelCommon, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
 import {dataModelIsBoolean, dataModelToString, emptyMapModel, setToMapDataModel} from '../DataModel/DataModel';
 import {DataModel} from '../DataModel/DataModelTypes';
@@ -80,8 +80,15 @@ function makeRange(start: number, end: number): TableRange {
   }
 }
 
-export function selectingTableCellRange(startPoint: TableCellPoint, currentPoint: TableCellPoint): TableCellRange {
-  return {row: makeRange(startPoint.row, currentPoint.row), col: makeRange(startPoint.col, currentPoint.col)};
+export function selectingTableCellRange(
+  model: TableUIModelCommon,
+  startPoint: PartialTableCellPoint,
+  currentPoint: PartialTableCellPoint,
+): TableCellRange {
+  return {
+    row: startPoint.row === undefined ? {start: 0, size: undefined} : makeRange(startPoint.row, currentPoint.row ?? 0),
+    col: startPoint.col === undefined ? {start: 0, size: undefined} : makeRange(startPoint.col, currentPoint.col ?? 0),
+  };
 }
 
 export function tableUIModelPasteRange(selectionRange: TableRange, dataSize: number, maxSize: number): number {
@@ -308,6 +315,10 @@ function increasePointValue(prev: number | undefined): number {
   return prev === undefined ? 1 : prev + 1;
 }
 
+function decreasePointValue(prev: number | undefined): number | undefined {
+  return prev === undefined ? undefined : prev - 1;
+}
+
 export function tableUIModelMoveSelection(
   prev: TableUISelection,
   direction: TableUIModelMoveDirection,
@@ -333,7 +344,7 @@ export function tableUIModelMoveSelection(
   if (range.col.size === 1 && range.row.size === 1) {
     switch (direction) {
       case 'up':
-        if (origin.row === 0) {
+        if (origin.row === 0 || origin.row === undefined) {
           return prev;
         }
         return {
@@ -349,7 +360,7 @@ export function tableUIModelMoveSelection(
           range: {row: range.row, col: {start: increasePointValue(range.col.start), size: range.col.size}},
         };
       case 'left':
-        if (origin.col === 0) {
+        if (origin.col === 0 || origin.col === undefined) {
           return prev;
         }
         return {
@@ -357,11 +368,11 @@ export function tableUIModelMoveSelection(
           range: {row: range.row, col: {start: range.col.start - 1, size: range.col.size}},
         };
       case 'down':
-        if (origin.row + 1 >= rowSize) {
+        if (origin.row !== undefined && origin.row + 1 >= rowSize) {
           return prev;
         }
         return {
-          origin: {row: increasePointValue(origin.row + 1), col: origin.col},
+          origin: {row: increasePointValue(origin.row), col: origin.col},
           range: {row: {start: increasePointValue(range.row.start), size: range.row.size}, col: range.col},
         };
     }
@@ -401,7 +412,7 @@ export function tableUIModelAddRowAfterAction(model: TableUIModel, index: number
 
 export function tableUIModelDeleteRowsBySelection(model: TableUIModel, selection: TableUISelection): AppAction {
   const actions: AppAction[] = [];
-  for (let i = 0; i < selection.range.row.size; i++) {
+  for (let i = 0; i < (selection.range.row.size ?? model.rows.length); i++) {
     actions.push({
       type: 'data',
       action: {
@@ -425,9 +436,8 @@ export function tableUIModelContextMenus(
   items.push({label: 'Insert above', action: tableUIModelAddRowBeforeAction(model, rowIndex)});
   items.push({label: 'Insert below', action: tableUIModelAddRowAfterAction(model, rowIndex)});
 
-  if (selection) {
-    const deleteLabel =
-      selection.range.row.size === 1 ? 'Delete selected row' : `Delete selected ${selection.range.row.size} rows`;
+  if (selection && selection.range.row.size !== undefined) {
+    const deleteLabel = selection.range.row.size === 1 ? 'Delete row' : `Delete ${selection.range.row.size} rows`;
     items.push({
       label: deleteLabel,
       action: tableUIModelDeleteRowsBySelection(model, selection),

@@ -155,6 +155,11 @@ export interface MappingTableUIModelEmptyCell {
   readonly dataContext: DataModelContext;
 }
 
+export interface TableUIModelCommon {
+  readonly rows: readonly unknown[];
+  readonly columns: readonly unknown[];
+}
+
 export interface SelectUIModelCommon extends UIModelCommon {
   readonly type: 'select';
   readonly isKey?: void;
