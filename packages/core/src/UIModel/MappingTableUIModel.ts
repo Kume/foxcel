@@ -131,10 +131,12 @@ export function mappingTableUIModelCut(model: MappingTableUIModel, selection: Ta
 export function mappingTableUIModelDelete(model: MappingTableUIModel, selection: TableCellRange): AppAction {
   const actions: AppAction[] = [];
 
-  const rowSize = Math.min(selection.row.size, model.rows.length - selection.row.start);
+  // TODO danglingも考慮
+  const rowSize = Math.min(selection.row.size ?? model.rows.length, model.rows.length - selection.row.start);
+  const columnSize = selection.col.size ?? model.columns.length;
   for (let selectionRowIndex = 0; selectionRowIndex < rowSize; selectionRowIndex++) {
     const row = model.rows[selection.row.start + selectionRowIndex];
-    for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
+    for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
       if (!row.isEmpty) {
         const cell = row.cells[selection.col.start + selectionColumnIndex];
         if (cell.isKey) {
@@ -147,4 +149,8 @@ export function mappingTableUIModelDelete(model: MappingTableUIModel, selection:
   }
 
   return {type: 'batch', actions};
+}
+
+export function mappingTableRowSize(model: MappingTableUIModel): number {
+  return model.rows.length + model.danglingRows.length;
 }

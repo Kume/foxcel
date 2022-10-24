@@ -143,15 +143,11 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
         switch (e.button) {
           case 0:
             if (e.shiftKey) {
-              setState(
-                makeUpdateRangeByCallback((prev) =>
-                  selectingTableCellRange(actionRef.current.model, prev.origin, point),
-                ),
-              );
+              setState(makeUpdateRangeByCallback((prev) => selectingTableCellRange(prev.origin, point)));
             } else {
               setState({
                 isMouseActive: true,
-                selection: {origin: point, range: selectingTableCellRange(actionRef.current.model, point, point)},
+                selection: {origin: point, range: selectingTableCellRange(point, point)},
               });
               startMouseUpTracking();
               startFocus();
@@ -169,9 +165,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
       onMouseOver(e, row, col) {
         setState((prev) =>
           prev.isMouseActive
-            ? makeUpdateRangeByCallback(({origin}) =>
-                selectingTableCellRange(actionRef.current.model, origin, {row, col}),
-              )(prev)
+            ? makeUpdateRangeByCallback(({origin}) => selectingTableCellRange(origin, {row, col}))(prev)
             : prev,
         );
       },
@@ -237,7 +231,6 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
   );
 
   const selectionRange = state.selection?.range;
-  const isRowFullySelected = selectionRange?.col.start === 0 && selectionRange?.col.size === model.columns.length;
 
   return (
     <>
@@ -252,13 +245,13 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
             />
             {model.columns.map((column, index) => (
               <TableUIViewHeaderCell
+                key={index}
                 selected={
                   tableRangeContains(selectionRange?.col, index) &&
                   selectionRange &&
                   selectionRange.row.size === undefined
                 }
                 {...headerCallbacks.columns[index]}
-                key={index}
               >
                 {column.label}
               </TableUIViewHeaderCell>
@@ -266,22 +259,19 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
           </TableUIViewRow>
         </thead>
         <tbody>
-          {model.rows.map((row, index) => {
-            const isSelected = tableRangeContains(selectionRange?.row, index);
-            return (
-              <TableRowView
-                key={getIdFromDataPointer(row.pointer)}
-                row={row}
-                rowNumber={index}
-                mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
-                selectionRange={isSelected ? selectionRange?.col : undefined}
-                isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
-                isSelectionEnd={isEndOfTableRange(selectionRange?.row, index, model.rows.length)}
-                callbacks={callbacks}
-                onContextMenu={openContextMenu}
-              />
-            );
-          })}
+          {model.rows.map((row, index) => (
+            <TableRowView
+              key={getIdFromDataPointer(row.pointer)}
+              row={row}
+              rowNumber={index}
+              mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
+              selectionRange={tableRangeContains(selectionRange?.row, index) ? selectionRange?.col : undefined}
+              isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
+              isSelectionEnd={isEndOfTableRange(selectionRange?.row, index, model.rows.length)}
+              callbacks={callbacks}
+              onContextMenu={openContextMenu}
+            />
+          ))}
         </tbody>
       </TableUIViewLayoutRoot>
       <ContextMenu
@@ -333,11 +323,7 @@ const TableRowView = React.memo<TableRowViewProps>(
     );
     return (
       <TableUIViewRow onContextMenu={openContextMenu}>
-        <TableUIViewIndexCell
-          onMouseDown={headerCallbacks.onMouseDown}
-          onMouseOver={headerCallbacks.onMouseOver}
-          selected={selectionRange && selectionRange.size === undefined}
-        >
+        <TableUIViewIndexCell {...headerCallbacks} selected={selectionRange && selectionRange.size === undefined}>
           {rowNumber + 1}
         </TableUIViewIndexCell>
         {row.cells.map((cell, index) => {

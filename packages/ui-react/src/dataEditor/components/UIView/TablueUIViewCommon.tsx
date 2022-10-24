@@ -71,6 +71,7 @@ const CellSelectionBorderBottom = styled.div`
   height: ${CellSelectionBorderWidth};
   width: calc(100% + ${CellSelectionBorderWidth} + ${CellSelectionBorderWidth});
   background-color: ${({theme}) => theme.color.border.inputFocus};
+  z-index: 1;
 `;
 
 const CellSelectionBorderLeft = styled.div`

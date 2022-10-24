@@ -1,5 +1,5 @@
 import {AppAction} from '../App/AppState';
-import {MappingTableUIModel, TableUIModel, TableUIModelCommon, UIModel} from './UIModelTypes';
+import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
 import {dataModelIsBoolean, dataModelToString, emptyMapModel, setToMapDataModel} from '../DataModel/DataModel';
 import {DataModel} from '../DataModel/DataModelTypes';
@@ -81,7 +81,6 @@ function makeRange(start: number, end: number): TableRange {
 }
 
 export function selectingTableCellRange(
-  model: TableUIModelCommon,
   startPoint: PartialTableCellPoint,
   currentPoint: PartialTableCellPoint,
 ): TableCellRange {
