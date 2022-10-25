@@ -24,7 +24,7 @@ import {TableCellCallbacks} from './TableUIViewCell';
 import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
-  TableUIViewCellLayout2,
+  TableUIViewCellLayout,
   TableUIViewHeaderCell,
   TableUIViewIndexCell,
   TableUIViewLayoutRoot,
@@ -336,9 +336,9 @@ const TableRowView = React.memo<TableRowViewProps>(
           ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
+            <TableUIViewCellLayout key={index} selected={isSelected} border={border}>
               {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks)}
-            </TableUIViewCellLayout2>
+            </TableUIViewCellLayout>
           );
         })}
       </TableUIViewRow>

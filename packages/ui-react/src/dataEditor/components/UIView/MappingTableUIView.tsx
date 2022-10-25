@@ -10,7 +10,7 @@ import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
   renderTableUIViewCellWithSchema,
-  TableUIViewCellLayout2,
+  TableUIViewCellLayout,
   TableUIViewHeaderCell,
   TableUIViewIndexCell,
   TableUIViewLayoutRoot,
@@ -301,9 +301,9 @@ const MappingTableRowView = React.memo<MappingTableRowViewProps>(
           ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
+            <TableUIViewCellLayout key={index} selected={isSelected} border={border}>
               {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks)}
-            </TableUIViewCellLayout2>
+            </TableUIViewCellLayout>
           );
         })}
       </TableUIViewRow>
@@ -357,7 +357,7 @@ const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
           ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
+            <TableUIViewCellLayout key={index} selected={isSelected} border={border}>
               {renderTableUIViewCellWithSchema(
                 tableDataPath,
                 row.key,
@@ -369,7 +369,7 @@ const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
                 index,
                 callbacks,
               )}
-            </TableUIViewCellLayout2>
+            </TableUIViewCellLayout>
           );
         })}
       </TableUIViewRow>
@@ -420,9 +420,9 @@ const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>
           ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
+            <TableUIViewCellLayout key={index} selected={isSelected} border={border}>
               {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks, true)}
-            </TableUIViewCellLayout2>
+            </TableUIViewCellLayout>
           );
         })}
       </TableUIViewRow>

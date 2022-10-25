@@ -35,7 +35,7 @@ const disableUserSelectStyle = `
   -ms-user-select: none;
 `;
 
-export const TableUIViewCellLayout = styled.td<{readonly selected: boolean}>`
+export const TableUIViewCellLayoutElement = styled.td<{readonly selected: boolean}>`
   padding: 0 0;
   position: relative;
   // background-color: ${({selected, theme}) => (selected ? theme.color.bg.active : theme.color.bg.normal)};
@@ -85,20 +85,20 @@ const CellSelectionBorderLeft = styled.div`
 
 type BorderVisibility = readonly [top?: boolean, right?: boolean, bottom?: boolean, left?: boolean];
 
-interface TableUIViewCellLayout2Props {
+interface TableUIViewCellLayoutProps {
   readonly selected: boolean;
   readonly border: BorderVisibility;
 }
 
-export const TableUIViewCellLayout2: React.FC<TableUIViewCellLayout2Props> = ({selected, border, children}) => {
+export const TableUIViewCellLayout: React.FC<TableUIViewCellLayoutProps> = ({selected, border, children}) => {
   return (
-    <TableUIViewCellLayout selected={selected}>
+    <TableUIViewCellLayoutElement selected={selected}>
       {border[0] && <CellSelectionBorderTop />}
       {border[1] && <CellSelectionBorderRight />}
       {border[2] && <CellSelectionBorderBottom />}
       {border[3] && <CellSelectionBorderLeft />}
       {children}
-    </TableUIViewCellLayout>
+    </TableUIViewCellLayoutElement>
   );
 };
 
