@@ -72,20 +72,24 @@ export function mappingTableUIModelPaste(
 
 export function mappingTableUIModelCopy(model: MappingTableUIModel, selection: TableCellRange): string[][] {
   const data: string[][] = [];
-  const danglingRowSize = Math.max(0, selection.row.start + selection.row.size - model.rows.length);
-  const rowSize = selection.row.size - danglingRowSize;
+  const danglingRowSize =
+    selection.row.size === undefined
+      ? model.danglingRows.length
+      : Math.max(0, selection.row.start + selection.row.size - model.rows.length);
+  const rowSize = selection.row.size === undefined ? model.rows.length : selection.row.size - danglingRowSize;
+  const columnSize = selection.col.size ?? model.columns.length;
 
   // rows loop
   for (let selectionRowIndex = 0; selectionRowIndex < rowSize; selectionRowIndex++) {
     const row = model.rows[selection.row.start + selectionRowIndex];
     const rowData: string[] = [];
     if (row.isEmpty) {
-      for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
+      for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
         const column = model.schema.contents[selection.col.start + selectionColumnIndex];
         rowData.push(tableUIModelStringToDataModelWithSchema(column.dataSchema, nullDataModel));
       }
     } else {
-      for (let selectionColumnIndex = 0; selectionColumnIndex < selection.col.size; selectionColumnIndex++) {
+      for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
         const cell = row.cells[selection.col.start + selectionColumnIndex];
         if (cell.isKey) {
           // TODO スキーマのバリデーションにも実装を追加
@@ -102,7 +106,7 @@ export function mappingTableUIModelCopy(model: MappingTableUIModel, selection: T
   for (let rowIndexOffset = 0; rowIndexOffset < danglingRowSize; rowIndexOffset++) {
     const row = model.danglingRows[danglingRowStart + rowIndexOffset];
     const rowData: string[] = [];
-    for (let columnIndexOffset = 0; columnIndexOffset < selection.col.size; columnIndexOffset++) {
+    for (let columnIndexOffset = 0; columnIndexOffset < columnSize; columnIndexOffset++) {
       const cell = row.cells[selection.col.start + columnIndexOffset];
       if (cell.isKey) {
         // TODO スキーマのバリデーションにも実装を追加
