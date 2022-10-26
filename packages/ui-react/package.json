@@ -11,6 +11,7 @@
     "test": "jest",
     "build": "tsc",
     "dev": "tsc -w",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint --ext .jsx,.js,.tsx,.ts ./src"
   },
   "peerDependencies": {

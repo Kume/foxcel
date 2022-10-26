@@ -8,7 +8,8 @@
     "web": "yarn workspace @foxcel/web",
     "uir": "yarn workspace @foxcel/ui-react",
     "core": "yarn workspace @foxcel/core",
-    "dev": "lerna run dev --parallel"
+    "dev": "lerna run dev --parallel",
+    "typecheck": "lerna run typecheck --no-bail"
   },
   "workspaces": {
     "packages": [

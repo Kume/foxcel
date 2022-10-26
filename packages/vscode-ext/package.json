@@ -6,6 +6,7 @@
   },
   "main": "./dist/extension.js",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "build": "webpack"
   },
   "dependencies": {
