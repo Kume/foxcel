@@ -1,5 +1,5 @@
 import {TextUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
-import React, {useCallback, useEffect, useRef} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from '@foxcel/core/dist/UIModel/TextUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
@@ -26,7 +26,17 @@ const Input = styled.input`
 `;
 
 export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
-  return <Input value={model.value ?? ''} onChange={(e) => onAction(textUIModelSetText(model, e.target.value))} />;
+  const [value, setValue] = useState(model.value ?? '');
+  useEffect(() => {
+    setValue(model.value ?? '');
+  }, [model.value]);
+  return (
+    <Input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
+    />
+  );
 };
 
 type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<TextUIModel, TextUISchema>;
