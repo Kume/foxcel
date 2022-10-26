@@ -334,7 +334,7 @@ export function* withNestedDataPath(
   root: DataModelRoot,
 ): Generator<[DataModel | undefined, DataModelContext], void> {
   if (dataModelIsMapOrList(model)) {
-    const nestedValues = collectDataModel2(model, path, context, root);
+    const nestedValues = collectDataModel(model, path, context, root);
     if (mapOrListDataModelIsList(model)) {
       for (const {data} of nestedValues) {
         if (!dataModelIsInteger(data)) {
@@ -363,7 +363,7 @@ export function* withNestedDataPath(
   }
 }
 
-function collectDataModelImpl2(
+function collectDataModelImpl(
   model: DataModel | undefined,
   path: MultiDataPath,
   currentContext: DataModelContext,
@@ -383,7 +383,7 @@ function collectDataModelImpl2(
         : [{data: stringToDataModel(key), context: pushKeyToDataModelContextPath(currentContext)}];
     },
     collection: (childData, contextPathComponent) =>
-      collectDataModelImpl2(
+      collectDataModelImpl(
         childData,
         shiftDataPath(path),
         pushDataModelContextPath(currentContext, contextPathComponent),
@@ -398,7 +398,7 @@ function collectDataModelImpl2(
             return mapMapDataModel(model, (value, key, index) => {
               return key === null
                 ? []
-                : collectDataModelImpl2(
+                : collectDataModelImpl(
                     getMapDataAtIndex(model, index),
                     shiftDataPath(path),
                     pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
@@ -409,7 +409,7 @@ function collectDataModelImpl2(
             }).flat();
           } else if (dataModelIsList(model)) {
             return mapListDataModel(model, (value, index) => {
-              return collectDataModelImpl2(
+              return collectDataModelImpl(
                 getListDataAt(model, index),
                 shiftDataPath(path),
                 pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
@@ -423,14 +423,14 @@ function collectDataModelImpl2(
           }
         case DataPathComponentType.Nested:
           if (dataModelIsMapOrList(model)) {
-            const nestedValues = collectDataModel2(originalModel, otherPathComponent.v, originalContext, root);
+            const nestedValues = collectDataModel(originalModel, otherPathComponent.v, originalContext, root);
             if (mapOrListDataModelIsList(model)) {
               return nestedValues.flatMap(({data}) => {
                 if (!dataModelIsInteger(data)) {
                   return [];
                 }
                 const index = numberDataModelToNumber(data);
-                return collectDataModelImpl2(
+                return collectDataModelImpl(
                   getListDataAt(model, index),
                   shiftDataPath(path),
                   pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
@@ -449,7 +449,7 @@ function collectDataModelImpl2(
                 if (index === undefined) {
                   return [];
                 }
-                return collectDataModelImpl2(
+                return collectDataModelImpl(
                   getMapDataAtIndex(model, index),
                   shiftDataPath(path),
                   pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
@@ -464,7 +464,7 @@ function collectDataModelImpl2(
           }
         case DataPathComponentType.Reverse: {
           const reverseCount = dataPathConsecutiveReverseCount(path);
-          return collectDataModelImpl2(
+          return collectDataModelImpl(
             getAncestorDataModel(currentContext, reverseCount, root.model),
             shiftDataPath(path, reverseCount),
             popDataModelContextPath(currentContext, reverseCount),
@@ -478,7 +478,7 @@ function collectDataModelImpl2(
           return [];
         case DataPathComponentType.Union:
           return otherPathComponent.v.flatMap((pathComponent) => {
-            return collectDataModelImpl2(
+            return collectDataModelImpl(
               model,
               unshiftDataPath(shiftDataPath(path), pathComponent),
               currentContext,
@@ -493,15 +493,15 @@ function collectDataModelImpl2(
   return result ?? [];
 }
 
-export function collectDataModel2(
+export function collectDataModel(
   model: DataModel | undefined,
   path: MultiDataPath,
   context: DataModelContext,
   root: DataModelRoot,
 ): DataModelCollectionItem[] {
   if (path.isAbsolute) {
-    return collectDataModelImpl2(root.model, path, context, context, model, root);
+    return collectDataModelImpl(root.model, path, context, context, model, root);
   } else {
-    return collectDataModelImpl2(model, path, context, context, model, root);
+    return collectDataModelImpl(model, path, context, context, model, root);
   }
 }

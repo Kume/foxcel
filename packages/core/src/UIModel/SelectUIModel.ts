@@ -15,7 +15,7 @@ import {
   stringToNumberDataModel,
   unknownToDataModel,
 } from '../DataModel/DataModel';
-import {collectDataModel2} from '../DataModel/DataModelCollector';
+import {collectDataModel} from '../DataModel/DataModelCollector';
 import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {dataSchemaIsString, SelectDynamicOptionSchema} from '../DataModel/DataSchema';
@@ -45,7 +45,7 @@ function getSelectUIOptionsImpl(
   for (const optionSchema of schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
-      const collectResults = collectDataModel2(data, optionSchema.path, dataContext, root);
+      const collectResults = collectDataModel(data, optionSchema.path, dataContext, root);
       for (const {data, context} of collectResults) {
         if (excludeOptions.every((excludeOption) => !dataModelEquals(excludeOption, data))) {
           options.push(formatDynamicSelectUIOption(optionSchema, data, context, root));
