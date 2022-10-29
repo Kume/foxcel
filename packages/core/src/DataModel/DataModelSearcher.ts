@@ -21,7 +21,12 @@ import {
   pushKeyToDataModelContextPath,
 } from './DataModelContext';
 import {WritableDataModelReferenceLogNode} from './DataModelReferenceLog';
-import {digForPathComponent, getDataModelBySinglePath, withNestedDataPath} from './DataModelCollector';
+import {
+  digForPathComponent,
+  getAncestorDataModel,
+  getDataModelBySinglePath,
+  withNestedDataPath,
+} from './DataModelCollector';
 import {
   dataModelEquals,
   dataModelIsList,
@@ -190,7 +195,7 @@ function findDataModelImpl(
           const reverseCount = dataPathConsecutiveReverseCount(path);
           // TODO ログ記録を開始するフラグ管理
           return findDataModelImpl(
-            getParentDataModelFromContext(currentContext, reverseCount),
+            getAncestorDataModel(currentContext, reverseCount, root.model),
             matcher,
             shiftDataPath(path, reverseCount),
             popDataModelContextPath(currentContext, reverseCount),

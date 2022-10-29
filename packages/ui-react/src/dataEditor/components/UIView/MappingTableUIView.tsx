@@ -10,7 +10,7 @@ import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
   renderTableUIViewCellWithSchema,
-  TableUIViewCellLayout,
+  TableUIViewCellLayout2,
   TableUIViewHeaderCell,
   TableUIViewIndexCell,
   TableUIViewLayoutRoot,
@@ -21,6 +21,7 @@ import {
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
 import {
+  mappingTableRowSize,
   mappingTableUIModelCopy,
   mappingTableUIModelCut,
   mappingTableUIModelDelete,
@@ -29,6 +30,8 @@ import {
 import {parseTsv, stringifyTsv} from '@foxcel/core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
 import {
+  isEndOfTableRange,
+  isStartOfTableRange,
   selectingTableCellRange,
   TableCellRange,
   TableRange,
@@ -121,7 +124,10 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
         if (e.shiftKey) {
           setState(makeUpdateRangeByCallback((prev) => selectingTableCellRange(prev.origin, point)));
         } else {
-          setState({isMouseActive: true, selection: {origin: point, range: selectingTableCellRange(point, point)}});
+          setState({
+            isMouseActive: true,
+            selection: {origin: point, range: selectingTableCellRange(point, point)},
+          });
           startMouseUpTracking();
           startFocus();
         }
@@ -154,12 +160,7 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
       (direction) =>
         setState((prev) =>
           updateSelection(prev, (prevSelection) =>
-            tableUIModelMoveSelection(
-              prevSelection,
-              direction,
-              model.rows.length + model.danglingRows.length,
-              model.columns.length,
-            ),
+            tableUIModelMoveSelection(prevSelection, direction, mappingTableRowSize(model), model.columns.length),
           ),
         ),
       () => onAction(mappingTableUIModelDelete(model, selection.range)),
@@ -185,57 +186,80 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
     };
   });
 
+  const headerCallbacks = useMemo(
+    () => ({
+      corner: {
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, undefined, undefined),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, undefined, undefined),
+      },
+      columns: model.columns.map((_, index) => ({
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, undefined, index),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, undefined, index),
+      })),
+    }),
+    [callbacks, model.columns],
+  );
+  const selectionRange = state.selection?.range;
+
   return (
     <TableUIViewLayoutRoot cellSpacing={1} ref={layoutRootRef}>
       <thead>
         <TableUIViewRow>
-          <TableUIViewIndexCell />
+          <TableUIViewIndexCell
+            selected={selectionRange && selectionRange.row.size === undefined && selectionRange.col.size === undefined}
+            {...headerCallbacks.corner}
+          />
           {model.columns.map((column, index) => (
-            <TableUIViewHeaderCell key={index}>{column.label}</TableUIViewHeaderCell>
+            <TableUIViewHeaderCell
+              key={index}
+              selected={
+                tableRangeContains(selectionRange?.col, index) &&
+                selectionRange &&
+                selectionRange.row.size === undefined
+              }
+              {...headerCallbacks.columns[index]}
+            >
+              {column.label}
+            </TableUIViewHeaderCell>
           ))}
         </TableUIViewRow>
       </thead>
       <tbody>
-        {model.rows.map((row, index) =>
-          row.isEmpty ? (
-            <MappingTableEmptyRowView
-              key={row.key}
-              tableDataPath={model.dataPath}
-              row={row}
-              rowNumber={index}
-              mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
-              selectionRange={
-                tableRangeContains(state.selection?.range.row, index) ? state.selection?.range.col : undefined
-              }
-              callbacks={callbacks}
-            />
+        {model.rows.map((row, index) => {
+          const props = {
+            key: row.key,
+            rowNumber: index,
+            mainSelectedColumn: state.selection?.origin.row === index ? state.selection.origin.col : undefined,
+            selectionRange: tableRangeContains(state.selection?.range.row, index)
+              ? state.selection?.range.col
+              : undefined,
+            isSelectionStart: isStartOfTableRange(selectionRange?.row, index),
+            isSelectionEnd: isEndOfTableRange(selectionRange?.row, index, mappingTableRowSize(model)),
+            callbacks,
+          } as const;
+          return row.isEmpty ? (
+            <MappingTableEmptyRowView {...props} row={row} tableDataPath={model.dataPath} />
           ) : (
-            <MappingTableRowView
+            <MappingTableRowView {...props} row={row} />
+          );
+        })}
+        {model.danglingRows.map((row, index) => {
+          const rowIndex = index + model.rows.length;
+          return (
+            <MappingTableDanglingRowView
               key={row.key}
               row={row}
-              rowNumber={index}
+              rowNumber={rowIndex}
               mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
               selectionRange={
-                tableRangeContains(state.selection?.range.row, index) ? state.selection?.range.col : undefined
+                tableRangeContains(state.selection?.range.row, rowIndex) ? state.selection?.range.col : undefined
               }
+              isSelectionStart={isStartOfTableRange(selectionRange?.row, rowIndex)}
+              isSelectionEnd={isEndOfTableRange(selectionRange?.row, rowIndex, mappingTableRowSize(model))}
               callbacks={callbacks}
             />
-          ),
-        )}
-        {model.danglingRows.map((row, index) => (
-          <MappingTableDanglingRowView
-            key={row.key}
-            row={row}
-            rowNumber={index + model.rows.length}
-            mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
-            selectionRange={
-              tableRangeContains(state.selection?.range.row, index + model.rows.length)
-                ? state.selection?.range.col
-                : undefined
-            }
-            callbacks={callbacks}
-          />
-        ))}
+          );
+        })}
       </tbody>
     </TableUIViewLayoutRoot>
   );
@@ -247,22 +271,39 @@ interface MappingTableRowViewProps {
   readonly row: MappingTableUIModelNotEmptyRow;
   readonly rowNumber: number;
   readonly selectionRange: TableRange | undefined;
+  readonly isSelectionStart: boolean;
+  readonly isSelectionEnd: boolean;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
 }
 
 const MappingTableRowView = React.memo<MappingTableRowViewProps>(
-  ({row, rowNumber, selectionRange, mainSelectedColumn, callbacks}) => {
+  ({row, rowNumber, selectionRange, isSelectionStart, isSelectionEnd, mainSelectedColumn, callbacks}) => {
+    const headerCallbacks = useMemo(
+      () => ({
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, rowNumber, undefined),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, rowNumber, undefined),
+      }),
+      [callbacks, rowNumber],
+    );
     return (
       <TableUIViewRow>
-        <TableUIViewIndexCell>{row.key}</TableUIViewIndexCell>
+        <TableUIViewIndexCell {...headerCallbacks} selected={selectionRange && selectionRange.size === undefined}>
+          {row.key}
+        </TableUIViewIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
+          const border = [
+            isSelected && isSelectionStart,
+            isEndOfTableRange(selectionRange, index, row.cells.length),
+            isSelected && isSelectionEnd,
+            isStartOfTableRange(selectionRange, index),
+          ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout key={index} selected={isSelected}>
+            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
               {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks)}
-            </TableUIViewCellLayout>
+            </TableUIViewCellLayout2>
           );
         })}
       </TableUIViewRow>
@@ -277,20 +318,46 @@ interface MappingTableEmptyRowViewProps {
   readonly rowNumber: number;
   readonly tableDataPath: ForwardDataPath;
   readonly selectionRange: TableRange | undefined;
+  readonly isSelectionStart: boolean;
+  readonly isSelectionEnd: boolean;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
 }
 
 const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
-  ({tableDataPath, row, rowNumber, selectionRange, mainSelectedColumn, callbacks}) => {
+  ({
+    tableDataPath,
+    row,
+    rowNumber,
+    selectionRange,
+    isSelectionStart,
+    isSelectionEnd,
+    mainSelectedColumn,
+    callbacks,
+  }) => {
+    const headerCallbacks = useMemo(
+      () => ({
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, rowNumber, undefined),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, rowNumber, undefined),
+      }),
+      [callbacks, rowNumber],
+    );
     return (
       <TableUIViewRow>
-        <TableUIViewIndexCell>{row.key}</TableUIViewIndexCell>
+        <TableUIViewIndexCell {...headerCallbacks} selected={selectionRange && selectionRange.size === undefined}>
+          {row.key}
+        </TableUIViewIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
+          const border = [
+            isSelected && isSelectionStart,
+            isEndOfTableRange(selectionRange, index, row.cells.length),
+            isSelected && isSelectionEnd,
+            isStartOfTableRange(selectionRange, index),
+          ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout key={index} selected={isSelected}>
+            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
               {renderTableUIViewCellWithSchema(
                 tableDataPath,
                 row.key,
@@ -302,7 +369,7 @@ const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
                 index,
                 callbacks,
               )}
-            </TableUIViewCellLayout>
+            </TableUIViewCellLayout2>
           );
         })}
       </TableUIViewRow>
@@ -316,6 +383,8 @@ interface MappingTableDanglingRowViewProps {
   readonly row: TableUIModelRow;
   readonly rowNumber: number;
   readonly selectionRange: TableRange | undefined;
+  readonly isSelectionStart: boolean;
+  readonly isSelectionEnd: boolean;
   readonly mainSelectedColumn: number | undefined;
   readonly callbacks: TableCellCallbacks;
 }
@@ -326,7 +395,14 @@ const DanglingIndexCell = styled(TableUIViewIndexCell)`
 `;
 
 const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>(
-  ({row, rowNumber, selectionRange, mainSelectedColumn, callbacks}) => {
+  ({row, rowNumber, selectionRange, isSelectionStart, isSelectionEnd, mainSelectedColumn, callbacks}) => {
+    const headerCallbacks = useMemo(
+      () => ({
+        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, rowNumber, undefined),
+        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, rowNumber, undefined),
+      }),
+      [callbacks, rowNumber],
+    );
     const removeRow = () => callbacks.onAction({type: 'data', action: {type: 'delete', path: row.dataPath}});
     return (
       <TableUIViewRow>
@@ -336,11 +412,17 @@ const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>
         </DanglingIndexCell>
         {row.cells.map((cell, index) => {
           const isSelected = tableRangeContains(selectionRange, index);
+          const border = [
+            isSelected && isSelectionStart,
+            isEndOfTableRange(selectionRange, index, row.cells.length),
+            isSelected && isSelectionEnd,
+            isStartOfTableRange(selectionRange, index),
+          ] as const;
           const isMainSelected = mainSelectedColumn === index;
           return (
-            <TableUIViewCellLayout key={index} selected={isSelected}>
+            <TableUIViewCellLayout2 key={index} selected={isSelected} border={border}>
               {renderTableUIViewCell(cell, isMainSelected, rowNumber, index, callbacks, true)}
-            </TableUIViewCellLayout>
+            </TableUIViewCellLayout2>
           );
         })}
       </TableUIViewRow>

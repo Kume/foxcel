@@ -30,7 +30,20 @@ export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
     return result ?? destination;
   },
 
-  async mapModelForEach(model: DataModel, callback: (value: DataModel, key: string) => Promise<void>): Promise<void> {
+  mapModelForEach(model: DataModel, callback: (value: DataModel, key: string) => void): void {
+    if (dataModelIsMap(model)) {
+      for (const [item, , key] of eachMapDataItem(model)) {
+        if (key !== null) {
+          callback(item, key);
+        }
+      }
+    }
+  },
+
+  async mapModelForEachAsync(
+    model: DataModel,
+    callback: (value: DataModel, key: string) => Promise<void>,
+  ): Promise<void> {
     if (dataModelIsMap(model)) {
       for (const [item, , key] of eachMapDataItem(model)) {
         if (key !== null) {

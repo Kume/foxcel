@@ -136,6 +136,23 @@ export const sampleConfig: RootSchemaConfig = {
                 in: ['testA9_one', {label: 'testA9_two', value: 'A9-2'}, {path: '../testA5/*/$key'}],
               },
             },
+            testA10: {
+              type: 'map',
+              label: 'テストA10一覧',
+              item: {
+                type: 'fixed_map',
+                label: 'テストA10',
+                dataLabel: '{{testA10a}}',
+                items: {
+                  testA10a: {type: 'string', label: 'テストA10a'},
+                  testA10b: {
+                    type: 'string',
+                    label: 'テストA10b',
+                    in: [{path: '../../../testA5/*/$key'}],
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -255,6 +272,15 @@ export const sampleConfig: RootSchemaConfig = {
               type: 'select',
               key: 'testA9',
               isMulti: true,
+            },
+            {
+              type: 'table',
+              key: 'testA10',
+              contents: [
+                {type: 'text', key: '$key'},
+                {type: 'text', key: 'testA10a'},
+                {type: 'select', key: 'testA10b'},
+              ],
             },
           ],
         },

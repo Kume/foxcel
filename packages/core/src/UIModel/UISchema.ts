@@ -59,12 +59,9 @@ export type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema
 export type UISchemaType = UISchema['type'];
 
 /**
- * $keyを表すシンボル
- * exportしない
+ * trueは$keyを表す
  */
-const uiSchemaParentKey = Symbol('uiSchemaMapKey');
-
-export type UISchemaKey = string | typeof uiSchemaParentKey;
+export type UISchemaKey = string | true;
 
 export interface UISchemaParsingContext {
   readonly uiPath: ReadonlyArray<{key?: string; type: UISchemaType}>;
@@ -93,12 +90,12 @@ class UISchemaParseError extends Error {
 function pushToContext(
   context: UISchemaParsingContext,
   ui: {key?: string; type: UISchemaType} | undefined,
-  data: {key: typeof uiSchemaParentKey | string | number | null; type: DataSchemaType} | undefined,
+  data: {key: UISchemaKey | number | null; type: DataSchemaType} | undefined,
 ): UISchemaParsingContext {
   return {
     ...context,
     uiPath: ui ? [...context.uiPath, ui] : context.uiPath,
-    dataSchemaContext: context?.dataSchemaContext?.dig(data?.key === uiSchemaParentKey ? {t: 'key'} : data?.key),
+    dataSchemaContext: context?.dataSchemaContext?.dig(data?.key === true ? {t: 'key'} : data?.key),
   };
 }
 
@@ -337,7 +334,7 @@ function parseKey(key: string | undefined, enableParentKey?: boolean): UISchemaK
   }
   if (key === '$key') {
     if (enableParentKey) {
-      return uiSchemaParentKey;
+      return true;
     } else {
       // TODO 正しくハンドリング
       throw new Error('$key is disabled for the schema');
@@ -379,7 +376,7 @@ export function getUiSchemaUniqueKeyOrUndefined(schema: UISchema): string | unde
   if (schema.type === 'recursive') {
     throw new Error('Not implemented');
   } else {
-    return schema.key === uiSchemaParentKey ? undefined : schema.key;
+    return schema.key === true ? undefined : schema.key;
   }
 }
 
@@ -714,7 +711,7 @@ export function uiSchemaKeyAndPathComponentIsMatch(
     return false;
   }
   if (dataPathComponentIsKey(pathComponent)) {
-    return key === uiSchemaParentKey;
+    return key === true;
   } else if (dataPathComponentIsMapKeyLike(pathComponent)) {
     return key === dataPathComponentToMapKey(pathComponent);
   } else {
@@ -728,6 +725,6 @@ export function stringUISchemaKeyToString(key: string | undefined): string | und
   return key;
 }
 
-export function uiSchemaKeyIsParentKey(key: UISchemaKey | undefined): key is typeof uiSchemaParentKey {
-  return key === uiSchemaParentKey;
+export function uiSchemaKeyIsParentKey(key: UISchemaKey | undefined): key is true {
+  return key === true;
 }

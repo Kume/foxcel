@@ -122,7 +122,7 @@ const vsCodeTheme: Theme = {
       // --vscode-list-hoverBackground
       itemHover: '#2a2d2e',
       // --vscode-list-inactiveSelectionBackground
-      itemSelection: '#37373d',
+      itemSelection: '#094771',
     },
     border: {
       // --vscode-focusBorder

@@ -71,14 +71,14 @@ export function ensurePointerPathComponent(pathComponent: ForwardDataPathCompone
 
 export function stringUISchemaKeyToDataPathComponent(key: string | undefined): ForwardDataPathComponent {
   if (key === undefined) {
-    throw new Error('xxx content must hub key.');
+    throw new Error('content must have key.');
   }
   return toMapKeyDataPathComponent(key);
 }
 
 export function uiSchemaKeyToDataPathComponent(key: UISchemaKey | undefined): ForwardDataPathComponent {
   if (key === undefined) {
-    throw new Error('xxx content must hub key.');
+    throw new Error('content must have key.');
   }
   if (uiSchemaKeyIsParentKey(key)) {
     throw new Error('cannot convert parent key to data path component.');

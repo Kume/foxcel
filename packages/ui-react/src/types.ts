@@ -1,7 +1,18 @@
 import type {DataEditorState} from './dataEditor/types';
+import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
+import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema';
+import {DataModel} from '@foxcel/core';
+import {AppAction} from '@foxcel/core/dist/App/AppState';
 
 export interface RootState {
   readonly dataEditor: DataEditorState;
+}
+
+export interface LoadedData {
+  readonly uiSchema: UISchemaExcludeRecursive;
+  readonly dataSchema: DataSchemaExcludeRecursive;
+  readonly data: DataModel | undefined;
+  readonly restoredActions?: AppAction[];
 }
 
 export interface FontSizeTheme {
@@ -19,6 +30,7 @@ export interface FontColorTheme {
   readonly input: string;
   readonly popup: string;
   readonly placeholder: string;
+  readonly itemSelection: string;
 }
 
 export interface BgColorTheme {

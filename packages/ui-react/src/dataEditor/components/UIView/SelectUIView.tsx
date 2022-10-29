@@ -29,6 +29,7 @@ import {
 import {BackgroundTextarea} from '../BackgroundTextarea';
 import {breakableTextStyle, inputTextStyle, labelTextStyle} from '../../../common/components/commonStyles';
 import {Theme} from '../../../types';
+import {preventDefaultCallback} from '../Common/utils';
 
 interface State {
   readonly isEditing: boolean;
@@ -269,7 +270,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           <DropDownMenuLayout
             ref={floating}
             style={{position: strategy, top: y ?? '', left: x ?? ''}}
-            onMouseDown={(e) => e.preventDefault()}
+            onMouseDown={preventDefaultCallback}
           >
             {renderDropDownItems(model.isMulti, state.currentIndex, filteredOptions, select)}
           </DropDownMenuLayout>

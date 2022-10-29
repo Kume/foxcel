@@ -145,8 +145,8 @@ describe('Unit Test for DataMapper', () => {
     testData.forEach((testDatum: TestData, key: string) => {
       it(`Save with [${key}]`, async () => {
         const storage = new ObjectDataStorage();
-        const mapper = DataMapper.build(testDatum.mapperConfig, storage, RawStorageDataTrait);
-        const fileMap = await mapper.saveAsync({}, testDatum.data);
+        const mapper = DataMapper.build(testDatum.mapperConfig);
+        const fileMap = await mapper.saveAsync({}, testDatum.data, storage, RawStorageDataTrait);
         expect(storage.data).toEqual(testDatum.file);
         expect(fileMap).toEqual(testDatum.fileMap);
       });
@@ -156,8 +156,8 @@ describe('Unit Test for DataMapper', () => {
         for (const filePath of Object.keys(testDatum.file)) {
           await storage.saveAsync(filePath.split('/'), testDatum.file[filePath]);
         }
-        const mapper = DataMapper.build(testDatum.mapperConfig, storage, RawStorageDataTrait);
-        const loaded = await mapper.loadAsync();
+        const mapper = DataMapper.build(testDatum.mapperConfig);
+        const loaded = await mapper.loadAsync(storage, RawStorageDataTrait);
         expect(loaded?.rootNode).toEqual(testDatum.fileMap);
       });
     });
@@ -171,15 +171,15 @@ describe('Unit Test for DataMapper', () => {
         ],
       };
       const storage = new ObjectDataStorage();
-      const mapper = DataMapper.build(config, storage, RawStorageDataTrait);
-      const firstNode = await mapper.saveAsync({}, data);
+      const mapper = DataMapper.build(config);
+      const firstNode = await mapper.saveAsync({}, data, storage, RawStorageDataTrait);
       expect(storage.data['a/b/d.yml']).not.toBeUndefined();
       expect(storage.data['a/b.yml']).not.toBeUndefined();
       expect(storage.data['a/c.yml']).not.toBeUndefined();
       storage.clearHistory();
 
       const secondData = {a: {...data.a, b: {}}};
-      const secondNode = await mapper.saveAsync(firstNode, secondData);
+      const secondNode = await mapper.saveAsync(firstNode, secondData, storage, RawStorageDataTrait);
       expect(storage.data['a/b/d.yml']).toBeUndefined();
       expect(storage.data['a/b.yml']).not.toBeUndefined();
       expect(storage.data['a/c.yml']).not.toBeUndefined();
@@ -188,7 +188,7 @@ describe('Unit Test for DataMapper', () => {
       storage.clearHistory();
 
       const thirdData = {a: {c: 9}};
-      await mapper.saveAsync(secondNode, thirdData);
+      await mapper.saveAsync(secondNode, thirdData, storage, RawStorageDataTrait);
       expect(storage.data['a/b/d.yml']).toBeUndefined();
       expect(storage.data['a/b.yml']).toBeUndefined();
       expect(storage.data['a/c.yml']).not.toBeUndefined();

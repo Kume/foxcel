@@ -183,7 +183,7 @@ export function dataModelToJson(model: DataModel): any {
     return model.map(([, v]) => dataModelToJson(v));
   }
   const map: {[key: string]: any} = {};
-  model.v.forEach(([key, value]) => {
+  model.v.forEach(([key, , value]) => {
     if (key !== null && map[key] === undefined) {
       map[key] = dataModelToJson(value);
     }
