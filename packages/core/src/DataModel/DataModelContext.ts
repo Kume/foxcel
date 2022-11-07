@@ -230,7 +230,7 @@ export function getCurrentKeyOrUndefinedFromDataModelContext(context: DataModelC
   if (lastComponent.type === 'map') {
     return lastComponent.at;
   } else if (lastComponent.type === 'list') {
-    return lastComponent.at.toString();
+    return lastComponent.at?.toString();
   } else {
     return undefined;
   }

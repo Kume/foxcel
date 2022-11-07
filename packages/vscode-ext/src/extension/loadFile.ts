@@ -18,5 +18,6 @@ export async function loadFile(schemaFileUri: vscode.Uri): Promise<InitialLoadMe
   const rootUiSchema = await buildUISchema(rootSchema, rootDataSchema, storage, formatter);
   const mapper = DataMapper.build(rootSchema.fileMap);
   const loaded = await mapper.loadAsync(storage, RawStorageDataTrait);
+  // @ts-expect-error
   return {type: 'initialLoad', uiSchema: rootUiSchema, data: loaded?.model, dataMapperConfig: rootSchema.fileMap};
 }

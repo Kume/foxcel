@@ -290,7 +290,7 @@ function isFlattenableUISchema(schema: UISchema): schema is FormUISchema | TabUI
 function makeKeyFlattenable(
   config: KeyOrKeyFlatten,
   contents: readonly UISchema[],
-): FlattenableUISchemaCommon & {key?: string} {
+): FlattenableUISchemaCommon & {key?: UISchemaKey} {
   if (config.keyFlatten) {
     const flatKeys: Map<UISchemaKey, UISchemaKey[]> = new Map();
     if (contents.length === 0) {

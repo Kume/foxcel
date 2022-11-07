@@ -52,7 +52,7 @@ export interface TextUISchema extends UISchemaBase {
 
 export type TabUISchema = {
   readonly type: 'tab';
-  readonly key?: string;
+  readonly key?: UISchemaKey;
   readonly dataSchema: FixedMapDataSchema;
   readonly contents: ReadonlyArray<UISchema>;
 } & UISchemaBase &
@@ -94,7 +94,7 @@ export interface NumberUISchema extends UISchemaBase {
 
 export type FormUISchema = {
   readonly type: 'form';
-  readonly key?: string;
+  readonly key?: UISchemaKey;
   readonly dataSchema: FixedMapDataSchema;
   readonly contents: ReadonlyArray<UISchema>;
 } & UISchemaBase &

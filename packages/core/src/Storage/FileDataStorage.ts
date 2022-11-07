@@ -22,7 +22,7 @@ export default class FileDataStorage implements DataStorage {
       try {
         await stat(path.join(this._rootPath, ...dirPaths));
       } catch (error) {
-        if (error.code === 'ENOENT') {
+        if (typeof error === 'object' && error !== null && (error as Record<string, any>).code === 'ENOENT') {
           await mkdir(dirPath);
         } else {
           throw error;

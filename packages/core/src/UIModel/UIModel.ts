@@ -101,6 +101,7 @@ export function buildUIModel(
   dataPathFocus: ForwardDataPath | undefined,
   dataFocusLog: UIDataFocusLogNode | undefined,
   schemaFocusLog: UISchemaFocusLogNode | undefined,
+  // @ts-expect-error
 ): UIModel {
   const {currentSchema} = uiSchemaContext;
 

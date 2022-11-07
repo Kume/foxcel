@@ -7,6 +7,7 @@ function initialData(model: ContentListUIModel): DataModel {
   // TODO このdataSchemaにrecursiveは入ってはいけないのでは？
   // => いや、contentのschemaだからありうる。そうすると、そのスキーマ情報を解決するためにDataSchemaContextが必要になるか？
   // => modelにデフォルトデータをセットしとくのが良いかも？
+  // @ts-expect-error
   return defaultDataModelForSchema(model.schema.content.dataSchema);
 }
 

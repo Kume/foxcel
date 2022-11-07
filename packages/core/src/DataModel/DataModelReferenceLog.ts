@@ -14,6 +14,7 @@ import {
   DataModelContextPathComponent,
   dataModelContextPathComponentAt,
   dataModelContextNodeIsMap,
+  dataModelContextNodeIsList,
 } from './DataModelContext';
 
 export interface DataModelReferenceLogMapNode {
@@ -243,9 +244,14 @@ function dataModelToWritableReferencePathNode(model: DataModel): WritableDataMod
 function dataModelContextNodeToWritableReferenceLog(
   contextNode: DataModelContextPathComponent,
 ): WritableDataModelReferenceLogNode {
-  return dataModelContextNodeIsMap(contextNode)
-    ? makeEmptyWritableDataModelReferenceLogMapNode(contextNode.data)
-    : makeEmptyWritableDataModelReferenceLogListNode(contextNode.data);
+  if (dataModelContextNodeIsMap(contextNode)) {
+    return makeEmptyWritableDataModelReferenceLogMapNode(contextNode.data);
+  }
+  if (dataModelContextNodeIsList(contextNode)) {
+    return makeEmptyWritableDataModelReferenceLogListNode(contextNode.data);
+  }
+  // TODO
+  throw new Error('Not implemented');
 }
 
 function writeReferenceLogImpl(
@@ -283,11 +289,13 @@ function writeChildForContextNode(
     }
     const childNode = getChild(logNode.children.get(contextNode.at)?.[1], context, depth + 1);
     logNode.children.set(contextNode.at, [contextNode.indexCache, childNode]);
-  } else {
+  } else if (dataModelContextNodeIsList(contextNode)) {
     if (logNode.type !== 'list') {
       throw new Error('log node type mismatch.');
     }
-    logNode.missings.add(contextNode.at);
+    if (contextNode.at !== undefined) {
+      logNode.missings.add(contextNode.at);
+    }
   }
 }
 
@@ -312,11 +320,13 @@ function writeReferenceLogMissingImpl(
         throw new Error('log node type mismatch.');
       }
       currentLogNode.missings.add(contextNode.at);
-    } else {
+    } else if (dataModelContextNodeIsList(contextNode)) {
       if (currentLogNode.type !== 'list') {
         throw new Error('log node type mismatch.');
       }
-      currentLogNode.missings.add(contextNode.at);
+      if (contextNode.at !== undefined) {
+        currentLogNode.missings.add(contextNode.at);
+      }
     }
   } else {
     writeChildForContextNode(currentLogNode, contextNode, context, currentContextDepth, writeReferenceLogMissingImpl);

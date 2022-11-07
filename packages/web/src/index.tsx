@@ -100,6 +100,7 @@ const defaultTheme: Theme = {
       input: 'black',
       popup: 'black',
       placeholder: 'gray',
+      itemSelection: 'lightblue',
     },
   },
 };
@@ -163,6 +164,8 @@ const vsCodeTheme: Theme = {
       popup: '#cccccc',
       // --vscode-input-placeholderForeground
       placeholder: '#a6a6a6',
+      // --vscode-input-activeSelectionForeground
+      itemSelection: '#094771',
     },
   },
 };

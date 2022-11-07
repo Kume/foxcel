@@ -31,7 +31,7 @@ export class UISchemaContext {
     private readonly path: readonly UISchemaExcludeRecursive[],
   ) {}
 
-  private resolve(schema: UISchema): UISchemaExcludeRecursive {
+  public resolve(schema: UISchema): UISchemaExcludeRecursive {
     if (schema.type === 'recursive') {
       if (schema.depth >= this.path.length) {
         throw new Error('Invalid ui schema depth');

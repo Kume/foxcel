@@ -19,5 +19,6 @@ export async function loadFile(
   const mapper = DataMapper.build(rootSchema.fileMap);
   const loaded = await mapper.loadAsync(storage, dataModelStorageDataTrait);
   // console.log('xxxx loaded', {rootUiSchema, rootDataSchema, rootSchemaPath, rootSchemaContent, data: loaded?.model});
+  // @ts-expect-error TODO rootUiSchemaをexcludeRecursiveにする
   return {uiSchema: rootUiSchema, dataSchema: rootDataSchema, data: loaded?.model};
 }
