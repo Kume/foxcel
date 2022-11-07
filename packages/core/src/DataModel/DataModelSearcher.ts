@@ -15,7 +15,6 @@ import {
   DataModelRoot,
   emptyDataModelContext,
   getCurrentKeyOrUndefinedFromDataModelContext,
-  getParentDataModelFromContext,
   popDataModelContextPath,
   pushDataModelContextPath,
   pushKeyToDataModelContextPath,
@@ -33,7 +32,6 @@ import {
   dataModelIsMap,
   eachListDataItem,
   eachMapDataItem,
-  findIndexMapDataModel,
   stringToDataModel,
 } from './DataModel';
 
@@ -134,7 +132,7 @@ function findDataModelImpl(
                   childData,
                   matcher,
                   shiftDataPath(path),
-                  pushDataModelContextPath(currentContext, {type: 'map', data, at: key, indexCache: index}),
+                  pushDataModelContextPath(currentContext, {type: 'map', at: key, indexCache: index}),
                   originalContext,
                   root,
                   originalModel,
@@ -152,7 +150,7 @@ function findDataModelImpl(
                 childData,
                 matcher,
                 shiftDataPath(path),
-                pushDataModelContextPath(currentContext, {type: 'list', data, at: index}),
+                pushDataModelContextPath(currentContext, {type: 'list', at: index}),
                 originalContext,
                 root,
                 originalModel,

@@ -1,4 +1,4 @@
-import {DataCollectionItem, DataModel, ListDataModel, MapDataModel} from './DataModelTypes';
+import {DataModel, MapDataModel} from './DataModelTypes';
 import {
   DataPath,
   DataPathComponent,
@@ -15,14 +15,10 @@ import {
   ForwardDataPath,
   ForwardDataPathComponent,
   headDataPathComponent,
-  headDataPathComponentOrUndefined,
   KeyPathComponent,
-  listIndexToDataPathComponent,
   MapKeyDataPathComponent,
   MultiDataPath,
   MultiDataPathComponent,
-  popDataPath,
-  pushDataPath,
   shiftDataPath,
   unshiftDataPath,
 } from './DataPath';
@@ -32,12 +28,9 @@ import {
   dataModelIsMap,
   dataModelIsMapOrList,
   dataModelIsString,
-  dataModelMap,
   findMapDataIndexOfKey,
-  getFromDataModel,
   getListDataAt,
   getListDataIndexForPointer,
-  getMapDataAt,
   getMapDataAtIndex,
   getMapDataIndexForPointer,
   getMapKeyAtIndex,
@@ -49,14 +42,7 @@ import {
   stringDataModelToString,
   stringToDataModel,
 } from './DataModel';
-import {
-  DataSchema,
-  dataSchemaContextKeyDepth,
-  DataSchemaContextKeyItem,
-  dataSchemaContextKeysForPath,
-  NamedDataSchemaManager,
-} from './DataSchema';
-import {WritableDataModelReferenceLogNode} from './DataModelReferenceLog';
+import {DataSchema, DataSchemaContextKeyItem} from './DataSchema';
 import {
   DataModelContext,
   DataModelContextMapPathComponent,
@@ -64,7 +50,6 @@ import {
   DataModelRoot,
   getCurrentKeyOrUndefinedFromDataModelContext,
   getDataModelByDataModelContext,
-  getParentDataModelFromContext,
   popDataModelContextPath,
   pushDataModelContextPath,
   pushKeyToDataModelContextPath,
@@ -99,7 +84,7 @@ function mapKeyDataPathComponentToContextPathComponent(
 ): DataModelContextMapPathComponent | undefined {
   const mapKey = dataPathComponentToMapKey(pathComponent);
   const indexCache = findMapDataIndexOfKey(data, mapKey);
-  return indexCache === undefined ? undefined : {type: 'map', data, at: mapKey, indexCache};
+  return indexCache === undefined ? undefined : {type: 'map', at: mapKey, indexCache};
 }
 
 /**
@@ -137,7 +122,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
       if (childData === undefined) {
         return undefined;
       }
-      return callbacks.collection(childData, {type: 'map', data: model, at: mapKey, indexCache});
+      return callbacks.collection(childData, {type: 'map', at: mapKey, indexCache});
     } else {
       return undefined;
     }
@@ -150,7 +135,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
     if (childData === undefined) {
       return undefined;
     }
-    return callbacks.collection(childData, {type: 'list', data: model, at: listIndex});
+    return callbacks.collection(childData, {type: 'list', at: listIndex});
   } else if (dataPathComponentIsIndexOrKey(pathComponent)) {
     if (dataModelIsList(model)) {
       const listIndex = dataPathComponentToListIndex(pathComponent);
@@ -158,7 +143,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
       if (childData === undefined) {
         return undefined;
       }
-      return callbacks.collection(childData, {type: 'list', data: model, at: listIndex});
+      return callbacks.collection(childData, {type: 'list', at: listIndex});
     } else if (dataModelIsMap(model)) {
       const mapKey = dataPathComponentToMapKey(pathComponent);
       const indexCache = findMapDataIndexOfKey(model, mapKey);
@@ -169,7 +154,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
       if (childData === undefined) {
         return undefined;
       }
-      return callbacks.collection(childData, {type: 'map', data: model, at: mapKey, indexCache});
+      return callbacks.collection(childData, {type: 'map', at: mapKey, indexCache});
     } else {
       return undefined;
     }
@@ -183,7 +168,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
       if (childData === undefined) {
         return undefined;
       }
-      return callbacks.collection(childData, {type: 'list', data: model, at: listIndex});
+      return callbacks.collection(childData, {type: 'list', at: listIndex});
     } else if (dataModelIsMap(model)) {
       const indexCache = getMapDataIndexForPointer(model, pathComponent);
       if (indexCache === undefined) {
@@ -197,7 +182,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
       if (childData === undefined) {
         return undefined;
       }
-      return callbacks.collection(childData, {type: 'map', data: model, at: mapKey, indexCache});
+      return callbacks.collection(childData, {type: 'map', at: mapKey, indexCache});
     } else {
       return undefined;
     }
@@ -262,7 +247,7 @@ function getDataModelBySinglePathImpl(
               return getDataModelBySinglePathImpl(
                 getListDataAt(model, index),
                 shiftDataPath(path),
-                pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
+                pushDataModelContextPath(currentContext, {type: 'list', at: index}),
                 originalContext,
                 originalModel,
                 dataRoot,
@@ -279,7 +264,7 @@ function getDataModelBySinglePathImpl(
               return getDataModelBySinglePathImpl(
                 getMapDataAtIndex(model, index),
                 shiftDataPath(path),
-                pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
+                pushDataModelContextPath(currentContext, {type: 'map', at: key, indexCache: index}),
                 originalContext,
                 originalModel,
                 dataRoot,
@@ -341,7 +326,7 @@ export function* withNestedDataPath(
           continue;
         }
         const index = numberDataModelToNumber(data);
-        yield [getListDataAt(model, index), pushDataModelContextPath(context, {type: 'list', data: model, at: index})];
+        yield [getListDataAt(model, index), pushDataModelContextPath(context, {type: 'list', at: index})];
       }
     } else {
       const keyIndexMap = mapDataModelKeyIndexMap(model);
@@ -356,7 +341,7 @@ export function* withNestedDataPath(
         }
         yield [
           getMapDataAtIndex(model, index),
-          pushDataModelContextPath(context, {type: 'map', data: model, at: key, indexCache: index}),
+          pushDataModelContextPath(context, {type: 'map', at: key, indexCache: index}),
         ];
       }
     }
@@ -401,7 +386,7 @@ function collectDataModelImpl(
                 : collectDataModelImpl(
                     getMapDataAtIndex(model, index),
                     shiftDataPath(path),
-                    pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
+                    pushDataModelContextPath(currentContext, {type: 'map', at: key, indexCache: index}),
                     originalContext,
                     originalModel,
                     root,
@@ -412,7 +397,7 @@ function collectDataModelImpl(
               return collectDataModelImpl(
                 getListDataAt(model, index),
                 shiftDataPath(path),
-                pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
+                pushDataModelContextPath(currentContext, {type: 'list', at: index}),
                 originalContext,
                 originalModel,
                 root,
@@ -433,7 +418,7 @@ function collectDataModelImpl(
                 return collectDataModelImpl(
                   getListDataAt(model, index),
                   shiftDataPath(path),
-                  pushDataModelContextPath(currentContext, {type: 'list', data: model, at: index}),
+                  pushDataModelContextPath(currentContext, {type: 'list', at: index}),
                   originalContext,
                   originalModel,
                   root,
@@ -452,7 +437,7 @@ function collectDataModelImpl(
                 return collectDataModelImpl(
                   getMapDataAtIndex(model, index),
                   shiftDataPath(path),
-                  pushDataModelContextPath(currentContext, {type: 'map', data: model, at: key, indexCache: index}),
+                  pushDataModelContextPath(currentContext, {type: 'map', at: key, indexCache: index}),
                   originalContext,
                   originalModel,
                   root,

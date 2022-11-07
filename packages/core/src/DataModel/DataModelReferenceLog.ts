@@ -245,9 +245,11 @@ function dataModelContextNodeToWritableReferenceLog(
   contextNode: DataModelContextPathComponent,
 ): WritableDataModelReferenceLogNode {
   if (dataModelContextNodeIsMap(contextNode)) {
+    // @ts-expect-error
     return makeEmptyWritableDataModelReferenceLogMapNode(contextNode.data);
   }
   if (dataModelContextNodeIsList(contextNode)) {
+    // @ts-expect-error
     return makeEmptyWritableDataModelReferenceLogListNode(contextNode.data);
   }
   // TODO

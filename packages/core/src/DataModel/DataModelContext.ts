@@ -15,27 +15,23 @@ import {stringUISchemaKeyToString, UISchemaKey, uiSchemaKeyIsParentKey} from '..
 
 export interface DataModelContextListPathComponent {
   readonly type: 'list';
-  readonly data: ListDataModel;
   readonly at?: number;
 }
 
 export interface DataModelContextMapPathComponent {
   readonly type: 'map';
-  readonly data: MapDataModel;
   readonly at: string;
   readonly indexCache: number;
 }
 
 export interface DataModelContextMapEmptyPathComponent {
   readonly type: 'map';
-  readonly data: MapDataModel;
   readonly at?: undefined;
   readonly indexCache?: undefined;
 }
 
 export interface DataModelContextUndefinedPathComponent {
   readonly type: 'undefined';
-  readonly data?: undefined;
 }
 
 export type DataModelContextPathComponent =
@@ -118,13 +114,13 @@ export function mapDataModelContextPathForDataModel(
   key: string | null | undefined,
 ): DataModelContextPathComponent {
   if (key === undefined || key === null) {
-    return {type: 'map', data: map};
+    return {type: 'map'};
   }
   const index = findMapDataIndexOfKey(map, key);
   if (index === undefined) {
-    return {type: 'map', data: map};
+    return {type: 'map'};
   }
-  return {type: 'map', data: map, at: key, indexCache: index};
+  return {type: 'map', at: key, indexCache: index};
 }
 
 export function pushUiSchemaKeyToDataModelContext(
@@ -165,9 +161,9 @@ export function listDataModelContextPathForDataModel(
   index: number | undefined,
 ): DataModelContextListPathComponent {
   if (index === undefined) {
-    return {type: 'list', data: list};
+    return {type: 'list'};
   }
-  return {type: 'list', data: list, at: index};
+  return {type: 'list', at: index};
 }
 
 export function pushPointerToDataModelContext(
@@ -190,20 +186,20 @@ function dataModelContextPathForMapModelPointer(
 ): DataModelContextPathComponent {
   const index = getMapDataIndexForPointer(map, pointer);
   if (index === undefined) {
-    return {type: 'map', data: map};
+    return {type: 'map'};
   }
   const key = getMapKeyAtIndex(map, index);
   if (key === undefined || key === null) {
-    return {type: 'map', data: map};
+    return {type: 'map'};
   }
-  return {type: 'map', data: map, at: key, indexCache: index};
+  return {type: 'map', at: key, indexCache: index};
 }
 
 function dataModelContextPathForListModelPointer(
   list: ListDataModel,
   pointer: DataPointer,
 ): DataModelContextPathComponent {
-  return {type: 'list', data: list, at: getListDataIndexForPointer(list, pointer)};
+  return {type: 'list', at: getListDataIndexForPointer(list, pointer)};
 }
 
 export function pushKeyToDataModelContextPath(context: DataModelContext): DataModelContext {
@@ -234,11 +230,6 @@ export function getCurrentKeyOrUndefinedFromDataModelContext(context: DataModelC
   } else {
     return undefined;
   }
-}
-
-export function getParentDataModelFromContext(context: DataModelContext, count: number): DataModel | undefined {
-  const component = dataModelContextPathComponentAt(context, dataModelContextDepth(context) - count);
-  return component === undefined ? undefined : component.data;
 }
 
 export function getDataModelByDataModelContext(
