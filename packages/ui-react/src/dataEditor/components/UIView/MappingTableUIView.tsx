@@ -250,7 +250,7 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
               key={row.key}
               row={row}
               rowNumber={rowIndex}
-              mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
+              mainSelectedColumn={state.selection?.origin.row === rowIndex ? state.selection.origin.col : undefined}
               selectionRange={
                 tableRangeContains(state.selection?.range.row, rowIndex) ? state.selection?.range.col : undefined
               }
