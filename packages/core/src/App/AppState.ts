@@ -119,9 +119,7 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         state.uiModel,
         undefined,
         emptyDataModelContext,
-        // TODO
-        // @ts-ignore
-        {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
+        {model: data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
         focus,
         state.dataFocusLog,
         state.schemaFocusLog,

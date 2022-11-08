@@ -373,28 +373,18 @@ export function buildUIModel(
       const mapOrUndefined = dataModelIsMap(dataModel) ? dataModel : undefined;
       const dataPath = buildDataPathFromUIModelDataPathContext(dataPathContext, currentSchema);
       const referenceData = getDataModelBySinglePath(mapOrUndefined, currentSchema.sourcePath, dataContext, dataRoot);
-      const oldTableModel = oldModel?.type === 'mappingTable' ? oldModel : undefined;
       const rows: MappingTableUIModelRow[] = [];
       const danglingRows: TableUIModelRow[] = [];
       if (dataModelIsMap(referenceData)) {
         const mappedKeys = new Set<string>();
         if (mapOrUndefined) {
-          const oldRowsById = new Map<number, MappingTableUIModelRow>();
-          if (oldTableModel) {
-            for (const oldRow of oldTableModel?.rows) {
-              if (!oldRow.isEmpty) {
-                oldRowsById.set(getIdFromDataPointer(oldRow.pointer), oldRow);
-              }
-            }
-          }
-          const oldDanglingRowsById = new Map(
-            oldTableModel?.danglingRows.map((row) => [getIdFromDataPointer(row.pointer), row]),
-          );
           for (const [, , key] of eachMapDataItem(referenceData)) {
             if (key === null || mappedKeys.has(key)) {
               continue;
             }
             mappedKeys.add(key);
+            // TODO referenceDataが古いっぽい？
+            console.log('xxxx key', key);
 
             const rowMapDataIndex = findMapDataIndexOfKey(mapOrUndefined, key);
             const rowDataContext = pushMapDataModelContextPath(dataContext, mapOrUndefined, key);
@@ -429,56 +419,43 @@ export function buildUIModel(
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
-            const oldRow_ = oldRowsById.get(id);
-            const oldRow = oldRow_?.isEmpty ? undefined : oldRow_;
-            if (
-              oldRow &&
-              oldRow.key === key &&
-              oldTableModel &&
-              schemaFocusLog === oldTableModel.schemaFocusLog &&
-              rowMapDataOrUndefined === oldRow.data &&
-              rowDataFocusLog === oldRow.dataFocusLog &&
-              forwardDataPathEquals(rowDataPathFocus, oldRow.dataPathFocus)
-            ) {
-              rows.push(oldRow);
-            } else {
-              rows.push({
-                pointer,
-                key,
-                data: rowMapDataOrUndefined,
-                dataPath: rowDataPath,
-                dataPathFocus: rowDataPathFocus,
-                dataFocusLog: rowDataFocusLog,
-                cells: uiSchemaContext.contents().map((contentContext, index) => {
-                  const cellData = getChildDataModelByUISchemaKey(
-                    rowMapDataOrUndefined,
-                    contentContext.currentSchema.key,
-                  );
-                  const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
-                    ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
-                    : {
-                        parentPath: rowDataPath,
-                        self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
-                      };
-                  const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
-                    rowDataContext,
-                    rowMapDataOrUndefined,
-                    contentContext.currentSchema.key,
-                  );
-                  return buildUIModel(
-                    contentContext,
-                    cellData,
-                    oldRow?.cells[index],
-                    cellPathContext,
-                    cellDataModelContext,
-                    dataRoot,
-                    safeShiftDataPath(rowDataPathFocus),
-                    rowDataFocusLog?.c[index],
-                    schemaFocusLog?.c[index],
-                  );
-                }),
-              });
-            }
+
+            rows.push({
+              pointer,
+              key,
+              data: rowMapDataOrUndefined,
+              dataPath: rowDataPath,
+              dataPathFocus: rowDataPathFocus,
+              dataFocusLog: rowDataFocusLog,
+              cells: uiSchemaContext.contents().map((contentContext, index) => {
+                const cellData = getChildDataModelByUISchemaKey(
+                  rowMapDataOrUndefined,
+                  contentContext.currentSchema.key,
+                );
+                const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                  ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
+                  : {
+                      parentPath: rowDataPath,
+                      self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+                    };
+                const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
+                  rowDataContext,
+                  rowMapDataOrUndefined,
+                  contentContext.currentSchema.key,
+                );
+                return buildUIModel(
+                  contentContext,
+                  cellData,
+                  undefined,
+                  cellPathContext,
+                  cellDataModelContext,
+                  dataRoot,
+                  safeShiftDataPath(rowDataPathFocus),
+                  rowDataFocusLog?.c[index],
+                  schemaFocusLog?.c[index],
+                );
+              }),
+            });
           }
           for (const [rowData, pointer, key] of eachMapDataItem(mapOrUndefined)) {
             if (key === null || mappedKeys.has(key)) {
@@ -491,55 +468,43 @@ export function buildUIModel(
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
             const rowDataContext = pushMapDataModelContextPath(dataContext, mapOrUndefined, key);
-            const oldRow = oldDanglingRowsById.get(id);
-            if (
-              oldRow &&
-              oldRow.key === key &&
-              oldTableModel &&
-              schemaFocusLog === oldTableModel.schemaFocusLog &&
-              rowMapDataOrUndefined === oldRow.data &&
-              rowDataFocusLog === oldRow.dataFocusLog &&
-              forwardDataPathEquals(rowDataPathFocus, oldRow.dataPathFocus)
-            ) {
-              danglingRows.push(oldRow);
-            } else {
-              danglingRows.push({
-                pointer,
-                key,
-                data: rowMapDataOrUndefined,
-                dataPath: rowDataPath,
-                dataPathFocus: rowDataPathFocus,
-                dataFocusLog: rowDataFocusLog,
-                cells: uiSchemaContext.contents().map((contentContext, index) => {
-                  const cellData = getChildDataModelByUISchemaKey(
-                    rowMapDataOrUndefined,
-                    contentContext.currentSchema.key,
-                  );
-                  const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
-                    ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
-                    : {
-                        parentPath: rowDataPath,
-                        self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
-                      };
-                  const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
-                    rowDataContext,
-                    rowMapDataOrUndefined,
-                    contentContext.currentSchema.key,
-                  );
-                  return buildUIModel(
-                    contentContext,
-                    cellData,
-                    oldRow?.cells[index],
-                    cellPathContext,
-                    cellDataModelContext,
-                    dataRoot,
-                    safeShiftDataPath(rowDataPathFocus),
-                    rowDataFocusLog?.c[index],
-                    schemaFocusLog?.c[index],
-                  );
-                }),
-              });
-            }
+
+            danglingRows.push({
+              pointer,
+              key,
+              data: rowMapDataOrUndefined,
+              dataPath: rowDataPath,
+              dataPathFocus: rowDataPathFocus,
+              dataFocusLog: rowDataFocusLog,
+              cells: uiSchemaContext.contents().map((contentContext, index) => {
+                const cellData = getChildDataModelByUISchemaKey(
+                  rowMapDataOrUndefined,
+                  contentContext.currentSchema.key,
+                );
+                const cellPathContext = uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                  ? ({parentPath: dataPath, isKey: true, key, selfPointer: pointer} as const)
+                  : {
+                      parentPath: rowDataPath,
+                      self: stringUISchemaKeyToDataPathComponent(contentContext.currentSchema.key),
+                    };
+                const cellDataModelContext = pushUiSchemaKeyToDataModelContext(
+                  rowDataContext,
+                  rowMapDataOrUndefined,
+                  contentContext.currentSchema.key,
+                );
+                return buildUIModel(
+                  contentContext,
+                  cellData,
+                  undefined,
+                  cellPathContext,
+                  cellDataModelContext,
+                  dataRoot,
+                  safeShiftDataPath(rowDataPathFocus),
+                  rowDataFocusLog?.c[index],
+                  schemaFocusLog?.c[index],
+                );
+              }),
+            });
           }
         } else {
           for (const [, , key] of eachMapDataItem(referenceData)) {
