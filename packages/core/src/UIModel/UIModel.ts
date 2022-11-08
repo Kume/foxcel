@@ -383,8 +383,6 @@ export function buildUIModel(
               continue;
             }
             mappedKeys.add(key);
-            // TODO referenceDataが古いっぽい？
-            console.log('xxxx key', key);
 
             const rowMapDataIndex = findMapDataIndexOfKey(mapOrUndefined, key);
             const rowDataContext = pushMapDataModelContextPath(dataContext, mapOrUndefined, key);

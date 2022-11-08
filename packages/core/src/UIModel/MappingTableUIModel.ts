@@ -86,7 +86,7 @@ export function mappingTableUIModelCopy(model: MappingTableUIModel, selection: T
     if (row.isEmpty) {
       for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
         const column = model.schema.contents[selection.col.start + selectionColumnIndex];
-        rowData.push(tableUIModelStringToDataModelWithSchema(column.dataSchema, nullDataModel));
+        rowData.push(tableUIModelStringToDataModelWithSchema(column.dataSchema, undefined));
       }
     } else {
       for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
