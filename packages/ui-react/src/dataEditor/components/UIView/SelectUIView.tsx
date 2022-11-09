@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useReducer, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useReducer, useRef} from 'react';
 import {UIViewProps} from './UIView';
 import {MultiSelectUIModel, SelectUIModel, SingleSelectUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {
@@ -200,15 +200,21 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const openDropdown = () => {
     dispatch(['open', getRoot, model]);
     textareaRef.current?.focus();
+    console.log('xxxx focus1', textareaRef.current);
   };
   const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     dispatch(['change', e.target.value, getRoot, model]);
     textareaRef.current?.focus();
+    console.log('xxxx focus2', textareaRef.current);
   };
   const select = (value: SelectUIOption | null) => {
     onAction(selectUIModelSetValue(model, value));
     dispatch(['blur']);
   };
+  const blur = useCallback(() => {
+    console.log('xxxx blur');
+    dispatch(['blur']);
+  }, [dispatch]);
   const keyDown = (e: React.KeyboardEvent) => {
     switch (e.key) {
       case KeyValue_ArrowUp:
@@ -257,7 +263,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
               isVisible={!!state.editingText}
               ref={textareaRef}
               onChange={change}
-              onBlur={() => dispatch(['blur'])}
+              onBlur={blur}
               value={(state.isOpen && state.editingText) || ''}
               onKeyDown={keyDown}
             />
@@ -412,8 +418,10 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   };
   useEffect(() => {
     if (!isMainSelected) {
+      console.log('xxxx blur on effect', model?.dataPath);
       dispatch(['blur']);
     } else {
+      console.log('xxxx focus', model?.dataPath, textAreaRef.current);
       textAreaRef.current?.focus();
     }
   }, [isMainSelected, model]);
@@ -498,6 +506,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
               ref={textAreaRef}
               onChange={change}
               onKeyDown={keyDown}
+              onBlur={(e) => console.log('xxxx blur', model?.dataPath, e)}
               value={(state.isEditing && state.editingText) || ''}
             />
           )}

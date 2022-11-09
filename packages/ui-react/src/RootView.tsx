@@ -56,7 +56,12 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeS
   console.log('root', state);
 
   return (
-    <LayoutRoot>
+    <LayoutRoot
+      onFocus={(e) => console.log('xxxx global onFocus', e)}
+      onFocusCapture={(e) => console.log('xxxx global onFocusCapture', e)}
+      onBlur={(e) => console.log('xxxx global onBlur', e)}
+      onBlurCapture={(e) => console.log('xxxx global onBlurCapture', e)}
+    >
       {loadFile && <button onClick={async () => dispatch(await loadFile())}>LOAD</button>}
       {saveFile && <button onClick={() => saveFile(state.data)}>SAVE</button>}
       {state.uiModel && <UIView model={state.uiModel} onAction={dispatch} getRoot={getRoot} />}
