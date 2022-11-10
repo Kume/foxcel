@@ -232,13 +232,11 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
         e.preventDefault();
         dispatch(['blur']);
         break;
-      case KeyValue_Tab:
-        e.preventDefault();
-        break;
       case KeyValue_Delete:
       case KeyValue_Backspace:
-        select(null);
-        dispatch(['blur']);
+        if (!state.isEditing) {
+          select(null);
+        }
         break;
     }
   };
@@ -374,7 +372,7 @@ const DropDownMenuItem = styled.div<{hasFocus: boolean}>`
   ${({theme}) => labelTextStyle(theme)}
   white-space: nowrap;
   &:hover {
-    background-color: ${({theme}) => theme.color.bg.itemHover};
+    background-color: ${({hasFocus, theme}) => (hasFocus ? theme.color.bg.itemSelection : theme.color.bg.itemHover)};
   }
   background-color: ${({hasFocus, theme}) => (hasFocus ? theme.color.bg.itemSelection : theme.color.bg.popup)};
 `;
@@ -467,8 +465,10 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
           break;
         case KeyValue_Delete:
         case KeyValue_Backspace:
-          select(null);
-          dispatch(['blur']);
+          if (!state.isEditing) {
+            e.preventDefault();
+            select(null);
+          }
           break;
       }
     } else {
