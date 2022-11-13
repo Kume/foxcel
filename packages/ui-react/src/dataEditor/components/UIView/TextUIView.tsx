@@ -11,19 +11,44 @@ import {KeyValue_Enter, withAltKey} from '../../../common/Keybord';
 import {BackgroundTextarea} from '../BackgroundTextarea';
 import {inputTextStyle} from '../../../common/components/commonStyles';
 
-export interface TextUIViewProps extends UIViewProps {
-  readonly model: TextUIModel;
-}
+const LayoutRoot = styled.div`
+  display: flex;
+  justify-content: flex-start;
+`;
+
+const InputBox = styled.div`
+  position: relative;
+  min-width: 100px;
+  max-width: 500px;
+  overflow: hidden;
+  padding: 2px;
+`;
 
 const Input = styled.input`
   background-color: ${({theme}) => theme.color.bg.input};
   border: solid 1px ${({theme}) => theme.color.border.input};
   ${({theme}) => inputTextStyle(theme)}
+  position: absolute;
+  width: calc(100% - 8px);
+  height: calc(100% - 6px);
+  left: 1px;
+  top: 1px;
   &:focus {
     border-color: ${({theme}) => theme.color.border.inputFocus};
     outline: none;
   }
 `;
+
+const BackgroundText = styled.p`
+  ${({theme}) => inputTextStyle(theme)}
+  margin: 0;
+  margin-right: 4px;
+  max-width: 500px;
+`;
+
+export interface TextUIViewProps extends UIViewProps {
+  readonly model: TextUIModel;
+}
 
 export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
   const [value, setValue] = useState(model.value ?? '');
@@ -31,11 +56,16 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
     setValue(model.value ?? '');
   }, [model.value]);
   return (
-    <Input
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
-    />
+    <LayoutRoot>
+      <InputBox>
+        <BackgroundText>{value || '　'}</BackgroundText>
+        <Input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
+        />
+      </InputBox>
+    </LayoutRoot>
   );
 };
 
