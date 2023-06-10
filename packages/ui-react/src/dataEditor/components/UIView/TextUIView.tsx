@@ -159,7 +159,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
       onMouseUp={() => textAreaRef.current?.focus()}
       onDoubleClick={startEdit}
     >
-      <TextWithBreak text={editingText ?? ''} />
+      <TextWithBreak text={editingText ?? ''} hidden={isEditing} />
       {isMainSelected && !disabled && (
         <BackgroundTextarea
           isVisible={isEditing}
