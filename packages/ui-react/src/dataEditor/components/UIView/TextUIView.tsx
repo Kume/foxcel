@@ -170,11 +170,16 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
           onKeyDown={(e) => {
             if (!callbacks.onKeyDown(e, isEditing)) {
               // TODO multilineのときのみこの操作を許可
-              // TODO 改行した際にキャレットが最後尾になってしまう問題の対応
               if (e.key === KeyValue_Enter && withAltKey(e) && textAreaRef.current) {
                 const start = textAreaRef.current.selectionStart;
                 const end = textAreaRef.current.selectionEnd;
-                dispatch(['changeText', editingText.slice(0, start) + '\n' + editingText.slice(end)]);
+
+                // 値を更新したときにキャレットが最後に移動してしまう対策
+                // reactの値更新時に値を更新するとキャレット移動のタイミングが難しくなるので、この時点で値をセットしてキャレット移動してしまう
+                const nextText = editingText.slice(0, start) + '\n' + editingText.slice(end);
+                textAreaRef.current.setSelectionRange(start + 1, start + 1);
+
+                dispatch(['changeText', nextText]);
                 e.preventDefault();
                 e.stopPropagation();
               }
