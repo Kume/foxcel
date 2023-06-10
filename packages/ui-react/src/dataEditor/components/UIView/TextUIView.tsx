@@ -24,6 +24,11 @@ const InputBox = styled.div`
   padding: 2px;
 `;
 
+const InputBoxForMultiline = styled(InputBox)`
+  position: relative;
+  padding: 0 4px;
+`;
+
 const Input = styled.input`
   background-color: ${({theme}) => theme.color.bg.input};
   border: solid 1px ${({theme}) => theme.color.border.input};
@@ -39,14 +44,9 @@ const Input = styled.input`
   }
 `;
 
-// TODO 次回 InputForMultilineを調整して改行ありのテキストボックスの大きさを正しくする
-
 const InputForMultiline = styled(BackgroundTextarea)`
-  left: 1px;
-  top: 1px;
   width: calc(100% - 8px);
   height: 100%;
-  padding: 0 1px;
   &:focus {
     border-color: ${({theme}) => theme.color.border.inputFocus};
   }
@@ -71,7 +71,7 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
   if (model.schema?.multiline) {
     return (
       <LayoutRoot>
-        <InputBox>
+        <InputBoxForMultiline>
           <TextWithBreak text={value} hidden />
           <InputForMultiline
             isVisible
@@ -79,7 +79,7 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
             onChange={(e) => setValue(e.target.value)}
             onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
           />
-        </InputBox>
+        </InputBoxForMultiline>
       </LayoutRoot>
     );
   } else {
