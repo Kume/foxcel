@@ -189,10 +189,10 @@ interface Props extends UIViewProps {
 export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [state, dispatch] = useReducer(reducer, initialState);
-  const filteredOptions = useMemo(() => filterSelectUIOptionsByText(state.options, state.editingText), [
-    state.options,
-    state.editingText,
-  ]);
+  const filteredOptions = useMemo(
+    () => filterSelectUIOptionsByText(state.options, state.editingText),
+    [state.options, state.editingText],
+  );
   const {x, y, reference, floating, strategy} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
@@ -268,8 +268,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           <DropDownMenuLayout
             ref={floating}
             style={{position: strategy, top: y ?? '', left: x ?? ''}}
-            onMouseDown={preventDefaultCallback}
-          >
+            onMouseDown={preventDefaultCallback}>
             {renderDropDownItems(model.isMulti, state.currentIndex, filteredOptions, select)}
           </DropDownMenuLayout>
         )}
@@ -289,11 +288,10 @@ function renderDropDownItems(
       {!isMulti && (
         <DropDownMenuItem
           hasFocus={undefined === currentIndex}
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             select(null);
-          }}
-        >
+          }}>
           {'　'}
         </DropDownMenuItem>
       )}
@@ -302,11 +300,10 @@ function renderDropDownItems(
           <DropDownMenuItem
             key={index}
             hasFocus={index === currentIndex}
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               select(option);
-            }}
-          >
+            }}>
             {option.label}
           </DropDownMenuItem>
         );
@@ -393,10 +390,10 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   callbacks,
 }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const filteredOptions = useMemo(() => filterSelectUIOptionsByText(state.options, state.editingText), [
-    state.options,
-    state.editingText,
-  ]);
+  const filteredOptions = useMemo(
+    () => filterSelectUIOptionsByText(state.options, state.editingText),
+    [state.options, state.editingText],
+  );
   const {x, y, reference, floating, strategy} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
@@ -480,10 +477,9 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   return (
     <LayoutRootForTableCell
       ref={reference}
-      onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
-      onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
-      onDoubleClick={() => dispatch(['open', callbacks.getRoot, model, schema])}
-    >
+      onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
+      onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
+      onDoubleClick={() => dispatch(['open', callbacks.getRoot, model, schema])}>
       <InputAreaForTableCell>
         {model?.isMulti ? (
           <MultiSelectInput model={model} onAction={callbacks.onAction} />

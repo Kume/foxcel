@@ -76,8 +76,8 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
           <InputForMultiline
             isVisible
             value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
+            onChange={(e: React.FocusEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
+            onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => onAction(textUIModelSetText(model, e.target.value))}
           />
         </InputBoxForMultiline>
       </LayoutRoot>
@@ -89,8 +89,8 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
           <BackgroundText>{value || '　'}</BackgroundText>
           <Input
             value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
+            onBlur={(e: React.FocusEvent<HTMLInputElement>) => onAction(textUIModelSetText(model, e.target.value))}
           />
         </InputBox>
       </LayoutRoot>
@@ -154,11 +154,10 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
 
   return (
     <LayoutRootForTableCell
-      onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
-      onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
+      onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
+      onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
       onMouseUp={() => textAreaRef.current?.focus()}
-      onDoubleClick={startEdit}
-    >
+      onDoubleClick={startEdit}>
       <TextWithBreak text={editingText ?? ''} hidden={isEditing} />
       {isMainSelected && !disabled && (
         <BackgroundTextarea
@@ -167,7 +166,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
           onChange={change}
           onBlur={blur}
           value={(isEditing && editingText) || ''}
-          onKeyDown={(e) => {
+          onKeyDown={(e: React.KeyboardEvent) => {
             if (!callbacks.onKeyDown(e, isEditing)) {
               // TODO multilineのときのみこの操作を許可
               if (e.key === KeyValue_Enter && withAltKey(e) && textAreaRef.current) {

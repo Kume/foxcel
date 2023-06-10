@@ -85,7 +85,7 @@ const CellSelectionBorderLeft = styled.div`
 
 type BorderVisibility = readonly [top?: boolean, right?: boolean, bottom?: boolean, left?: boolean];
 
-interface TableUIViewCellLayoutProps {
+interface TableUIViewCellLayoutProps extends React.PropsWithChildren {
   readonly selected: boolean;
   readonly border: BorderVisibility;
 }

@@ -50,9 +50,9 @@ interface ActionRef {
 const updateSelection = updateTableUIViewStateSelection;
 const makeUpdateRange = (range: TableCellRange) => (prev: TableUIViewState) =>
   updateSelection(prev, ({origin}) => ({origin, range}));
-const makeUpdateRangeByCallback = (updateRange: (prevSelection: TableUISelection) => TableCellRange) => (
-  prev: TableUIViewState,
-) => updateSelection(prev, (prevSelection) => ({origin: prevSelection.origin, range: updateRange(prevSelection)}));
+const makeUpdateRangeByCallback =
+  (updateRange: (prevSelection: TableUISelection) => TableCellRange) => (prev: TableUIViewState) =>
+    updateSelection(prev, (prevSelection) => ({origin: prevSelection.origin, range: updateRange(prevSelection)}));
 
 interface Props extends UIViewProps {
   readonly model: MappingTableUIModel;
@@ -217,8 +217,7 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
                 selectionRange &&
                 selectionRange.row.size === undefined
               }
-              {...headerCallbacks.columns[index]}
-            >
+              {...headerCallbacks.columns[index]}>
               {column.label}
             </TableUIViewHeaderCell>
           ))}

@@ -50,10 +50,9 @@ export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({
   }, [isMainSelected]);
   return (
     <LayoutRootForTableCell
-      onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
-      onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
-    >
-      <LabelForTableCell onMouseDown={(e) => e.stopPropagation()}>
+      onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
+      onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}>
+      <LabelForTableCell onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}>
         <input
           type="checkbox"
           ref={checkboxRef}

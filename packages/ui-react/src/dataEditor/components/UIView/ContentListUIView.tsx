@@ -90,8 +90,7 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
               title={label.join('')}
               selected={model.currentIndex === index}
               onClick={() => onAction({type: 'focus', path: dataPath})}
-              onContextMenu={(e) => openContextMenu(index, e)}
-            >
+              onContextMenu={(e: React.MouseEvent<HTMLElement>) => openContextMenu(index, e)}>
               {/* TODO labelはテンプレートなので、適切なコンポーネントを定義する必要がある */}
               {label}
             </ListItem>

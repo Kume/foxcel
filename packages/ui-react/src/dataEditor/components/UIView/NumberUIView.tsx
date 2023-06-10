@@ -36,7 +36,7 @@ export const NumberUIView: React.FC<Props> = ({model, onAction}) => {
   return (
     <Input
       value={editingText}
-      onChange={(e) => setEditingText(e.target.value)}
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingText(e.target.value)}
       onBlur={() => {
         const action = numberUIModelSetText(model, editingText);
         if (action) {
@@ -112,11 +112,10 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
 
   return (
     <LayoutRootForTableCell
-      onMouseDown={(e) => callbacks.onMouseDown(e, row, col)}
-      onMouseOver={(e) => callbacks.onMouseOver(e, row, col)}
+      onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
+      onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
       onMouseUp={() => textAreaRef.current?.focus()}
-      onDoubleClick={startEdit}
-    >
+      onDoubleClick={startEdit}>
       <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && (
         <BackgroundTextarea
@@ -124,7 +123,7 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
           ref={textAreaRef}
           onChange={changeTextInput}
           onBlur={blur}
-          onKeyDown={(e) => callbacks.onKeyDown(e, isEditing)}
+          onKeyDown={(e: React.KeyboardEvent) => callbacks.onKeyDown(e, isEditing)}
           value={(isEditing && editingText) || ''}
         />
       )}
