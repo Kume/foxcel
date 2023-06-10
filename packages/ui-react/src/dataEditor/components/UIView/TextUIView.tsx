@@ -39,6 +39,19 @@ const Input = styled.input`
   }
 `;
 
+// TODO 次回 InputForMultilineを調整して改行ありのテキストボックスの大きさを正しくする
+
+const InputForMultiline = styled(BackgroundTextarea)`
+  left: 1px;
+  top: 1px;
+  width: calc(100% - 8px);
+  height: 100%;
+  padding: 0 1px;
+  &:focus {
+    border-color: ${({theme}) => theme.color.border.inputFocus};
+  }
+`;
+
 const BackgroundText = styled.p`
   ${({theme}) => inputTextStyle(theme)}
   margin: 0;
@@ -55,18 +68,34 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
   useEffect(() => {
     setValue(model.value ?? '');
   }, [model.value]);
-  return (
-    <LayoutRoot>
-      <InputBox>
-        <BackgroundText>{value || '　'}</BackgroundText>
-        <Input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
-        />
-      </InputBox>
-    </LayoutRoot>
-  );
+  if (model.schema?.multiline) {
+    return (
+      <LayoutRoot>
+        <InputBox>
+          <TextWithBreak text={value} hidden />
+          <InputForMultiline
+            isVisible
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
+          />
+        </InputBox>
+      </LayoutRoot>
+    );
+  } else {
+    return (
+      <LayoutRoot>
+        <InputBox>
+          <BackgroundText>{value || '　'}</BackgroundText>
+          <Input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={(e) => onAction(textUIModelSetText(model, e.target.value))}
+          />
+        </InputBox>
+      </LayoutRoot>
+    );
+  }
 };
 
 type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<TextUIModel, TextUISchema>;

@@ -153,6 +153,10 @@ export const sampleConfig: RootSchemaConfig = {
                 },
               },
             },
+            testA11: {
+              type: 'string',
+              label: 'テストA11複数行テキスト',
+            },
           },
         },
       },
@@ -281,6 +285,11 @@ export const sampleConfig: RootSchemaConfig = {
                 {type: 'text', key: 'testA10a'},
                 {type: 'select', key: 'testA10b'},
               ],
+            },
+            {
+              type: 'text',
+              key: 'testA11',
+              multiline: true,
             },
           ],
         },

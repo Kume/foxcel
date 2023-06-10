@@ -544,6 +544,7 @@ export function parseUISchemaConfig(
         dataSchema: overwriteObject<StringDataSchema>({t: DataSchemaType.String}, resolvedDataSchema, {
           label: config.label,
         }),
+        multiline: config.multiline,
       };
 
     case 'select':

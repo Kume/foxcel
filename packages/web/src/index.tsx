@@ -49,6 +49,10 @@ const initialDataModel = unknownToDataModel({
         testA8_dangling: {testA8a: 'testA8_dang'},
       },
       testA9: ['testA9_one', 'testA5_01', 'invalid'],
+      testA10: {
+        testA10_1: {},
+      },
+      testA11: '改行ありの\nテキストです。',
     },
     testA_value2: {
       testA1: 'aaa2',

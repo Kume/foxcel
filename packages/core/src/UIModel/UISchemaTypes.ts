@@ -48,6 +48,7 @@ export interface TextUISchema extends UISchemaBase {
   readonly key?: UISchemaKey;
   readonly keyFlatten?: undefined;
   readonly dataSchema: StringDataSchema | KeyDataSchema;
+  readonly multiline: boolean | undefined;
 }
 
 export type TabUISchema = {
