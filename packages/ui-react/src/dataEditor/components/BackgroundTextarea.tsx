@@ -16,6 +16,7 @@ export const BackgroundTextarea = styled.textarea<{readonly isVisible: boolean}>
   ${({theme}) => inputTextStyle(theme)}
 
   border: none;
+  resize: none;
   &:focus {
     outline: none;
   }
