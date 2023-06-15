@@ -8,15 +8,30 @@ import {DataMapperConfig, DataMapperNodeConfig} from '..';
 /**
  * ファイルパスとそこから読み出したデータを記録しておく木構造です。
  * 読み出した時点のファイル内容を記録し、保存時に差分を検出するのが主な利用目的です。
+ * ファイルシステム上に実際に保存された構造と同じ構造と一致した形で生成されます。
+ * (childrenのキーはファイル名、またはディレクトリ名となります。)
  */
 export type FileDataMapNode<T> = {
   readonly data?: T;
+
+  /**
+   * DirtyFileMapNodeから復元したときに付与されるフラグで、前回シリアライズ時に既に更新済みだったことを示します。
+   */
+  readonly isDirty?: boolean;
   readonly children?: {readonly [key: string]: FileDataMapNode<T>};
 };
+
+export interface DirtyFileMapNode {
+  readonly isDirty?: boolean;
+  readonly children?: Record<string, DirtyFileMapNode>;
+}
 
 /**
  * FileDataMapNodeをシリアライズするためデータを除外した型です。
  * DataMapper のmapDataメソッドでFileDataMapNodeに復元します。
+ *
+ * 追記 : 編集中のデータを保存するという点については、「何を保存しなければならないか = dirtyなデータは何か」なので、
+ * その点のみを記録すべきでは？
  */
 export type FileMapNode = {
   readonly children?: {readonly [key: string]: FileMapNode};
@@ -29,6 +44,7 @@ type WritableFileDataMapNode<T> = {
 
 type MarkingFileDataMapNode<T> = {
   data?: T;
+  isDirty?: boolean;
   children?: {[key: string]: MarkingFileDataMapNode<T>};
   isMarked?: true;
 };
@@ -111,18 +127,14 @@ function setModelForFilePath<T>(
 }
 
 function toMarkingFileDataMapNode<T>(origin: FileDataMapNode<T>): MarkingFileDataMapNode<T> {
-  const marking: MarkingFileDataMapNode<T> = {};
-  if (origin.data) {
-    marking.data = origin.data;
-  }
+  let children: {[key: string]: MarkingFileDataMapNode<T>} | undefined;
   if (origin.children) {
-    const children: {[key: string]: MarkingFileDataMapNode<T>} = {};
+    children = {};
     for (const key of Object.keys(origin.children)) {
       children[key] = toMarkingFileDataMapNode(origin.children[key]);
     }
-    marking.children = children;
   }
-  return marking;
+  return {data: origin.data, isDirty: origin.isDirty, children};
 }
 
 async function deleteUnmarkedFile<T>(
@@ -203,6 +215,11 @@ interface StorageAccess<T> {
 abstract class MappingNode extends MappingNodeBase {
   protected _directoryPath: readonly string[];
 
+  /**
+   *
+   * @param path 保存対象のデータパス
+   * @param directoryPath ファイルシステム上の親ノードからの相対パス
+   */
   public constructor(path: readonly string[], directoryPath: readonly string[]) {
     super(path);
     this._directoryPath = directoryPath;
@@ -330,6 +347,12 @@ class MapMappingNode<T> extends MappingNode {
 export class SingleMappingNode<T> extends MappingNode {
   private _fileName: string;
 
+  /**
+   *
+   * @param path 保存対象のデータパス
+   * @param directoryPath ファイルシステム上の親ノードからの相対パス
+   * @param fileName
+   */
   public constructor(path: readonly string[], directoryPath: Array<string>, fileName: string) {
     super(path, directoryPath);
     this._fileName = fileName;
@@ -453,7 +476,10 @@ export default class DataMapper extends MappingNodeBase {
     model = await this.saveChildrenAsync(markingNode, nextRoot, model, [], [], storageAccess);
     const raw = storageDataTrait.convertBack(model);
     const rootNodeModel = originNode.children?.[this.indexFileName]?.data;
-    if (rootNodeModel !== undefined && !storageDataTrait.modelEquals(rootNodeModel, originalModel)) {
+    if (
+      rootNodeModel !== undefined &&
+      (originNode?.isDirty || !storageDataTrait.modelEquals(rootNodeModel, originalModel))
+    ) {
       await storage.saveAsync([this.indexFileName], formatter.format(raw));
       setModelForFilePath(nextRoot, originalModel, [this.indexFileName]);
     }

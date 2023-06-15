@@ -5,7 +5,7 @@ import {RootView} from '@foxcel/ui-react';
 import {Theme} from '@foxcel/ui-react/dist/types';
 import {ThemeProvider} from 'styled-components';
 import {BackToFrontMessage, FrontToBackMessage} from '@foxcel/core/dist/messages';
-import {DataModel, unknownToDataModel} from '@foxcel/core';
+import {DataMapperConfig, DataModel, unknownToDataModel} from '@foxcel/core';
 import DataMapper, {FileDataMapNode} from '@foxcel/core/dist/Storage/DataMapper';
 import {dataModelStorageDataTrait} from '@foxcel/core/dist/DataModel/DataModelStorageDataTrait';
 import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema';
@@ -59,7 +59,7 @@ const defaultTheme: Theme = {
 interface InitialLoadItems {
   readonly data: DataModel;
   readonly rawData: unknown;
-  readonly dataMapper: DataMapper;
+  readonly dataMapperConfig: DataMapperConfig | undefined;
   readonly uiSchema: UISchemaExcludeRecursive;
   readonly dataSchema: DataSchemaExcludeRecursive;
   readonly restoredActions?: AppAction[];
@@ -73,7 +73,7 @@ function sendMessage(message: FrontToBackMessage): void {
 interface SavedState {
   readonly initial: {
     readonly rawData: unknown;
-    readonly dataMapper: DataMapper;
+    readonly dataMapperConfig: DataMapperConfig | undefined;
     readonly uiSchema: UISchemaExcludeRecursive;
   };
   readonly actions: AppAction[];
@@ -101,7 +101,7 @@ const App: React.FC = () => {
           setLoaded({
             data: dataModel,
             rawData: message.data,
-            dataMapper,
+            dataMapperConfig: message.dataMapperConfig,
             dataSchema: message.uiSchema.dataSchema,
             uiSchema: message.uiSchema,
           });
@@ -121,7 +121,7 @@ const App: React.FC = () => {
       setLoaded({
         data: unknownToDataModel(restoredState.initial.rawData),
         rawData: restoredState.initial.rawData,
-        dataMapper: restoredState.initial.dataMapper,
+        dataMapperConfig: restoredState.initial.dataMapperConfig,
         dataSchema: restoredState.initial.uiSchema.dataSchema,
         uiSchema: restoredState.initial.uiSchema,
         restoredActions: restoredState.actions,
@@ -134,7 +134,8 @@ const App: React.FC = () => {
       if (!loaded || !lastFileMap) return;
 
       const storage = new WriteOnlyRemoteDataStorage();
-      const nextFileMap = await loaded.dataMapper.saveAsync(
+      const dataMapper = DataMapper.build(loaded.dataMapperConfig);
+      const nextFileMap = await dataMapper.saveAsync(
         lastFileMap,
         model,
         storage,
@@ -158,7 +159,7 @@ const App: React.FC = () => {
           actions: state.actions,
           initial: {
             rawData: loaded.rawData,
-            dataMapper: loaded.dataMapper,
+            dataMapperConfig: loaded.dataMapperConfig,
             uiSchema: loaded.uiSchema,
           },
         });
