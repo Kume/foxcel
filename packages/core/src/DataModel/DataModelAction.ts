@@ -81,3 +81,11 @@ export function applyDataModelAction(
       return model === undefined ? undefined : deleteFromDataModel(action.path, action.at, model, schemaContext);
   }
 }
+
+export function applyDataModelActions(
+  model: DataModel | undefined,
+  schema: DataSchemaExcludeRecursive | undefined,
+  actions: DataModelAction[],
+): DataModel | undefined {
+  return actions.reduce((prevModel, action) => applyDataModelAction(model, schema, action), model);
+}

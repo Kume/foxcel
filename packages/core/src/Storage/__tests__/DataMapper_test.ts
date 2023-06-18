@@ -2,6 +2,9 @@ import ObjectDataStorage from '../ObjectDataStorage';
 import DataMapper, {FileDataMapNode} from '../DataMapper';
 import {RawStorageDataTrait} from '../StorageDataTrait';
 import {DataMapperConfig} from '../../common/ConfigTypes';
+import {unknownToDataModel} from '../../DataModel/DataModel';
+import {applyDataModelActions, DataModelAction} from '../../DataModel/DataModelAction';
+import {dataModelStorageDataTrait} from '../../DataModel/DataModelStorageDataTrait';
 
 describe('Unit Test for DataMapper', () => {
   describe('Common save and load test', () => {
@@ -23,7 +26,7 @@ describe('Unit Test for DataMapper', () => {
         },
       ],
       [
-        'Anther file with single type',
+        'single type',
         {
           mapperConfig: {
             children: [{type: 'single', fileName: 'sub.yml', path: 'b', directory: ''}],
@@ -34,6 +37,22 @@ describe('Unit Test for DataMapper', () => {
             'sub.yml': 'c: 9\n',
           },
           fileMap: {children: {'index.yml': {data: {a: 2, b: {c: 9}}}, 'sub.yml': {data: {c: 9}}}},
+        },
+      ],
+      [
+        'single type with directory',
+        {
+          mapperConfig: {
+            children: [{type: 'single', fileName: 'sub.yml', path: 'b', directory: 'sub_dir'}],
+          },
+          data: {a: 2, b: {c: 9}},
+          file: {
+            'index.yml': 'a: 2\nb: sub_dir/sub.yml\n',
+            'sub_dir/sub.yml': 'c: 9\n',
+          },
+          fileMap: {
+            children: {'index.yml': {data: {a: 2, b: {c: 9}}}, sub_dir: {children: {'sub.yml': {data: {c: 9}}}}},
+          },
         },
       ],
       [
@@ -149,6 +168,10 @@ describe('Unit Test for DataMapper', () => {
         const fileMap = await mapper.saveAsync({}, testDatum.data, storage, RawStorageDataTrait);
         expect(storage.data).toEqual(testDatum.file);
         expect(fileMap).toEqual(testDatum.fileMap);
+
+        // makeFileDataMapでも同じfileMapを生成する必要がある
+        const fileMapWithoutSave = mapper.makeFileDataMap(testDatum.data, RawStorageDataTrait);
+        expect(fileMapWithoutSave).toEqual(testDatum.fileMap);
       });
 
       it(`Load with [${key}]`, async () => {
@@ -162,7 +185,7 @@ describe('Unit Test for DataMapper', () => {
       });
     });
 
-    it('should delete file for deleted data', async () => {
+    it('When data is deleted, the corresponding file should also be deleted.', async () => {
       const childData = {d: {e: 20}};
       const data = {a: {b: childData, c: 9}};
       const config: DataMapperConfig = {
@@ -195,5 +218,158 @@ describe('Unit Test for DataMapper', () => {
       expect(storage.writeHistory.length).toBe(1); // index.yml
       expect(storage.deleteHistory).toEqual([['a', 'b.yml']]);
     });
+  });
+
+  describe('データの差分に応じて必要十分なデータ更新が行われることの確認', () => {
+    const complexMapper = DataMapper.build({
+      children: [
+        {
+          type: 'map',
+          path: '_map',
+          directory: '__map',
+          children: [
+            {type: 'single', path: 'single_1', fileName: 'single_1.yml'},
+            {type: 'map', path: 'map_a', directory: 'map_a'},
+          ],
+        },
+        {
+          type: 'single',
+          path: '_single',
+          fileName: 'single.yml',
+          directory: '_single_dir',
+          children: [
+            {type: 'map', path: 'map_b', directory: 'map_b'},
+            {type: 'single', path: 'single_2', fileName: 'single_2.yml'},
+          ],
+        },
+        {
+          type: 'single',
+          path: '_single_3',
+          fileName: 'single_3.yml',
+        },
+      ],
+    });
+
+    const baseData = unknownToDataModel({
+      _map: {
+        a: {
+          single_1: 'a_single1_content',
+          map_a: {
+            a: 'a_a_content',
+            b: 'a_b_content',
+            c: 'a_c_content',
+          },
+        },
+        b: {
+          single_1: 'b_single1_content',
+          map_a: {
+            a: 'b_a_content',
+            b: 'b_b_content',
+          },
+        },
+        c: 'map_c_content',
+      },
+      _single: {
+        single_2: 'single2_content',
+        map_b: {
+          a: 'single_a_content',
+          b: 'single_b_content',
+        },
+      },
+      _single_3: 'single3_content',
+    });
+
+    interface TestData {
+      readonly label: string;
+      readonly initialDataActions?: DataModelAction[];
+      readonly mainDataActions?: DataModelAction[];
+      readonly expectedWriteHistory?: ObjectDataStorage['writeHistory'];
+      readonly expectedDeleteHistory?: ObjectDataStorage['deleteHistory'];
+    }
+
+    const testData: readonly TestData[] = [
+      {
+        label: 'Not updated',
+        expectedWriteHistory: [],
+      },
+      {
+        label: 'Add simple single type',
+        initialDataActions: [{type: 'delete', path: {components: ['_single_3']}}],
+        mainDataActions: [
+          {type: 'set', path: {components: ['_single_3']}, data: unknownToDataModel('added_single3_content')},
+        ],
+        expectedWriteHistory: [
+          [['single_3.yml'], 'added_single3_content\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+      },
+      {
+        label: 'Update simple single type',
+        mainDataActions: [
+          {type: 'set', path: {components: ['_single_3']}, data: unknownToDataModel('updated_single3_content')},
+        ],
+        expectedWriteHistory: [
+          [['single_3.yml'], 'updated_single3_content\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+      },
+      {
+        label: 'Delete simple single type',
+        mainDataActions: [{type: 'delete', path: {components: ['_single_3']}}],
+        expectedWriteHistory: [
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+        expectedDeleteHistory: [['single_3.yml']],
+      },
+      {
+        label: 'Add simple map type',
+        mainDataActions: [{type: 'set', path: {components: ['_map', 'x']}, data: unknownToDataModel('added_map_x')}],
+        expectedWriteHistory: [
+          [['__map', 'x.yml'], 'added_map_x\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+      },
+      {
+        label: 'Update simple map type',
+        mainDataActions: [{type: 'set', path: {components: ['_map', 'c']}, data: unknownToDataModel('updated_map_c')}],
+        expectedWriteHistory: [
+          [['__map', 'c.yml'], 'updated_map_c\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+      },
+    ];
+
+    describe.each(testData)(
+      `ファイル更新確認 - $label`,
+      ({initialDataActions, mainDataActions, expectedWriteHistory, expectedDeleteHistory}) => {
+        const initialModel = initialDataActions
+          ? applyDataModelActions(baseData, undefined, initialDataActions)
+          : baseData;
+        const initialMap = complexMapper.makeFileDataMap(initialModel, dataModelStorageDataTrait);
+        const updatedModel = mainDataActions
+          ? applyDataModelActions(initialModel, undefined, mainDataActions)
+          : initialModel;
+
+        it('通常更新-更新履歴', async () => {
+          const storage = new ObjectDataStorage();
+          await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
+          expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
+        });
+
+        it('通常更新-削除履歴', async () => {
+          const storage = new ObjectDataStorage();
+          await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
+          expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
+        });
+
+        // TODO
+        // it('一度シリアライズした後更新', async () => {
+        //   const storage = new ObjectDataStorage();
+        //   await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
+        //   expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
+        //   expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
+        // });
+      },
+    );
   });
 });
