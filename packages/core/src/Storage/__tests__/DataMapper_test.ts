@@ -2,7 +2,7 @@ import ObjectDataStorage from '../ObjectDataStorage';
 import DataMapper, {FileDataMapNode} from '../DataMapper';
 import {RawStorageDataTrait} from '../StorageDataTrait';
 import {DataMapperConfig} from '../../common/ConfigTypes';
-import {unknownToDataModel} from '../../DataModel/DataModel';
+import {dataModelToJson, unknownToDataModel} from '../../DataModel/DataModel';
 import {applyDataModelActions, DataModelAction} from '../../DataModel/DataModelAction';
 import {dataModelStorageDataTrait} from '../../DataModel/DataModelStorageDataTrait';
 
@@ -261,7 +261,6 @@ describe('Unit Test for DataMapper', () => {
           },
         },
         b: {
-          single_1: 'b_single1_content',
           map_a: {
             a: 'b_a_content',
             b: 'b_b_content',
@@ -292,6 +291,7 @@ describe('Unit Test for DataMapper', () => {
         label: 'Not updated',
         expectedWriteHistory: [],
       },
+      // TODO todo ルートデータのみが変更されたときのテストケース
       {
         label: 'Add simple single type',
         initialDataActions: [{type: 'delete', path: {components: ['_single_3']}}],
@@ -337,6 +337,90 @@ describe('Unit Test for DataMapper', () => {
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
       },
+      {
+        label: 'Delete simple map type',
+        mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
+        expectedWriteHistory: [
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+        expectedDeleteHistory: [['__map', 'c.yml']],
+      },
+      {
+        label: 'Add single type under map type',
+        mainDataActions: [
+          {
+            type: 'set',
+            path: {components: ['_map', 'b', 'single_1']},
+            data: unknownToDataModel('added_single1_content'),
+          },
+        ],
+        expectedWriteHistory: [
+          [['__map', 'b', 'single_1.yml'], 'added_single1_content\n'],
+          // 現状は更新対象より親のファイルはすべて更新される仕様
+          [['__map', 'b.yml'], expect.anything()],
+          [['index.yml'], expect.anything()],
+        ],
+      },
+      {
+        label: 'Update single type under map type',
+        mainDataActions: [
+          {
+            type: 'set',
+            path: {components: ['_map', 'a', 'single_1']},
+            data: unknownToDataModel('updated_single1_content'),
+          },
+        ],
+        expectedWriteHistory: [
+          [['__map', 'a', 'single_1.yml'], 'updated_single1_content\n'],
+          // 現状は更新対象より親のファイルはすべて更新される仕様
+          [['__map', 'a.yml'], expect.anything()],
+          [['index.yml'], expect.anything()],
+        ],
+      },
+      {
+        label: 'Delete single type under map type',
+        mainDataActions: [{type: 'delete', path: {components: ['_map', 'a', 'single_1']}}],
+        expectedWriteHistory: [
+          // 現状は更新対象より親のファイルはすべて更新される仕様
+          [['__map', 'a.yml'], expect.anything()],
+          [['index.yml'], expect.anything()],
+        ],
+        expectedDeleteHistory: [['__map', 'a', 'single_1.yml']],
+      },
+      {
+        label: 'Add map type under map type',
+        mainDataActions: [
+          {type: 'set', path: {components: ['_map', 'a', 'map_a', 'x']}, data: unknownToDataModel('added_map_x')},
+        ],
+        expectedWriteHistory: [
+          [['__map', 'a', 'map_a', 'x.yml'], 'added_map_x\n'],
+          // 現状は更新対象より親のファイルはすべて更新される仕様
+          [['__map', 'a.yml'], expect.anything()],
+          [['index.yml'], expect.anything()],
+        ],
+      },
+      {
+        label: 'Update map type under map type',
+        mainDataActions: [
+          {type: 'set', path: {components: ['_map', 'a', 'map_a', 'a']}, data: unknownToDataModel('updated_map_c')},
+        ],
+        expectedWriteHistory: [
+          [['__map', 'a', 'map_a', 'a.yml'], 'updated_map_c\n'],
+          // 現状は更新対象より親のファイルはすべて更新される仕様
+          [['__map', 'a.yml'], expect.anything()],
+          [['index.yml'], expect.anything()],
+        ],
+      },
+      {
+        label: 'Delete map type under map type',
+        mainDataActions: [{type: 'delete', path: {components: ['_map', 'a', 'map_a', 'a']}}],
+        expectedWriteHistory: [
+          // 現状は更新対象より親のファイルはすべて更新される仕様
+          [['__map', 'a.yml'], expect.anything()],
+          [['index.yml'], expect.anything()],
+        ],
+        expectedDeleteHistory: [['__map', 'a', 'map_a', 'a.yml']],
+      },
     ];
 
     describe.each(testData)(
@@ -362,13 +446,19 @@ describe('Unit Test for DataMapper', () => {
           expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
         });
 
-        // TODO
-        // it('一度シリアライズした後更新', async () => {
-        //   const storage = new ObjectDataStorage();
-        //   await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
-        //   expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
-        //   expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
-        // });
+        it('一度シリアライズした後更新', async () => {
+          const dirtyNode = JSON.parse(
+            JSON.stringify(complexMapper.makeDirtyFileMapNode(initialMap, updatedModel, dataModelStorageDataTrait)),
+          );
+          const deserializedModel = unknownToDataModel(
+            updatedModel === undefined ? undefined : dataModelToJson(updatedModel),
+          );
+          const restoredMap = complexMapper.makeFileDataMap(deserializedModel, dataModelStorageDataTrait, dirtyNode);
+          const storage = new ObjectDataStorage();
+          await complexMapper.saveAsync(restoredMap, deserializedModel, storage, dataModelStorageDataTrait);
+          expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
+          expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
+        });
       },
     );
   });

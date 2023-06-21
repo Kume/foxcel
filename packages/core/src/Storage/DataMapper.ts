@@ -27,7 +27,7 @@ export interface DirtyFileMapNode {
 }
 
 interface WritableDirtyFileMapNode {
-  isDirty?: boolean;
+  isDirty?: true;
   children?: Record<string, WritableDirtyFileMapNode>;
 }
 
@@ -232,6 +232,19 @@ abstract class MappingNodeBase {
     return parentModel;
   }
 
+  protected makeChildrenDirtyNode<T>(
+    prevParentNode: FileDataMapNode<T>,
+    parentDirtyNode: WritableDirtyFileMapNode,
+    parentData: T,
+    storageDataTrait: StorageDataTrait<T>,
+  ): boolean {
+    let hasChildren = false;
+    for (const config of this.childConfigs) {
+      hasChildren = hasChildren || config.makeDirtyNode(prevParentNode, parentDirtyNode, parentData, storageDataTrait);
+    }
+    return hasChildren;
+  }
+
   protected makeChildrenFileDataMap<T>(
     parentNode: WritableFileDataMapNode<T>,
     parentModel: T,
@@ -284,6 +297,13 @@ abstract class MappingNode extends MappingNodeBase {
     reversePath: readonly string[],
     storageAccess: StorageAccess<T>,
   ): Promise<T>;
+
+  public abstract makeDirtyNode<T>(
+    prevParentNode: FileDataMapNode<T>,
+    parentDirtyNode: WritableDirtyFileMapNode,
+    parentData: T,
+    storageDataTrait: StorageDataTrait<T>,
+  ): boolean;
 
   public abstract loadAsync<T>(
     parentRawData: unknown,
@@ -345,6 +365,27 @@ class MapMappingNode<T> extends MappingNode {
       parentModel = storageAccess.modelManager.setForPath(parentModel, filePathModel, [...this.path, key]);
     });
     return parentModel;
+  }
+
+  makeDirtyNode<T>(
+    prevParentNode: FileDataMapNode<T>,
+    parentDirtyNode: WritableDirtyFileMapNode,
+    parentData: T,
+    storageDataTrait: StorageDataTrait<T>,
+  ): boolean {
+    // TODO
+    const model = storageDataTrait.getForPath(parentData, this.path);
+    const prevNodeForDirectory = prevParentNode && getNodeForFilePath(prevParentNode, this._directoryPath);
+    const dirtyNodeForDirectory = parentDirtyNode && getNodeForFilePath(parentDirtyNode, this._directoryPath);
+    const dirtyKeys = dirtyNodeForDirectory?.children && new Set<string>(Object.keys(dirtyNodeForDirectory?.children));
+    let hasChildren = false;
+    if (model !== undefined) {
+      storageDataTrait.mapModelForEach(model, (childModel, key) => {
+        const filename = key + '.yml';
+        const childDirtyNode = dirtyNodeForDirectory && getNodeForFilePath(dirtyNodeForDirectory, [filename]);
+      });
+    }
+    return hasChildren;
   }
 
   public makeFileDataMap<T>(
@@ -466,6 +507,16 @@ export class SingleMappingNode<T> extends MappingNode {
     return parentModel;
   }
 
+  makeDirtyNode<T>(
+    prevParentNode: FileDataMapNode<T>,
+    parentDirtyNode: WritableDirtyFileMapNode,
+    parentData: T,
+    storageDataTrait: StorageDataTrait<T>,
+  ): boolean {
+    // TODO
+    return false;
+  }
+
   public makeFileDataMap<T>(
     parentNode: WritableFileDataMapNode<T>,
     parentModel: T,
@@ -556,8 +607,8 @@ export default class DataMapper extends MappingNodeBase {
     const markingNode = toMarkingFileDataMapNode(originNode);
     const storageAccess = {storage, modelManager: storageDataTrait, formatter};
     model = await this.saveChildrenAsync(markingNode, nextRoot, model, [], [], storageAccess);
-    const raw = storageDataTrait.convertBack(model);
     if (shouldSave(storageDataTrait, originNode.children?.[this.indexFileName], originalModel)) {
+      const raw = storageDataTrait.convertBack(model);
       await storage.saveAsync([this.indexFileName], formatter.format(raw));
       setModelForFilePath(nextRoot, originalModel, [this.indexFileName], undefined);
     }
@@ -566,6 +617,19 @@ export default class DataMapper extends MappingNodeBase {
     }
     await deleteUnmarkedFile(markingNode, storage);
     return nextRoot;
+  }
+
+  public makeDirtyFileMapNode<T>(
+    prevNode: FileDataMapNode<T>,
+    currentData: T,
+    storageDataTrait: StorageDataTrait<T>,
+  ): DirtyFileMapNode {
+    const nextNode: WritableDirtyFileMapNode = {};
+    this.makeChildrenDirtyNode(prevNode, nextNode, currentData, storageDataTrait);
+    if (shouldSave(storageDataTrait, prevNode.children?.[this.indexFileName], currentData)) {
+      nextNode.isDirty = true;
+    }
+    return nextNode;
   }
 
   public makeFileDataMap<T>(
@@ -578,12 +642,6 @@ export default class DataMapper extends MappingNodeBase {
     setModelForFilePath(rootNode, dataModel, [this.indexFileName], dirtyNode?.children?.[this.indexFileName].isDirty);
     return rootNode;
   }
-
-  // public makeDirtyFileMapNode<T>(
-  //   prevNode: FileDataMapNode<T>,
-  //   currentData: T,
-  //   storageDataTrait: StorageDataTrait<T>,
-  // ): DirtyFileMapNode {}
 
   public async loadAsync<T>(
     storage: DataStorage,
