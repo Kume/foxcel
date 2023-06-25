@@ -282,6 +282,7 @@ describe('Unit Test for DataMapper', () => {
         },
       },
       _single_3: 'single3_content',
+      root_data: 'root_content',
     });
 
     interface TestData {
@@ -298,7 +299,13 @@ describe('Unit Test for DataMapper', () => {
         label: 'Not updated',
         expectedWriteHistory: [],
       },
-      // TODO todo ルートデータのみが変更されたときのテストケース
+      {
+        label: 'Update root content',
+        mainDataActions: [
+          {type: 'set', path: {components: ['root_data']}, data: unknownToDataModel('updated_root_content')},
+        ],
+        expectedWriteHistory: [[['index.yml'], expect.anything()]],
+      },
       {
         label: 'Add simple single type',
         initialDataActions: [{type: 'delete', path: {components: ['_single_3']}}],
@@ -351,6 +358,39 @@ describe('Unit Test for DataMapper', () => {
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
         expectedDeleteHistory: [['__map', 'c.yml']],
+      },
+      {
+        label: '複数の子ファイルを持つmapの要素を削除',
+        mainDataActions: [{type: 'delete', path: {components: ['_map', 'a']}}],
+        expectedWriteHistory: [
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+        expectedDeleteHistory: [
+          ['__map', 'a.yml'],
+          ['__map', 'a', 'single_1.yml'],
+          ['__map', 'a', 'map_a', 'a.yml'],
+          ['__map', 'a', 'map_a', 'b.yml'],
+          ['__map', 'a', 'map_a', 'c.yml'],
+        ],
+      },
+      {
+        label: '複数の子ファイルを生成するデータを追加',
+        mainDataActions: [
+          {
+            type: 'set',
+            path: {components: ['_map', 'x']},
+            data: unknownToDataModel({
+              single_1: 'new_single_content',
+              map_a: {z: 'new_map_z_value'},
+            }),
+          },
+        ],
+        expectedWriteHistory: [
+          [['__map', 'x', 'single_1.yml'], 'new_single_content\n'],
+          [['__map', 'x', 'map_a', 'z.yml'], 'new_map_z_value\n'],
+          [['__map', 'x.yml'], 'single_1: x/single_1.yml\nmap_a:\n  z: map_a/z.yml\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
       },
       {
         label: 'Add single type under map type',
@@ -430,8 +470,12 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'シリアライズを挟んでmapの2つの要素を更新',
-        mainDataActions: [{type: 'set', path: {components: ['_map', 'c']}, data: 'updated_c_content'}],
-        afterDeserializeActions: [{type: 'set', path: {components: ['_map', 'd']}, data: 'updated_d_content'}],
+        mainDataActions: [
+          {type: 'set', path: {components: ['_map', 'c']}, data: unknownToDataModel('updated_c_content')},
+        ],
+        afterDeserializeActions: [
+          {type: 'set', path: {components: ['_map', 'd']}, data: unknownToDataModel('updated_d_content')},
+        ],
         expectedWriteHistory: [
           [['__map', 'c.yml'], 'updated_c_content\n'],
           [['__map', 'd.yml'], 'updated_d_content\n'],
@@ -453,7 +497,9 @@ describe('Unit Test for DataMapper', () => {
       {
         label: 'シリアライズを挟んでmapの同じ要素を削除=>作成',
         mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
-        afterDeserializeActions: [{type: 'set', path: {components: ['_map', 'c']}, data: 'added_c_content'}],
+        afterDeserializeActions: [
+          {type: 'set', path: {components: ['_map', 'c']}, data: unknownToDataModel('added_c_content')},
+        ],
         expectedWriteHistory: [
           [['__map', 'c.yml'], 'added_c_content\n'],
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
