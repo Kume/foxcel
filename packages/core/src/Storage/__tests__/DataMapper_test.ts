@@ -1,5 +1,5 @@
 import ObjectDataStorage from '../ObjectDataStorage';
-import DataMapper, {FileDataMapNode} from '../DataMapper';
+import DataMapper, {FileDataMapNode, fileMapNodeToDebugString, fileStatusMapNodeToDebugString} from '../DataMapper';
 import {RawStorageDataTrait} from '../StorageDataTrait';
 import {DataMapperConfig} from '../../common/ConfigTypes';
 import {dataModelToJson, unknownToDataModel} from '../../DataModel/DataModel';
@@ -22,7 +22,7 @@ describe('Unit Test for DataMapper', () => {
           mapperConfig: {children: []},
           data: {a: 2},
           file: {'index.yml': 'a: 2\n'},
-          fileMap: {children: {'index.yml': {data: {a: 2}}}},
+          fileMap: {children: {'index.yml': {data: {a: 2}, children: {}}}},
         },
       ],
       [
@@ -36,7 +36,9 @@ describe('Unit Test for DataMapper', () => {
             'index.yml': 'a: 2\nb: sub.yml\n',
             'sub.yml': 'c: 9\n',
           },
-          fileMap: {children: {'index.yml': {data: {a: 2, b: {c: 9}}}, 'sub.yml': {data: {c: 9}}}},
+          fileMap: {
+            children: {'index.yml': {data: {a: 2, b: {c: 9}}, children: {}}, 'sub.yml': {data: {c: 9}, children: {}}},
+          },
         },
       ],
       [
@@ -51,7 +53,10 @@ describe('Unit Test for DataMapper', () => {
             'sub_dir/sub.yml': 'c: 9\n',
           },
           fileMap: {
-            children: {'index.yml': {data: {a: 2, b: {c: 9}}}, sub_dir: {children: {'sub.yml': {data: {c: 9}}}}},
+            children: {
+              'index.yml': {data: {a: 2, b: {c: 9}}, children: {}},
+              sub_dir: {children: {'sub.yml': {data: {c: 9}, children: {}}}},
+            },
           },
         },
       ],
@@ -70,12 +75,12 @@ describe('Unit Test for DataMapper', () => {
           },
           fileMap: {
             children: {
-              'index.yml': {data: {z: {a: 2, b: 5, c: 9}}},
+              'index.yml': {data: {z: {a: 2, b: 5, c: 9}}, children: {}},
               sub: {
                 children: {
-                  'a.yml': {data: 2},
-                  'b.yml': {data: 5},
-                  'c.yml': {data: 9},
+                  'a.yml': {data: 2, children: {}},
+                  'b.yml': {data: 5, children: {}},
+                  'c.yml': {data: 9, children: {}},
                 },
               },
             },
@@ -104,14 +109,14 @@ describe('Unit Test for DataMapper', () => {
           },
           fileMap: {
             children: {
-              'index.yml': {data: {z: {a: 2, c: {d: 20, e: 97}}}},
+              'index.yml': {data: {z: {a: 2, c: {d: 20, e: 97}}}, children: {}},
               sub: {
                 children: {
-                  'a.yml': {data: 2},
-                  'c.yml': {data: {d: 20, e: 97}},
+                  'a.yml': {data: 2, children: {}},
+                  'c.yml': {data: {d: 20, e: 97}, children: {}},
                   c: {
                     children: {
-                      'subsub.yml': {data: 20},
+                      'subsub.yml': {data: 20, children: {}},
                     },
                   },
                 },
@@ -143,14 +148,14 @@ describe('Unit Test for DataMapper', () => {
           },
           fileMap: {
             children: {
-              'index.yml': {data: {a: {c: {d: 20, e: 97}}, b: 5}},
+              'index.yml': {data: {a: {c: {d: 20, e: 97}}, b: 5}, children: {}},
               sub: {
                 children: {
-                  'index.yml': {data: {c: {d: 20, e: 97}}},
+                  'index.yml': {data: {c: {d: 20, e: 97}}, children: {}},
                   subdir: {
                     children: {
-                      'd.yml': {data: 20},
-                      'e.yml': {data: 97},
+                      'd.yml': {data: 20, children: {}},
+                      'e.yml': {data: 97, children: {}},
                     },
                   },
                 },
@@ -165,7 +170,7 @@ describe('Unit Test for DataMapper', () => {
       it(`Save with [${key}]`, async () => {
         const storage = new ObjectDataStorage();
         const mapper = DataMapper.build(testDatum.mapperConfig);
-        const fileMap = await mapper.saveAsync({}, testDatum.data, storage, RawStorageDataTrait);
+        const fileMap = await mapper.saveAsync({children: {}}, testDatum.data, storage, RawStorageDataTrait);
         expect(storage.data).toEqual(testDatum.file);
         expect(fileMap).toEqual(testDatum.fileMap);
 
@@ -195,7 +200,7 @@ describe('Unit Test for DataMapper', () => {
       };
       const storage = new ObjectDataStorage();
       const mapper = DataMapper.build(config);
-      const firstNode = await mapper.saveAsync({}, data, storage, RawStorageDataTrait);
+      const firstNode = await mapper.saveAsync({children: {}}, data, storage, RawStorageDataTrait);
       expect(storage.data['a/b/d.yml']).not.toBeUndefined();
       expect(storage.data['a/b.yml']).not.toBeUndefined();
       expect(storage.data['a/c.yml']).not.toBeUndefined();
@@ -267,6 +272,7 @@ describe('Unit Test for DataMapper', () => {
           },
         },
         c: 'map_c_content',
+        d: 'map_d_content',
       },
       _single: {
         single_2: 'single2_content',
@@ -282,6 +288,7 @@ describe('Unit Test for DataMapper', () => {
       readonly label: string;
       readonly initialDataActions?: DataModelAction[];
       readonly mainDataActions?: DataModelAction[];
+      readonly afterDeserializeActions?: DataModelAction[];
       readonly expectedWriteHistory?: ObjectDataStorage['writeHistory'];
       readonly expectedDeleteHistory?: ObjectDataStorage['deleteHistory'];
     }
@@ -421,11 +428,30 @@ describe('Unit Test for DataMapper', () => {
         ],
         expectedDeleteHistory: [['__map', 'a', 'map_a', 'a.yml']],
       },
+      {
+        label: 'シリアライズを挟んで2つのmapの要素を削除',
+        mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
+        afterDeserializeActions: [{type: 'delete', path: {components: ['_map', 'd']}}],
+        expectedWriteHistory: [
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+        expectedDeleteHistory: [
+          ['__map', 'd.yml'],
+          ['__map', 'c.yml'],
+        ],
+      },
     ];
 
     describe.each(testData)(
       `ファイル更新確認 - $label`,
-      ({initialDataActions, mainDataActions, expectedWriteHistory, expectedDeleteHistory}) => {
+      ({
+        label,
+        initialDataActions,
+        mainDataActions,
+        afterDeserializeActions,
+        expectedWriteHistory,
+        expectedDeleteHistory,
+      }) => {
         const initialModel = initialDataActions
           ? applyDataModelActions(baseData, undefined, initialDataActions)
           : baseData;
@@ -434,28 +460,70 @@ describe('Unit Test for DataMapper', () => {
           ? applyDataModelActions(initialModel, undefined, mainDataActions)
           : initialModel;
 
-        it('通常更新-更新履歴', async () => {
-          const storage = new ObjectDataStorage();
-          await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
-          expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
-        });
+        if (!afterDeserializeActions) {
+          it('通常更新-更新履歴', async () => {
+            const storage = new ObjectDataStorage();
+            await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
+            expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
+          });
 
-        it('通常更新-削除履歴', async () => {
+          it('通常更新-削除履歴', async () => {
+            const storage = new ObjectDataStorage();
+            await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
+            expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
+          });
+        }
+
+        it('一度シリアライズした後更新', async () => {
+          const statusNode = JSON.parse(
+            JSON.stringify(
+              complexMapper.makeFileDataStatusMapNode(initialMap, updatedModel, dataModelStorageDataTrait),
+            ),
+          );
+          // console.log(`---- ${label}`, fileStatusMapNodeToDebugString(statusNode));
+          const deserializedModel = unknownToDataModel(
+            updatedModel === undefined ? undefined : dataModelToJson(updatedModel),
+          );
+          const restoredMap = complexMapper.remakeFileDataMap(deserializedModel, dataModelStorageDataTrait, statusNode);
+          // console.log(`---- ${label}`, fileMapNodeToDebugString(restoredMap));
+          const updatedModel2 = afterDeserializeActions
+            ? applyDataModelActions(deserializedModel, undefined, afterDeserializeActions)
+            : deserializedModel;
           const storage = new ObjectDataStorage();
-          await complexMapper.saveAsync(initialMap, updatedModel, storage, dataModelStorageDataTrait);
+          await complexMapper.saveAsync(restoredMap, updatedModel2, storage, dataModelStorageDataTrait);
+          expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
           expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
         });
 
-        it('一度シリアライズした後更新', async () => {
-          const dirtyNode = JSON.parse(
-            JSON.stringify(complexMapper.makeDirtyFileMapNode(initialMap, updatedModel, dataModelStorageDataTrait)),
+        it('二度シリアライズした後更新', async () => {
+          const statusNode = JSON.parse(
+            JSON.stringify(
+              complexMapper.makeFileDataStatusMapNode(initialMap, updatedModel, dataModelStorageDataTrait),
+            ),
           );
           const deserializedModel = unknownToDataModel(
             updatedModel === undefined ? undefined : dataModelToJson(updatedModel),
           );
-          const restoredMap = complexMapper.makeFileDataMap(deserializedModel, dataModelStorageDataTrait, dirtyNode);
+          const restoredMap = complexMapper.remakeFileDataMap(deserializedModel, dataModelStorageDataTrait, statusNode);
+          const statusNode2 = JSON.parse(
+            JSON.stringify(
+              complexMapper.makeFileDataStatusMapNode(restoredMap, deserializedModel, dataModelStorageDataTrait),
+            ),
+          );
+          const updatedModel2 = afterDeserializeActions
+            ? applyDataModelActions(deserializedModel, undefined, afterDeserializeActions)
+            : deserializedModel;
+          const deserializedModel2 = unknownToDataModel(
+            updatedModel2 === undefined ? undefined : dataModelToJson(updatedModel2),
+          );
+          const restoredMap2 = complexMapper.remakeFileDataMap(
+            deserializedModel2,
+            dataModelStorageDataTrait,
+            statusNode2,
+          );
+
           const storage = new ObjectDataStorage();
-          await complexMapper.saveAsync(restoredMap, deserializedModel, storage, dataModelStorageDataTrait);
+          await complexMapper.saveAsync(restoredMap2, deserializedModel2, storage, dataModelStorageDataTrait);
           expect(storage.writeHistory).toEqual(expectedWriteHistory ?? []);
           expect(storage.deleteHistory).toEqual(expectedDeleteHistory ?? []);
         });
