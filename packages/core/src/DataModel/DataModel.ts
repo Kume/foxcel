@@ -111,7 +111,7 @@ export function unknownToDataModel(value: unknown): DataModel {
       } else {
         return {
           t: DataModelType.Map,
-          v: Object.keys(value!)
+          v: Object.keys(value)
             .filter((k) => (value as any)[k] !== undefined)
             .map((k) => [k, generateDataModelId(), unknownToDataModel((value as any)[k])]),
         };
