@@ -4,6 +4,7 @@ import YamlDataFormatter from './YamlDataFormatter';
 import {StorageDataTrait} from './StorageDataTrait';
 import {getForPath, unknownIsObject} from './StorageCommon';
 import {DataMapperConfig, DataMapperNodeConfig} from '..';
+import {has} from 'lodash.pick';
 
 /**
  * ファイルパスとそこから読み出したデータを記録しておく木構造です。
@@ -273,9 +274,10 @@ abstract class MappingNodeBase {
     parentFilePath: readonly string[],
     reversePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T> {
+  ): Promise<[T, boolean]> {
+    let hasChildren = false;
     for (const config of this.childConfigs) {
-      parentModel = await config.saveAsync(
+      const result = await config.saveAsync(
         prevParentNode,
         nextParentNode,
         parentModel,
@@ -283,8 +285,10 @@ abstract class MappingNodeBase {
         reversePath,
         storageAccess,
       );
+      parentModel = result[0];
+      hasChildren ||= result[1];
     }
-    return parentModel;
+    return [parentModel, hasChildren];
   }
 
   protected makeChildrenStatusNode<T>(
@@ -323,11 +327,18 @@ abstract class MappingNodeBase {
     parentFileDataMap: WritableFileDataMapNode<T>,
     parentFilePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T> {
+  ): Promise<[T, boolean]> {
+    let hasChildren = false;
     for (const config of this.childConfigs) {
-      parentModel = await config.loadAsync(rawData, parentModel, parentFileDataMap, parentFilePath, storageAccess);
+      [parentModel, hasChildren] = await config.loadAsync(
+        rawData,
+        parentModel,
+        parentFileDataMap,
+        parentFilePath,
+        storageAccess,
+      );
     }
-    return parentModel;
+    return [parentModel, hasChildren];
   }
 }
 
@@ -357,7 +368,7 @@ abstract class MappingNode extends MappingNodeBase {
     parentFilePath: readonly string[],
     reversePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T>;
+  ): Promise<[T, boolean]>;
 
   public abstract makeStatusNode<T>(
     prevParentNode: MarkingFileDataMapNode<T>,
@@ -372,7 +383,7 @@ abstract class MappingNode extends MappingNodeBase {
     parentFileDataMap: WritableFileDataMapNode<T>,
     parentFilePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T>;
+  ): Promise<[T, boolean]>;
 
   public abstract makeFileDataMap<T>(
     parentNode: WritableFileDataMapNode<T>,
@@ -396,14 +407,15 @@ class MapMappingNode<T> extends MappingNode {
     parentFilePath: readonly string[],
     reversePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T> {
+  ): Promise<[T, boolean]> {
     const model = storageAccess.modelManager.getForPath(parentModel, this.path);
     if (model === undefined) {
-      return parentModel;
+      return [parentModel, false];
     }
     const baseFilePath = [...parentFilePath, ...this._directoryPath];
     const prevNodeForDirectory = prevParentNode && getNodeForFilePath(prevParentNode, this._directoryPath);
     const nextNodeForDirectory = getOrSetDefaultNodeForFilePath(nextParentNode, this._directoryPath);
+    let hasChildren = false;
     await storageAccess.modelManager.mapModelForEachAsync(model, async (childModel, key) => {
       const filename = key + '.yml';
       const filePath = [...this._directoryPath, filename];
@@ -413,7 +425,7 @@ class MapMappingNode<T> extends MappingNode {
       if (prevChildNode) {
         prevChildNode.isMarked = true;
       }
-      const childModelForSave = await this.saveChildrenAsync(
+      const [childModelForSave, hasChild] = await this.saveChildrenAsync(
         prevNodeForDirectory && getNodeForFilePath(prevNodeForDirectory, [key]),
         nextChildNode,
         childModel,
@@ -421,8 +433,9 @@ class MapMappingNode<T> extends MappingNode {
         [key],
         storageAccess,
       );
-      if (Object.keys(nextChildNode).length) {
-        nextNodeForDirectory.children[key] = toMarkingFileDataMapNode(nextChildNode);
+      hasChildren ||= hasChild;
+      if (hasChild) {
+        nextNodeForDirectory.children[key] = nextChildNode;
       }
       if (shouldSave(storageAccess.modelManager, prevChildNode, childModel)) {
         const raw = storageAccess.modelManager.convertBack(childModelForSave);
@@ -431,7 +444,7 @@ class MapMappingNode<T> extends MappingNode {
       const filePathModel = storageAccess.modelManager.stringModel(filePath.join('/'));
       parentModel = storageAccess.modelManager.setForPath(parentModel, filePathModel, [...this.path, key]);
     });
-    return parentModel;
+    return [parentModel, hasChildren];
   }
 
   makeStatusNode<T>(
@@ -556,10 +569,11 @@ class MapMappingNode<T> extends MappingNode {
     parentFileDataMap: WritableFileDataMapNode<T>,
     parentFilePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T> {
+  ): Promise<[T, boolean]> {
     const data = getForPath(parentRawData, this.path);
     const baseFilePath = [...parentFilePath, ...this._directoryPath];
     const nodeForDirectory = getOrSetDefaultNodeForFilePath(parentFileDataMap, this._directoryPath);
+    let hasChildren = false;
     if (typeof data === 'object' && data !== null) {
       for (const key of Object.keys(data)) {
         const filename = key + '.yml';
@@ -567,15 +581,23 @@ class MapMappingNode<T> extends MappingNode {
         const parsed = storageAccess.formatter.parse(source);
         let childModel = storageAccess.modelManager.convert(parsed);
         const childNode: WritableFileDataMapNode<T> = {children: {}};
-        childModel = await this.loadChildrenAsync(parsed, childModel, childNode, [...baseFilePath, key], storageAccess);
+        const childResult = await this.loadChildrenAsync(
+          parsed,
+          childModel,
+          childNode,
+          [...baseFilePath, key],
+          storageAccess,
+        );
+        childModel = childResult[0];
         setModelForFilePath(nodeForDirectory, childModel, [filename], undefined);
-        if (Object.keys(childNode).length) {
+        if (childResult[1]) {
           nodeForDirectory.children[key] = childNode;
         }
         parentModel = storageAccess.modelManager.setForPath(parentModel, childModel, [...this.path, key]);
+        hasChildren = true;
       }
     }
-    return parentModel;
+    return [parentModel, hasChildren];
   }
 }
 
@@ -600,10 +622,11 @@ export class SingleMappingNode<T> extends MappingNode {
     parentFilePath: readonly string[],
     reversePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T> {
+  ): Promise<[T, boolean]> {
     const model = storageAccess.modelManager.getForPath(parentModel, this.path);
+    console.log('xxxx', this.path, this._fileName, model);
     if (model === undefined) {
-      return parentModel;
+      return [parentModel, false];
     }
     const baseFilePath = [...parentFilePath, ...this._directoryPath];
     const prevNodeForDirectory = prevParentNode && getNodeForFilePath(prevParentNode, this._directoryPath);
@@ -613,7 +636,7 @@ export class SingleMappingNode<T> extends MappingNode {
     if (prevNode) {
       prevNode.isMarked = true;
     }
-    const modelForSave = await this.saveChildrenAsync(
+    const [modelForSave] = await this.saveChildrenAsync(
       prevNodeForDirectory,
       nextNode,
       model,
@@ -629,7 +652,7 @@ export class SingleMappingNode<T> extends MappingNode {
       [...reversePath, ...this._directoryPath, this._fileName].join('/'),
     );
     parentModel = storageAccess.modelManager.setForPath(parentModel, filePathModel, this.path);
-    return parentModel;
+    return [parentModel, true];
   }
 
   makeStatusNode<T>(
@@ -719,7 +742,7 @@ export class SingleMappingNode<T> extends MappingNode {
     parentFileDataMap: WritableFileDataMapNode<T>,
     parentFilePath: readonly string[],
     storageAccess: StorageAccess<T>,
-  ): Promise<T> {
+  ): Promise<[T, boolean]> {
     const nodeForDirectory = getOrSetDefaultNodeForFilePath(parentFileDataMap, this._directoryPath);
     const baseFilePath = [...parentFilePath, ...this._directoryPath];
     if (unknownIsObject(parentRawData)) {
@@ -727,11 +750,12 @@ export class SingleMappingNode<T> extends MappingNode {
       const parsed = storageAccess.formatter.parse(source);
       let childModel = storageAccess.modelManager.convert(parsed);
       const childNode = getOrSetDefaultNodeForFilePath(nodeForDirectory, [this._fileName]);
-      childModel = await this.loadChildrenAsync(parsed, childModel, nodeForDirectory, baseFilePath, storageAccess);
+      [childModel] = await this.loadChildrenAsync(parsed, childModel, nodeForDirectory, baseFilePath, storageAccess);
       childNode.data = childModel;
-      parentModel = storageAccess.modelManager.setForPath(parentModel, childModel, this.path);
+      return [storageAccess.modelManager.setForPath(parentModel, childModel, this.path), true];
+    } else {
+      return [parentModel, false];
     }
-    return parentModel;
   }
 }
 
@@ -783,7 +807,7 @@ export default class DataMapper extends MappingNodeBase {
     const originalModel = model;
     const markingNode = toMarkingFileDataMapNode(originNode);
     const storageAccess = {storage, modelManager: storageDataTrait, formatter};
-    model = await this.saveChildrenAsync(markingNode, nextRoot, model, [], [], storageAccess);
+    [model] = await this.saveChildrenAsync(markingNode, nextRoot, model, [], [], storageAccess);
     if (shouldSave(storageDataTrait, originNode.children?.[this.indexFileName], originalModel)) {
       const raw = storageDataTrait.convertBack(model);
       await storage.saveAsync([this.indexFileName], formatter.format(raw));
@@ -848,7 +872,7 @@ export default class DataMapper extends MappingNodeBase {
     let model = storageDataTrait.convert(formatted);
     const root: WritableFileDataMapNode<T> = {children: {}};
     const storageAccess = {storage, modelManager: storageDataTrait, formatter};
-    model = await this.loadChildrenAsync(formatted, model, root, [], storageAccess);
+    [model] = await this.loadChildrenAsync(formatted, model, root, [], storageAccess);
     setModelForFilePath(root, model, [this.indexFileName], undefined);
     return {rootNode: root, model};
   }
