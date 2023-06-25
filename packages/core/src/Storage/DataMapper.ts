@@ -3,7 +3,7 @@ import {DataFormatter} from './DataFormatter';
 import YamlDataFormatter from './YamlDataFormatter';
 import {StorageDataTrait} from './StorageDataTrait';
 import {getForPath, unknownIsObject} from './StorageCommon';
-import {DataMapperConfig, DataMapperNodeConfig, dataModelToJson} from '..';
+import {DataMapperConfig, DataMapperNodeConfig} from '..';
 
 /**
  * ファイルパスとそこから読み出したデータを記録しておく木構造です。
@@ -32,27 +32,6 @@ export interface WritableFileDataStatusMapNode {
   isDirty?: true;
   children: Record<string, WritableFileDataStatusMapNode>;
 }
-
-export interface DirtyFileMapNode {
-  readonly isDirty?: true;
-  readonly children?: Record<string, DirtyFileMapNode>;
-}
-
-interface WritableDirtyFileMapNode {
-  isDirty?: true;
-  children?: Record<string, WritableDirtyFileMapNode>;
-}
-
-/**
- * FileDataMapNodeをシリアライズするためデータを除外した型です。
- * DataMapper のmapDataメソッドでFileDataMapNodeに復元します。
- *
- * 追記 : 編集中のデータを保存するという点については、「何を保存しなければならないか = dirtyなデータは何か」なので、
- * その点のみを記録すべきでは？
- */
-export type FileMapNode = {
-  readonly children?: {readonly [key: string]: FileMapNode};
-};
 
 type WritableFileDataMapNode<T> = {
   data?: T;
@@ -382,7 +361,7 @@ abstract class MappingNode extends MappingNodeBase {
 
   public abstract makeStatusNode<T>(
     prevParentNode: MarkingFileDataMapNode<T>,
-    parentDirtyNode: WritableDirtyFileMapNode,
+    parentStatusNode: WritableFileDataStatusMapNode,
     parentData: T,
     storageDataTrait: StorageDataTrait<T>,
   ): boolean;
@@ -466,18 +445,18 @@ class MapMappingNode<T> extends MappingNode {
     if (!prevNodeForDirectory) {
       return false;
     }
-    let dirtyNodeForDirectory: WritableFileDataStatusMapNode | undefined;
+    let statusNodeForDirectory: WritableFileDataStatusMapNode | undefined;
     const getOrSetStatusNodeForDirectory = () =>
-      dirtyNodeForDirectory ??
-      (dirtyNodeForDirectory = getOrSetDefaultNodeForFilePath(parentStatusNode, this._directoryPath));
+      statusNodeForDirectory ??
+      (statusNodeForDirectory = getOrSetDefaultNodeForFilePath(parentStatusNode, this._directoryPath));
     let hasChildren = false;
     if (model !== undefined && prevNodeForDirectory.children) {
       storageDataTrait.mapModelForEach(model, (childModel, key) => {
         const prevChildrenNode = getNodeForFilePath(prevNodeForDirectory, [key]);
         if (prevChildrenNode) {
-          const childDirtyNode: WritableFileDataStatusMapNode = {children: {}};
-          if (this.makeChildrenStatusNode(prevChildrenNode, childDirtyNode, childModel, storageDataTrait)) {
-            getOrSetStatusNodeForDirectory().children[key] = childDirtyNode;
+          const childStatusNode: WritableFileDataStatusMapNode = {children: {}};
+          if (this.makeChildrenStatusNode(prevChildrenNode, childStatusNode, childModel, storageDataTrait)) {
+            getOrSetStatusNodeForDirectory().children[key] = childStatusNode;
             hasChildren = true;
           }
         }
