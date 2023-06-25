@@ -473,10 +473,6 @@ class MapMappingNode<T> extends MappingNode {
     let hasChildren = false;
     if (model !== undefined && prevNodeForDirectory.children) {
       storageDataTrait.mapModelForEach(model, (childModel, key) => {
-        // TODO ここではないが。新しく追加されたデータがある状態でmakeFileDataMapすると、新しいファイルが存在するかのように見えてしまう。
-        //      データ構造自体の修正が必要そう。(dirtyでなくても、元々保存されていたファイルのパスを示す何かが必要)
-        //      => ファイルの削除はisMarkedでやってるんだし、ここもそれでやるか
-
         const prevChildrenNode = getNodeForFilePath(prevNodeForDirectory, [key]);
         if (prevChildrenNode) {
           const childDirtyNode: WritableFileDataStatusMapNode = {children: {}};

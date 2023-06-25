@@ -429,7 +429,17 @@ describe('Unit Test for DataMapper', () => {
         expectedDeleteHistory: [['__map', 'a', 'map_a', 'a.yml']],
       },
       {
-        label: 'シリアライズを挟んで2つのmapの要素を削除',
+        label: 'シリアライズを挟んでmapの2つの要素を更新',
+        mainDataActions: [{type: 'set', path: {components: ['_map', 'c']}, data: 'updated_c_content'}],
+        afterDeserializeActions: [{type: 'set', path: {components: ['_map', 'd']}, data: 'updated_d_content'}],
+        expectedWriteHistory: [
+          [['__map', 'c.yml'], 'updated_c_content\n'],
+          [['__map', 'd.yml'], 'updated_d_content\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
+        ],
+      },
+      {
+        label: 'シリアライズを挟んでmapの2つの要素を削除',
         mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
         afterDeserializeActions: [{type: 'delete', path: {components: ['_map', 'd']}}],
         expectedWriteHistory: [
@@ -438,6 +448,15 @@ describe('Unit Test for DataMapper', () => {
         expectedDeleteHistory: [
           ['__map', 'd.yml'],
           ['__map', 'c.yml'],
+        ],
+      },
+      {
+        label: 'シリアライズを挟んでmapの同じ要素を削除=>作成',
+        mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
+        afterDeserializeActions: [{type: 'set', path: {components: ['_map', 'c']}, data: 'added_c_content'}],
+        expectedWriteHistory: [
+          [['__map', 'c.yml'], 'added_c_content\n'],
+          [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
       },
     ];
@@ -496,31 +515,38 @@ describe('Unit Test for DataMapper', () => {
         });
 
         it('二度シリアライズした後更新', async () => {
-          const statusNode = JSON.parse(
-            JSON.stringify(
-              complexMapper.makeFileDataStatusMapNode(initialMap, updatedModel, dataModelStorageDataTrait),
-            ),
+          // 1回目のシリアライズ完了
+          const serializedStatusNode = JSON.stringify(
+            complexMapper.makeFileDataStatusMapNode(initialMap, updatedModel, dataModelStorageDataTrait),
           );
-          const deserializedModel = unknownToDataModel(
-            updatedModel === undefined ? undefined : dataModelToJson(updatedModel),
-          );
+          const serializedModel = updatedModel === undefined ? undefined : dataModelToJson(updatedModel);
+
+          // 1回目のデシリアライズ
+          const statusNode = JSON.parse(serializedStatusNode);
+          const deserializedModel = unknownToDataModel(serializedModel);
           const restoredMap = complexMapper.remakeFileDataMap(deserializedModel, dataModelStorageDataTrait, statusNode);
-          const statusNode2 = JSON.parse(
-            JSON.stringify(
-              complexMapper.makeFileDataStatusMapNode(restoredMap, deserializedModel, dataModelStorageDataTrait),
-            ),
-          );
+
+          // 中間のデータ操作
           const updatedModel2 = afterDeserializeActions
             ? applyDataModelActions(deserializedModel, undefined, afterDeserializeActions)
             : deserializedModel;
-          const deserializedModel2 = unknownToDataModel(
-            updatedModel2 === undefined ? undefined : dataModelToJson(updatedModel2),
+
+          // 2回目のシリアライズ
+          const serializedStatusNode2 = JSON.stringify(
+            complexMapper.makeFileDataStatusMapNode(restoredMap, updatedModel2, dataModelStorageDataTrait),
           );
+          const serializedModel2 = updatedModel2 === undefined ? undefined : dataModelToJson(updatedModel2);
+
+          // 2回目のデシリアライズ
+          const statusNode2 = JSON.parse(serializedStatusNode2);
+          const deserializedModel2 = unknownToDataModel(serializedModel2);
           const restoredMap2 = complexMapper.remakeFileDataMap(
             deserializedModel2,
             dataModelStorageDataTrait,
             statusNode2,
           );
+          // console.log(`---- ${label}`, fileStatusMapNodeToDebugString(statusNode2));
+          // console.log(`---- ${label}`, fileMapNodeToDebugString(restoredMap2));
 
           const storage = new ObjectDataStorage();
           await complexMapper.saveAsync(restoredMap2, deserializedModel2, storage, dataModelStorageDataTrait);
