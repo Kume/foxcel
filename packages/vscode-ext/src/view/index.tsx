@@ -5,8 +5,8 @@ import {RootView} from '@foxcel/ui-react';
 import {Theme} from '@foxcel/ui-react/dist/types';
 import {ThemeProvider} from 'styled-components';
 import {BackToFrontMessage, FrontToBackMessage} from '@foxcel/core/dist/messages';
-import {DataMapperConfig, DataModel, unknownToDataModel} from '@foxcel/core';
-import DataMapper, {FileDataMapNode} from '@foxcel/core/dist/Storage/DataMapper';
+import {DataMapperConfig, DataModel, dataModelToJson, unknownToDataModel} from '@foxcel/core';
+import DataMapper, {FileDataMapNode, FileDataStatusMapNode} from '@foxcel/core/dist/Storage/DataMapper';
 import {dataModelStorageDataTrait} from '@foxcel/core/dist/DataModel/DataModelStorageDataTrait';
 import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema';
 import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
@@ -63,6 +63,7 @@ interface InitialLoadItems {
   readonly uiSchema: UISchemaExcludeRecursive;
   readonly dataSchema: DataSchemaExcludeRecursive;
   readonly restoredActions?: AppAction[];
+  readonly fileStatus?: FileDataStatusMapNode;
 }
 
 const vscode = acquireVsCodeApi();
@@ -77,6 +78,7 @@ interface SavedState {
     readonly uiSchema: UISchemaExcludeRecursive;
   };
   readonly actions: AppAction[];
+  readonly fileStatus: FileDataStatusMapNode;
 }
 
 function saveStateToVsCode(state: SavedState) {
@@ -118,13 +120,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const restoredState = loadStateFromVsCode();
     if (restoredState) {
+      const dataModel = unknownToDataModel(restoredState.initial.rawData);
       setLoaded({
-        data: unknownToDataModel(restoredState.initial.rawData),
+        data: dataModel,
         rawData: restoredState.initial.rawData,
         dataMapperConfig: restoredState.initial.dataMapperConfig,
         dataSchema: restoredState.initial.uiSchema.dataSchema,
         uiSchema: restoredState.initial.uiSchema,
         restoredActions: restoredState.actions,
+        fileStatus: restoredState.fileStatus,
       });
     }
   }, []);
@@ -155,17 +159,28 @@ const App: React.FC = () => {
   const saveState = useCallback(
     (state: AppState) => {
       if (loaded) {
-        saveStateToVsCode({
-          actions: state.actions,
-          initial: {
-            rawData: loaded.rawData,
-            dataMapperConfig: loaded.dataMapperConfig,
-            uiSchema: loaded.uiSchema,
-          },
-        });
+        const dataMapper = DataMapper.build(loaded.dataMapperConfig);
+        if (lastFileMap) {
+          saveStateToVsCode({
+            initial: {
+              rawData: loaded.rawData,
+              dataMapperConfig: loaded.dataMapperConfig,
+              uiSchema: loaded.uiSchema,
+            },
+            fileStatus: dataMapper.makeFileDataStatusMapNode(lastFileMap, state.data, dataModelStorageDataTrait),
+            actions: state.actions,
+          });
+        } else if (loaded.fileStatus) {
+          const restoredFileMap = dataMapper.remakeFileDataMap(
+            state.data,
+            dataModelStorageDataTrait,
+            loaded.fileStatus,
+          );
+          setLastFileMap(restoredFileMap);
+        }
       }
     },
-    [loaded],
+    [loaded, lastFileMap],
   );
 
   return <RootView loaded={loaded} saveFile={save} onChangeState={saveState} />;
