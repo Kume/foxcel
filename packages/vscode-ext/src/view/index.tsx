@@ -170,7 +170,10 @@ const App: React.FC = () => {
             fileStatus: dataMapper.makeFileDataStatusMapNode(lastFileMap, state.data, dataModelStorageDataTrait),
             actions: state.actions,
           });
-        } else if (loaded.fileStatus) {
+        } else if (loaded.fileStatus && state.rootUISchemaContext) {
+          // 本当はloadStateFromVsCodeした直後にこの処理をやりたいが、データモデルにアクションを適用するのはRootView内で行うので、
+          // 初期化のアクション適用後にonChangeStateが呼ばれることを期待してここで行う
+          // 良い作りではないので要修正 AppStateの管理をRootViewの外側で行う?
           const restoredFileMap = dataMapper.remakeFileDataMap(
             state.data,
             dataModelStorageDataTrait,

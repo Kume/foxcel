@@ -4,7 +4,6 @@ import YamlDataFormatter from './YamlDataFormatter';
 import {StorageDataTrait} from './StorageDataTrait';
 import {getForPath, unknownIsObject} from './StorageCommon';
 import {DataMapperConfig, DataMapperNodeConfig} from '..';
-import {has} from 'lodash.pick';
 
 /**
  * ファイルパスとそこから読み出したデータを記録しておく木構造です。
@@ -541,7 +540,7 @@ class MapMappingNode<T> extends MappingNode {
         if (childrenStatusNode) {
           const nextChildNode: WritableFileDataMapNode<T> = {children: {}};
           if (this.remakeChildrenFileDataMap(nextChildNode, childModel, dataTrait, childrenStatusNode)) {
-            nextNodeForDirectory.children[key] = toMarkingFileDataMapNode(nextChildNode);
+            nextNodeForDirectory.children[key] = nextChildNode;
             hasChildren = true;
           }
         }
