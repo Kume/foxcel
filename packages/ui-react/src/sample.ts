@@ -157,6 +157,37 @@ export const sampleConfig: RootSchemaConfig = {
               type: 'string',
               label: 'テストA11複数行テキスト',
             },
+            testA12: {
+              type: 'fixed_map',
+              label: 'テストA12_deep',
+              items: {
+                testA12a: {
+                  type: 'map',
+                  label: 'テストA12aタブ',
+                  item: {
+                    type: 'fixed_map',
+                    items: {
+                      testA12a1: {
+                        type: 'string',
+                        label: 'testA12a1',
+                      },
+                      testA12a2: {
+                        type: 'string',
+                        label: 'testA12a2',
+                      },
+                    },
+                  },
+                },
+                testA12b: {
+                  type: 'map',
+                  label: 'テストA12bタブ',
+                  item: {
+                    type: 'fixed_map',
+                    items: {},
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -290,6 +321,32 @@ export const sampleConfig: RootSchemaConfig = {
               type: 'text',
               key: 'testA11',
               multiline: true,
+            },
+            {
+              type: 'tab',
+              key: 'testA12',
+              contents: [
+                {
+                  type: 'contentList',
+                  key: 'testA12a',
+                  content: {
+                    type: 'form',
+                    contents: [
+                      {type: 'text', key: 'testA12a1'},
+                      {type: 'text', key: 'testA12a2'},
+                    ],
+                  },
+                },
+
+                {
+                  type: 'contentList',
+                  key: 'testA12b',
+                  content: {
+                    type: 'form',
+                    contents: [],
+                  },
+                },
+              ],
             },
           ],
         },

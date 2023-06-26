@@ -3,12 +3,16 @@ import {ContentListUIModel} from './UIModelTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
 
-function initialData(model: ContentListUIModel): DataModel {
+function initialContentData(model: ContentListUIModel): DataModel {
   // TODO このdataSchemaにrecursiveは入ってはいけないのでは？
   // => いや、contentのschemaだからありうる。そうすると、そのスキーマ情報を解決するためにDataSchemaContextが必要になるか？
   // => modelにデフォルトデータをセットしとくのが良いかも？
   // @ts-expect-error
   return defaultDataModelForSchema(model.schema.content.dataSchema);
+}
+
+function initialData(model: ContentListUIModel): DataModel {
+  return defaultDataModelForSchema(model.schema.dataSchema);
 }
 
 export function contentListAddBeforeAction(model: ContentListUIModel, index: number): AppAction {
@@ -18,21 +22,39 @@ export function contentListAddBeforeAction(model: ContentListUIModel, index: num
       type: 'insert',
       path: model.dataPath,
       after: index === 0 ? undefined : model.indexes[index - 1].pointer,
-      data: initialData(model),
+      data: initialContentData(model),
     },
   };
 }
 
 export function contentListAddAfterAction(model: ContentListUIModel, index: number): AppAction {
-  return {
+  const insertAction: AppAction = {
     type: 'data',
     action: {
       type: 'insert',
       path: model.dataPath,
       after: model.indexes[index]?.pointer,
-      data: initialData(model),
+      data: initialContentData(model),
     },
   };
+  if (model.data === undefined) {
+    return {
+      type: 'batch',
+      actions: [
+        {
+          type: 'data',
+          action: {
+            type: 'set',
+            path: model.dataPath,
+            data: initialData(model),
+          },
+        },
+        insertAction,
+      ],
+    };
+  } else {
+    return insertAction;
+  }
 }
 
 export function contentListRemoveAtAction(model: ContentListUIModel, index: number): AppAction {
