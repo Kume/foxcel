@@ -45,6 +45,8 @@ const Input = styled.input`
 `;
 
 const InputForMultiline = styled(BackgroundTextarea)`
+  background-color: ${({theme}) => theme.color.bg.input};
+  border: solid 1px ${({theme}) => theme.color.border.input};
   width: calc(100% - 8px);
   height: 100%;
   &:focus {
