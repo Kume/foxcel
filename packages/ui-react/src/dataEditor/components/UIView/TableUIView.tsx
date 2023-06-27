@@ -9,6 +9,7 @@ import {
   TableCellRange,
   TableRange,
   tableRangeContains,
+  tableUIModelAddRows,
   tableUIModelContextMenus,
   tableUIModelCopy,
   tableUIModelCut,
@@ -34,6 +35,8 @@ import {
 } from './TablueUIViewCommon';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {ContextMenu, ContextMenuProps, makeClickPointVirtualElement} from './ContextMenu';
+import styled from 'styled-components';
+import {inputTextStyle} from '../../../common/components/commonStyles';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;
@@ -43,9 +46,26 @@ interface ActionRef {
 const updateSelection = updateTableUIViewStateSelection;
 const makeUpdateRange = (range: TableCellRange) => (prev: TableUIViewState) =>
   updateSelection(prev, ({origin}) => ({origin, range}));
-const makeUpdateRangeByCallback = (updateRange: (prevSelection: TableUISelection) => TableCellRange) => (
-  prev: TableUIViewState,
-) => updateSelection(prev, (prevSelection) => ({origin: prevSelection.origin, range: updateRange(prevSelection)}));
+const makeUpdateRangeByCallback =
+  (updateRange: (prevSelection: TableUISelection) => TableCellRange) => (prev: TableUIViewState) =>
+    updateSelection(prev, (prevSelection) => ({origin: prevSelection.origin, range: updateRange(prevSelection)}));
+
+const AdditionalRow = styled.div`
+  margin-top: 6px;
+  display: flex;
+  padding: 0 10px;
+`;
+
+const RowsInput = styled.input`
+  background-color: ${({theme}) => theme.color.bg.input};
+  border: solid 1px ${({theme}) => theme.color.border.input};
+  ${({theme}) => inputTextStyle(theme)}
+  width: 60px;
+  &:focus {
+    border-color: ${({theme}) => theme.color.border.inputFocus};
+    outline: none;
+  }
+`;
 
 interface Props extends UIViewProps {
   readonly model: TableUIModel;
@@ -230,6 +250,19 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
     [callbacks, model.columns],
   );
 
+  const [rowsText, setRowsText] = useState('');
+  const addRows = useCallback(() => {
+    const result = tableUIModelAddRows(model, rowsText);
+    switch (result.t) {
+      case 'action':
+        onAction(result.action);
+        break;
+      case 'error':
+        // TODO
+        break;
+    }
+  }, [model, rowsText, onAction]);
+
   const selectionRange = state.selection?.range;
 
   return (
@@ -251,8 +284,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
                   selectionRange &&
                   selectionRange.row.size === undefined
                 }
-                {...headerCallbacks.columns[index]}
-              >
+                {...headerCallbacks.columns[index]}>
                 {column.label}
               </TableUIViewHeaderCell>
             ))}
@@ -274,6 +306,13 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
           ))}
         </tbody>
       </TableUIViewLayoutRoot>
+      <AdditionalRow>
+        <RowsInput
+          value={rowsText}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRowsText(e.target.value)}
+        />
+        行<button onClick={addRows}>追加</button>
+      </AdditionalRow>
       <ContextMenu
         ref={floating}
         style={{position: strategy, left: x ?? 0, top: y ?? 0}}

@@ -1,8 +1,14 @@
 import {AppAction} from '../App/AppState';
 import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
-import {dataModelIsBoolean, dataModelToString, emptyMapModel, setToMapDataModel} from '../DataModel/DataModel';
-import {DataModel} from '../DataModel/DataModelTypes';
+import {
+  dataModelIsBoolean,
+  dataModelToString,
+  emptyListModel,
+  emptyMapModel,
+  setToMapDataModel,
+} from '../DataModel/DataModel';
+import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {selectUIModelHandleInputForSchema, selectUIModelSetString} from './SelectUIModel';
 import {
   DataModelRoot,
@@ -11,8 +17,7 @@ import {
 } from '../DataModel/DataModelContext';
 import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} from './CheckboxUIModel';
 import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
-import {DataSchema, dataSchemaIsBoolean} from '../DataModel/DataSchema';
-import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
+import {DataSchema, dataSchemaIsBoolean, DataSchemaType} from '../DataModel/DataSchema';
 import {UIModelContextMenuItem} from './UIModelCommon';
 
 export interface TableCellPoint {
@@ -381,8 +386,21 @@ export function tableUIModelMoveSelection(
   }
 }
 
-function initialData(model: TableUIModel): DataModel {
-  return defaultDataModelForSchema(model.schema.dataSchema);
+function initialRowData(model: TableUIModel): DataModel {
+  // 今のところ行に利用できるデータはMapのみ
+  return emptyMapModel;
+}
+
+function initialData(model: TableUIModel): ListDataModel | MapDataModel {
+  // 主に新規追加時に作成するものなので、下手なデフォルト値が設定されていると困るので固定で空のオブジェクトを作る
+  // TODO スキーマパース時にデフォルト値が指定されていたらエラーにする
+  // TODO contentListも同様にする
+  switch (model.schema.dataSchema.t) {
+    case DataSchemaType.List:
+      return emptyListModel;
+    case DataSchemaType.Map:
+      return emptyMapModel;
+  }
 }
 
 export function tableUIModelAddRowBeforeAction(model: TableUIModel, index: number): AppAction {
@@ -392,7 +410,7 @@ export function tableUIModelAddRowBeforeAction(model: TableUIModel, index: numbe
       type: 'insert',
       path: model.dataPath,
       after: index === 0 ? undefined : model.rows[index - 1].pointer,
-      data: initialData(model),
+      data: initialRowData(model),
     },
   };
 }
@@ -404,7 +422,7 @@ export function tableUIModelAddRowAfterAction(model: TableUIModel, index: number
       type: 'insert',
       path: model.dataPath,
       after: model.rows[index]?.pointer,
-      data: initialData(model),
+      data: initialRowData(model),
     },
   };
 }
@@ -444,4 +462,27 @@ export function tableUIModelContextMenus(
   }
 
   return items;
+}
+
+export function tableUIModelAddRows(
+  model: TableUIModel,
+  rowsText: string,
+): {t: 'action'; action: AppAction} | {t: 'error'; message: string} {
+  const rows = Number.parseInt(rowsText);
+  if (!(Number.isFinite(rows) && rows > 0)) {
+    return {t: 'error', message: '行数指定が不正です。'};
+  }
+
+  // FIXME パフォーマンス最適化
+  const insertActions = [...Array(rows)].map(
+    (): AppAction => ({
+      type: 'data',
+      action: {type: 'insert', path: model.dataPath, after: undefined, data: initialRowData(model)},
+    }),
+  );
+  if (model.data === undefined) {
+    insertActions.unshift({type: 'data', action: {type: 'set', path: model.dataPath, data: initialData(model)}});
+  }
+  console.log('xxxx', insertActions);
+  return {t: 'action', action: {type: 'batch', actions: insertActions}};
 }
