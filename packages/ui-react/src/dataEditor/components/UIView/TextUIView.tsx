@@ -76,7 +76,7 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
         <InputBoxForMultiline>
           <TextWithBreak text={value} hidden />
           <InputForMultiline
-            isVisible
+            $isVisible
             value={value}
             onChange={(e: React.FocusEvent<HTMLTextAreaElement>) => setValue(e.target.value)}
             onBlur={(e: React.FocusEvent<HTMLTextAreaElement>) => onAction(textUIModelSetText(model, e.target.value))}
@@ -163,7 +163,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
       <TextWithBreak text={editingText ?? ''} hidden={isEditing} />
       {isMainSelected && !disabled && (
         <BackgroundTextarea
-          isVisible={isEditing}
+          $isVisible={isEditing}
           ref={textAreaRef}
           onChange={change}
           onBlur={blur}

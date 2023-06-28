@@ -176,8 +176,8 @@ const InputArea = styled.div`
   ${breakableTextStyle}
 `;
 
-const TextArea = styled.div<{isMulti: boolean | undefined}>`
-  min-width: ${({isMulti}) => (isMulti ? '40px' : '0')};
+const TextArea = styled.div<{$isMulti: boolean | undefined}>`
+  min-width: ${({$isMulti}) => ($isMulti ? '40px' : '0')};
   position: relative;
   display: flex;
 `;
@@ -249,10 +249,10 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
           ) : (
             renderSingleLabel(state.editingText, model)
           )}
-          <TextArea isMulti={model.isMulti}>
+          <TextArea $isMulti={model.isMulti}>
             <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
             <BackgroundTextarea
-              isVisible={!!state.editingText}
+              $isVisible={!!state.editingText}
               ref={textareaRef}
               onChange={change}
               onBlur={() => dispatch(['blur'])}
@@ -486,11 +486,11 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         ) : (
           renderSingleLabel(state.editingText, model)
         )}
-        <TextArea isMulti={isMulti}>
+        <TextArea $isMulti={isMulti}>
           <BackgroundTextPlace>{state.editingText}</BackgroundTextPlace>
           {isMainSelected && (
             <BackgroundTextarea
-              isVisible={state.isEditing}
+              $isVisible={state.isEditing}
               ref={textAreaRef}
               onChange={change}
               onKeyDown={keyDown}

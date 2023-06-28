@@ -119,7 +119,7 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
       <TextWithBreak text={editingText ?? ''} />
       {isMainSelected && (
         <BackgroundTextarea
-          isVisible={isEditing}
+          $isVisible={isEditing}
           ref={textAreaRef}
           onChange={changeTextInput}
           onBlur={blur}
