@@ -1,8 +1,8 @@
 import {UIModel} from '../UIModel/UIModelTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {ForwardDataPath} from '../DataModel/DataPath';
+import {EditingForwardDataPath} from '../DataModel/DataPath';
 import {logDataFocus, logSchemaFocus, UIDataFocusLogNode, UISchemaFocusLogNode} from '../UIModel/UIModelFocus';
-import {DataModelAction, applyDataModelAction} from '../DataModel/DataModelAction';
+import {applyDataModelAction, DataModelAction} from '../DataModel/DataModelAction';
 import {buildUIModel} from '../UIModel/UIModel';
 import {UISchemaContext} from '../UIModel/UISchemaContext';
 import {UISchema} from '../UIModel/UISchemaTypes';
@@ -17,7 +17,7 @@ export interface AppState {
   uiSchema: UISchema | undefined;
   dataSchema: DataSchemaExcludeRecursive | undefined;
   rootUISchemaContext: UISchemaContext;
-  focus?: ForwardDataPath;
+  focus?: EditingForwardDataPath;
   schemaFocusLog?: UISchemaFocusLogNode;
   dataFocusLog?: UIDataFocusLogNode;
   actions: AppAction[];
@@ -25,7 +25,7 @@ export interface AppState {
 
 export interface AppFocusAction {
   readonly type: 'focus';
-  readonly path: ForwardDataPath;
+  readonly path: EditingForwardDataPath;
 }
 
 export interface AppInitializeAction {

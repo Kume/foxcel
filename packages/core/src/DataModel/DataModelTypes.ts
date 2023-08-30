@@ -29,18 +29,32 @@ export type BooleanDataModel = boolean;
 
 export type StringDataModel = string;
 
-export type ListDataModel = readonly (readonly [number, DataModel])[];
-
 export type PublicListDataItem = readonly [data: DataModel, pointer: DataPointer, index: number];
+
+export interface ListDataModel {
+  readonly t: DataModelType.List;
+
+  /** Max id */
+  readonly m: number;
+
+  /** Values */
+  readonly v: readonly (readonly [id: number, data: DataModel])[];
+}
 
 export interface MapDataModel {
   readonly t: DataModelType.Map;
+
+  /** Max id */
+  readonly m: number;
+
+  /** Key and values */
   readonly v: readonly MapDataModelItem[];
 }
 
 export type PublicMapDataItem = readonly [data: DataModel, pointer: DataPointer, key: string | null, index: number];
 
-export type MapDataModelItem = readonly [string | null, number, DataModel];
+export type MapDataModelItem = readonly [key: string | null, id: number, data: DataModel];
+export type MapDataModelItemWithNonNullableKey = readonly [key: string, id: number, data: DataModel];
 
 export interface DataCollectionItem {
   key?: string;

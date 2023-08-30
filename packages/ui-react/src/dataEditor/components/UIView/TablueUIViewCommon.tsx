@@ -7,7 +7,7 @@ import {NumberUIViewForTableCell} from './NumberUIView';
 import React from 'react';
 import {UIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {TableUIModelMoveDirection, TableUISelection} from '@foxcel/core/dist/UIModel/TableUIModel';
-import {DataModel, emptyMapModel, ForwardDataPath, setToMapDataModel} from '@foxcel/core';
+import {DataModel, EditingForwardDataPath, emptyMapModel, setToMapDataModel} from '@foxcel/core';
 import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
 import {DataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {
@@ -184,7 +184,7 @@ export function renderTableUIViewCell(
 }
 
 export function renderTableUIViewCellWithSchema(
-  dataPath: ForwardDataPath,
+  dataPath: EditingForwardDataPath,
   rowKey: string | null | undefined,
   cellKey: string,
   schema: UISchemaExcludeRecursive,

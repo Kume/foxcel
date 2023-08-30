@@ -28,15 +28,13 @@ export type PointerPathComponent = {
 export type ListIndexDataPathComponent = number;
 export type MapKeyDataPathComponent = string;
 
-export type ForwardDataPathComponent =
-  | MapKeyDataPathComponent
-  | ListIndexDataPathComponent
-  | IndexOrKeyDataPathComponent
-  | PointerPathComponent;
-export type ForwardDataPathComponentExcludingPointer =
+export type SerializableForwardDataPathComponent =
   | MapKeyDataPathComponent
   | ListIndexDataPathComponent
   | IndexOrKeyDataPathComponent;
+// export type ForwardDataPathComponent = SerializableForwardDataPathComponent | PointerPathComponent;
+export type ForwardDataPathComponent = SerializableForwardDataPathComponent;
+export type EditingForwardDataPathComponent = SerializableForwardDataPathComponent | PointerPathComponent;
 
 export type IndexOrKeyDataPathComponent = {
   readonly t: DataPathComponentType.IndexOrKey;
@@ -79,11 +77,18 @@ export type MultiDataPathComponent =
   | ContextKeyPathComponent
   | UnionPathComponent;
 
-type AnyDataPath = ForwardDataPath | DataPath | MultiDataPath;
+export type AnyDataPathComponent = MultiDataPathComponent | PointerPathComponent;
+
+type AnyDataPath = ForwardDataPath | DataPath | MultiDataPath | EditingForwardDataPath;
 
 export type ForwardDataPath = {
   readonly isAbsolute?: false;
   readonly components: readonly ForwardDataPathComponent[];
+};
+
+export type EditingForwardDataPath = {
+  readonly isAbsolute?: false;
+  readonly components: readonly EditingForwardDataPathComponent[];
 };
 
 export type DataPath = {
@@ -96,7 +101,7 @@ export type MultiDataPath = {
   readonly components: readonly MultiDataPathComponent[];
 };
 
-export type DataPathToComponentType<T extends MultiDataPath> = T extends {readonly components: readonly (infer C)[]}
+export type DataPathToComponentType<T extends AnyDataPath> = T extends {readonly components: readonly (infer C)[]}
   ? C
   : never;
 
@@ -104,12 +109,12 @@ export const keyDataPathComponent: KeyPathComponent = {t: DataPathComponentType.
 export const emptyDataPath = {components: []} as const;
 
 export function dataPathComponentIsListIndexLike(
-  component: MultiDataPathComponent,
+  component: AnyDataPathComponent,
 ): component is number | IndexOrKeyDataPathComponent {
   return typeof component === 'number' || dataPathComponentIsIndexOrKey(component);
 }
 
-export function dataPathComponentIsMapKey(key: MultiDataPathComponent): key is MapKeyDataPathComponent {
+export function dataPathComponentIsMapKey(key: AnyDataPathComponent): key is MapKeyDataPathComponent {
   return typeof key === 'string';
 }
 
@@ -117,11 +122,11 @@ export function dataPathComponentToMapKey(key: MapKeyDataPathComponent | IndexOr
   return typeof key === 'string' ? key : key.v.toString(10);
 }
 
-export function dataPathComponentIsListIndex(key: MultiDataPathComponent): key is ListIndexDataPathComponent {
+export function dataPathComponentIsListIndex(key: AnyDataPathComponent): key is ListIndexDataPathComponent {
   return typeof key === 'number';
 }
 
-export function dataPathComponentIsReverse(component: MultiDataPathComponent): component is ReversePathComponent {
+export function dataPathComponentIsReverse(component: AnyDataPathComponent): component is ReversePathComponent {
   return typeof component === 'object' && component.t === DataPathComponentType.Reverse;
 }
 
@@ -131,7 +136,7 @@ export function dataPathComponentToListIndex(
   return typeof component === 'number' ? component : component.v;
 }
 
-export function dataPathComponentToListIndexOrFail(component: ForwardDataPathComponent): number {
+export function dataPathComponentToListIndexOrFail(component: EditingForwardDataPathComponent): number {
   if (dataPathComponentIsListIndexLike(component)) {
     return dataPathComponentToListIndex(component);
   } else {
@@ -144,22 +149,24 @@ export function listIndexToDataPathComponent(component: ListIndexDataPathCompone
 }
 
 export function dataPathComponentIsMapKeyLike(
-  component: MultiDataPathComponent,
+  component: AnyDataPathComponent,
 ): component is string | IndexOrKeyDataPathComponent {
   return typeof component === 'string' || dataPathComponentIsIndexOrKey(component);
 }
 
 export function dataPathComponentIsIndexOrKey(
-  component: MultiDataPathComponent,
+  component: AnyDataPathComponent,
 ): component is IndexOrKeyDataPathComponent {
   return typeof component === 'object' && component.t === DataPathComponentType.IndexOrKey;
 }
 
-export function dataPathComponentIsPointer(component: MultiDataPathComponent): component is PointerPathComponent {
+export function dataPathComponentIsPointer(
+  component: EditingForwardDataPathComponent,
+): component is PointerPathComponent {
   return typeof component === 'object' && component.t === DataPathComponentType.Pointer;
 }
 
-export function forwardDataPathComponentToString(component: ForwardDataPathComponentExcludingPointer): string {
+export function forwardDataPathComponentToString(component: SerializableForwardDataPathComponent): string {
   switch (typeof component) {
     case 'number':
       return component.toString(10);
@@ -170,7 +177,7 @@ export function forwardDataPathComponentToString(component: ForwardDataPathCompo
   }
 }
 
-export function dataPathComponentIsKey(component: MultiDataPathComponent): component is KeyPathComponent {
+export function dataPathComponentIsKey(component: AnyDataPathComponent): component is KeyPathComponent {
   return typeof component === 'object' && component.t === DataPathComponentType.Key;
 }
 
@@ -193,9 +200,10 @@ function copyPathOption(source: MultiDataPath, dist: ShallowWritable<MultiDataPa
 }
 
 export function headDataPathComponent(path: ForwardDataPath): ForwardDataPathComponent;
+export function headDataPathComponent(path: EditingForwardDataPath): EditingForwardDataPathComponent;
 export function headDataPathComponent(path: DataPath): DataPathComponent;
 export function headDataPathComponent(path: MultiDataPath): MultiDataPathComponent;
-export function headDataPathComponent(path: MultiDataPath): MultiDataPathComponent {
+export function headDataPathComponent(path: AnyDataPath): AnyDataPathComponent {
   if (!path.components[0]) {
     throw new Error('Cannot get first path component of empty path');
   }
@@ -211,7 +219,7 @@ export function headDataPathComponentOrUndefined(path: MultiDataPath | undefined
   return path?.components[0];
 }
 
-export function tailDataPathComponent<Path extends MultiDataPath>(path: Path): DataPathToComponentType<Path> {
+export function tailDataPathComponent<Path extends AnyDataPath>(path: Path): DataPathToComponentType<Path> {
   if (!path.components[path.components.length - 1]) {
     throw new Error('Cannot get first path component of empty path');
   }
@@ -231,28 +239,37 @@ export function popDataPath(path: AnyDataPath): AnyDataPath {
   return {
     isAbsolute: path.isAbsolute,
     components: path.components.slice(0, path.components.length - 1),
-  };
+  } as AnyDataPath;
 }
 
 export function pushDataPath(path: ForwardDataPath, component: ForwardDataPathComponent): ForwardDataPath;
+export function pushDataPath(
+  path: EditingForwardDataPath,
+  component: EditingForwardDataPathComponent,
+): EditingForwardDataPath;
 export function pushDataPath(path: DataPath, component: ForwardDataPathComponent): DataPath;
 export function pushDataPath(path: MultiDataPath, component: ForwardDataPathComponent): MultiDataPath;
-export function pushDataPath(path: AnyDataPath, component: ForwardDataPathComponent): AnyDataPath {
+export function pushDataPath(
+  path: AnyDataPath,
+  component: ForwardDataPathComponent | EditingForwardDataPathComponent,
+): AnyDataPath {
   if (dataPathLength(path) > 0 && dataPathComponentIsKey(tailDataPathComponent(path))) {
     throw new Error('Cannot push to points key path.');
   }
   return {
     isAbsolute: path.isAbsolute,
     components: [...path.components, component],
-  };
+  } as AnyDataPath;
 }
 
 export function shiftDataPath(path: ForwardDataPath, count?: number): ForwardDataPath;
+export function shiftDataPath(path: EditingForwardDataPath, count?: number): EditingForwardDataPath;
 export function shiftDataPath(path: DataPath, count?: number): DataPath;
 export function shiftDataPath(path: MultiDataPath, count?: number): MultiDataPath;
+export function shiftDataPath(path: AnyDataPath, count?: number): AnyDataPath;
 export function shiftDataPath(path: AnyDataPath, count = 1): AnyDataPath {
   // Don't copy isAbsolute.
-  return {components: path.components.slice(count)};
+  return {components: path.components.slice(count)} as AnyDataPath;
 }
 
 export function safeShiftDataPath(path: ForwardDataPath | undefined): ForwardDataPath | undefined;
@@ -272,10 +289,10 @@ export function unshiftDataPath(path: AnyDataPath, component: ForwardDataPathCom
   if (dataPathComponentIsKey(component) && path.components.length > 0) {
     throw new Error('Cannot unshift point path component.');
   }
-  return {components: [component, ...path.components]};
+  return {components: [component, ...path.components]} as AnyDataPath;
 }
 
-export function dataPathLength(path: MultiDataPath): number {
+export function dataPathLength(path: AnyDataPath): number {
   return path.components.length;
 }
 
@@ -366,7 +383,10 @@ export function toMapKeyDataPathComponent(key: string): MapKeyDataPathComponent 
   return key;
 }
 
-export function forwardDataPathComponentEquals(lhs: ForwardDataPathComponent, rhs: ForwardDataPathComponent): boolean {
+export function forwardDataPathComponentEquals(
+  lhs: EditingForwardDataPathComponent,
+  rhs: EditingForwardDataPathComponent,
+): boolean {
   if (typeof lhs !== 'object') {
     return lhs === rhs;
   }
@@ -383,7 +403,10 @@ export function forwardDataPathComponentEquals(lhs: ForwardDataPathComponent, rh
   }
 }
 
-export function forwardDataPathEquals(lhs: ForwardDataPath | undefined, rhs: ForwardDataPath | undefined): boolean {
+export function forwardDataPathEquals(
+  lhs: EditingForwardDataPath | undefined,
+  rhs: EditingForwardDataPath | undefined,
+): boolean {
   if (lhs === undefined || rhs === undefined) {
     return lhs === rhs;
   }

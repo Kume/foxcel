@@ -19,6 +19,7 @@ import {
   forwardDataPathComponentToString,
   dataPathComponentIsKey,
   dataPathComponentIsPointer,
+  EditingForwardDataPathComponent,
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
 import {CommonReferenceSchema, NamedItemNode} from '../common/commonTypes';
@@ -178,7 +179,7 @@ export class DataSchemaContext {
     }
   }
 
-  public digByPath(pathComponent: ForwardDataPathComponent): DataSchemaContext | undefined {
+  public digByPath(pathComponent: EditingForwardDataPathComponent): DataSchemaContext | undefined {
     if (dataPathComponentIsKey(pathComponent)) {
       // TODO DataSchemaContextをkeyまで対応させるなら何かしら実装が必要
       return undefined;
