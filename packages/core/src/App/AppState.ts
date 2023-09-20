@@ -12,15 +12,27 @@ import {UISchemaExcludeRecursive} from '../UIModel/UISchema';
 import {emptyDataModelContext} from '../DataModel/DataModelContext';
 
 export interface AppState {
-  data: DataModel | undefined;
-  uiModel: UIModel | undefined;
-  uiSchema: UISchema | undefined;
-  dataSchema: DataSchemaExcludeRecursive | undefined;
-  rootUISchemaContext: UISchemaContext;
-  focus?: EditingForwardDataPath;
-  schemaFocusLog?: UISchemaFocusLogNode;
-  dataFocusLog?: UIDataFocusLogNode;
-  actions: AppAction[];
+  readonly data: DataModel | undefined;
+  readonly uiModel: UIModel | undefined;
+  readonly uiSchema: UISchema | undefined;
+  readonly dataSchema: DataSchemaExcludeRecursive | undefined;
+  readonly rootUISchemaContext: UISchemaContext;
+  readonly focus?: EditingForwardDataPath;
+  readonly schemaFocusLog?: UISchemaFocusLogNode;
+  readonly dataFocusLog?: UIDataFocusLogNode;
+  readonly actionHistories: AppActionHistory[];
+  readonly forwardActions: AppAction[];
+}
+
+export interface AppActionHistory {
+  readonly action: AppAction;
+  readonly data: DataModel | undefined;
+  // TODO UIModelをキャッシュしないなら、全量履歴で保存するとデータ量が多くなる。
+  //      逆にキャッシュしないなら保存しておく必要がないはずなので、キャッシュ機能を消す場合はこの項目も消す
+  readonly uiModel: UIModel | undefined;
+  readonly focus?: EditingForwardDataPath;
+  readonly schemaFocusLog?: UISchemaFocusLogNode;
+  readonly dataFocusLog?: UIDataFocusLogNode;
 }
 
 export interface AppFocusAction {
@@ -34,6 +46,7 @@ export interface AppInitializeAction {
   readonly dataSchema: DataSchemaExcludeRecursive;
   readonly data: DataModel | undefined;
   readonly restoredActions?: AppAction[];
+  readonly restoredForwardActions?: AppAction[];
 }
 
 export interface AppDataModelAction {
@@ -41,14 +54,28 @@ export interface AppDataModelAction {
   readonly action: DataModelAction;
 }
 
+export interface AppUndoAction {
+  readonly type: 'undo';
+}
+
+export interface AppRedoAction {
+  readonly type: 'redo';
+}
+
 export interface AppBatchAction {
   readonly type: 'batch';
   readonly actions: AppAction[];
 }
 
-export type AppAction = AppInitializeAction | AppFocusAction | AppDataModelAction | AppBatchAction;
+export type AppAction =
+  | AppInitializeAction
+  | AppFocusAction
+  | AppDataModelAction
+  | AppBatchAction
+  | AppUndoAction
+  | AppRedoAction;
 
-export function applyAppActionToState(state: AppState, action: AppAction): AppState {
+export function applyAppActionToState(state: AppState, action: AppAction, disableHistory = false): AppState {
   switch (action.type) {
     case 'init': {
       const data = action.data ?? nullDataModel;
@@ -70,7 +97,8 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         dataSchema: action.dataSchema,
         rootUISchemaContext: rootSchemaContext,
         uiModel,
-        actions: [],
+        actionHistories: [],
+        forwardActions: [],
       };
 
       if (action.restoredActions) {
@@ -101,7 +129,11 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         uiModel,
         schemaFocusLog: logSchemaFocus(uiModel, state.rootUISchemaContext, state.schemaFocusLog),
         dataFocusLog: logDataFocus(uiModel, state.rootUISchemaContext, state.dataFocusLog),
-        actions: [...state.actions, action],
+        // TODO フォーカスも履歴に保存すべきかは要検討
+        actionHistories: disableHistory
+          ? state.actionHistories
+          : [...state.actionHistories, makeHistory(state, action)],
+        forwardActions: disableHistory ? state.forwardActions : [],
       };
     }
     case 'data': {
@@ -131,15 +163,66 @@ export function applyAppActionToState(state: AppState, action: AppAction): AppSt
         focus,
         schemaFocusLog: logSchemaFocus(uiModel, state.rootUISchemaContext, state.schemaFocusLog),
         dataFocusLog: logDataFocus(uiModel, state.rootUISchemaContext, state.dataFocusLog),
-        actions: [...state.actions, action],
+        actionHistories: disableHistory
+          ? state.actionHistories
+          : [...state.actionHistories, makeHistory(state, action)],
+        forwardActions: disableHistory ? state.forwardActions : [],
       };
     }
     case 'batch': {
       let currentState = state;
       for (const innerAction of action.actions) {
-        currentState = applyAppActionToState(currentState, innerAction);
+        currentState = applyAppActionToState(currentState, innerAction, true);
       }
-      return currentState;
+      if (disableHistory) {
+        return currentState;
+      } else {
+        return {
+          ...currentState,
+          actionHistories: [...state.actionHistories, makeHistory(state, action)],
+          forwardActions: disableHistory ? state.forwardActions : [],
+        };
+      }
+    }
+    case 'undo': {
+      if (state.actionHistories.length === 0) {
+        return state;
+      }
+
+      const lastHistory = state.actionHistories[state.actionHistories.length - 1];
+      return {
+        ...state,
+        data: lastHistory.data,
+        uiModel: lastHistory.uiModel,
+        focus: lastHistory.focus,
+        schemaFocusLog: lastHistory.schemaFocusLog,
+        dataFocusLog: lastHistory.dataFocusLog,
+        actionHistories: state.actionHistories.slice(0, state.actionHistories.length - 1),
+        forwardActions: [...state.forwardActions, lastHistory.action],
+      };
+    }
+    case 'redo': {
+      if (state.forwardActions.length === 0) {
+        return state;
+      }
+
+      const nextAction = state.forwardActions[state.forwardActions.length - 1];
+      return {
+        ...applyAppActionToState(state, nextAction, true),
+        actionHistories: [...state.actionHistories, makeHistory(state, nextAction)],
+        forwardActions: state.forwardActions.slice(0, state.forwardActions.length - 1),
+      };
     }
   }
+}
+
+function makeHistory(state: AppState, action: AppAction): AppActionHistory {
+  return {
+    action,
+    data: state.data,
+    uiModel: state.uiModel,
+    focus: state.focus,
+    schemaFocusLog: state.schemaFocusLog,
+    dataFocusLog: state.dataFocusLog,
+  };
 }

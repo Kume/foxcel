@@ -364,6 +364,8 @@ const BackgroundTextPlace = styled.span`
   ${breakableTextStyle}
 `;
 
+// TODO hasFocusプロパティを使うと実行時エラーが起こるみたい
+//      emotionに変えて、動的な部分は css`` で書いたほうが良いかも
 const DropDownMenuItem = styled.div<{hasFocus: boolean}>`
   padding: 2px 4px;
   ${({theme}) => labelTextStyle(theme)}
