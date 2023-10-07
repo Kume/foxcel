@@ -24,7 +24,11 @@ export default class ObjectDataStorage implements DataStorage {
 
   public async loadAsync(paths: Array<string>): Promise<string> {
     this.readHistory.push(paths);
-    return this._data[paths.join('/')];
+    const path = paths.join('/');
+    if (!(path in this._data)) {
+      throw new Error(`File not found. ${path}`);
+    }
+    return this._data[path];
   }
 
   public async exists(paths: string[]): Promise<boolean> {

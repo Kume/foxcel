@@ -20,9 +20,9 @@ import pick from 'lodash.pick';
 import {mapObjectToObject, mapToObject} from '../common/utils';
 import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
-import {NamedItemNode} from '../common/commonTypes';
+import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
 import {loadNestedConfigFile} from '../Storage/utils';
-import {LoadedSchemaPath, PathConfigMap, resolveConfigOrRecursive} from '../common/schemaCommon';
+import {LoadedSchemaPath, resolveConfigOrRecursive} from '../common/schemaCommon';
 import {
   BooleanDataSchema,
   ConditionalDataSchema,
@@ -345,7 +345,7 @@ function parseKey(key: string | undefined, enableParentKey?: boolean): UISchemaK
 
 function parseContentListUISchemaConfig(
   config: ContentListUISchemaConfig,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: MapDataSchema | ListDataSchema | undefined,
 ): ContentListUISchema {
@@ -382,7 +382,7 @@ export function getUiSchemaUniqueKeyOrUndefined(schema: UISchema): string | unde
 
 function parseChildrenDataSchema(
   contentsConfig: ReadonlyArray<UISchemaConfig | string>,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   childDataSchema: FixedMapDataSchema | undefined,
 ): {dataSchema: FixedMapDataSchema; contents: readonly UISchema[]} {
@@ -415,7 +415,7 @@ function parseChildrenDataSchema(
 
 function parseTableUISchemaConfig(
   config: TableUISchemaConfig,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: MapDataSchema | ListDataSchema | undefined,
   rowDataSchema: FixedMapDataSchema | undefined,
@@ -441,7 +441,7 @@ function parseTableUISchemaConfig(
 
 function parseMappingTableUISchemaConfig(
   config: MappingTableUISchemaConfig,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: MapDataSchema | undefined,
   rowDataSchema: FixedMapDataSchema | undefined,
@@ -472,7 +472,7 @@ function parseMappingTableUISchemaConfig(
 
 function nextChildDataSchema(
   configOrReference: UISchemaConfig | string,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   dataSchema: FixedMapDataSchema | undefined,
   context: UISchemaParsingContext,
 ): [UISchemaParsingContext, DataSchema | undefined] {
@@ -510,7 +510,7 @@ function nextChildDataSchema(
 
 export function parseUISchemaConfig(
   config: UISchemaConfig,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: DataSchema | undefined,
 ): UISchemaExcludeRecursive {
@@ -636,7 +636,7 @@ export function parseUISchemaConfig(
 
 function parseConfigOrReference(
   configOrReference: UISchemaConfig | string,
-  pathConfigMap: PathConfigMap<UISchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: DataSchema | undefined,
 ): UISchema {
@@ -656,16 +656,14 @@ export async function buildUISchema(
   storage: DataStorage,
   formatter: DataFormatter,
 ): Promise<UISchema> {
-  type InternalSchema = NamedItemNode<UISchemaConfig>;
   const rootUiSchemaConfig = 'uiSchema' in rootSchemaConfig ? rootSchemaConfig.uiSchema : rootSchemaConfig.uiRoot;
-  const namedUiSchemaConfig: InternalSchema = {filePath: []};
-  const loadedUISchemaConfig = new Map<string, InternalSchema>([['', namedUiSchemaConfig]]);
+  const namedUiSchemaConfig: WritableFileBaseNamedItemNode<UISchemaConfig> = {filePath: []};
+  const loadedUISchemaConfig = new Map([['', namedUiSchemaConfig]]);
   await loadNestedConfigFile(
     rootSchemaConfig.namedUiSchema || {},
     namedUiSchemaConfig,
     loadedUISchemaConfig,
     (config) => config,
-    (schema) => schema,
     storage,
     formatter,
   );
@@ -677,10 +675,9 @@ export function buildSimpleUISchema(
   rootSchemaConfig: RootSchemaConfig,
   rootDataSchema: DataSchemaExcludeRecursive,
 ): UISchemaExcludeRecursive {
-  type InternalSchema = NamedItemNode<UISchemaConfig>;
   const rootUiSchemaConfig = 'uiSchema' in rootSchemaConfig ? rootSchemaConfig.uiSchema : rootSchemaConfig.uiRoot;
-  const namedUiSchemaConfig: InternalSchema = {filePath: []};
-  const loadedUISchemaConfig = new Map<string, InternalSchema>([['', namedUiSchemaConfig]]);
+  const namedUiSchemaConfig: WritableFileBaseNamedItemNode<UISchemaConfig> = {filePath: []};
+  const loadedUISchemaConfig = new Map([['', namedUiSchemaConfig]]);
   const context = createRootUiSchemaParsingContext(rootDataSchema);
   return parseUISchemaConfig(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
 }

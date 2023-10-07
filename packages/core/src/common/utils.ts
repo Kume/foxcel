@@ -1,5 +1,3 @@
-import {NamedItemNode} from './commonTypes';
-
 export function mapObjectToObject<V, R>(
   obj: {[key: string]: V},
   mapper: (value: V, key: string) => R,
@@ -37,20 +35,6 @@ export function mapToObject<V, R>(
     }
   }
   return ret;
-}
-
-export function addChildToNamedItemNode<T>(node: NamedItemNode<T>, name: string, child: NamedItemNode<T>): void {
-  if (!node.children) {
-    node.children = new Map();
-  }
-  node.children.set(name, child);
-}
-
-export function addNamedItemToNamedItemNode<T>(node: NamedItemNode<T>, name: string, item: T): void {
-  if (!node.named) {
-    node.named = new Map();
-  }
-  node.named.set(name, item);
 }
 
 export function resolvePath(currentPath: readonly string[], targetPath: readonly string[]): string[] {

@@ -17,11 +17,11 @@ import {
   SelectStaticOptionConfig,
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
-import {CommonReferenceSchema, NamedItemNode} from '../common/commonTypes';
+import {CommonReferenceSchema, FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
 import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
-import {LoadedSchemaPath, PathConfigMap, resolveConfigOrRecursive} from '../common/schemaCommon';
+import {LoadedSchemaPath, resolveConfigOrRecursive} from '../common/schemaCommon';
 import {dataPathToTemplateLine, parseTemplateLine, TemplateLine} from './TemplateEngine';
 
 export enum DataSchemaType {
@@ -338,7 +338,7 @@ function baseSchema<T extends DataSchemaType>(config: DataSchemaConfigBase, type
 
 function parseDataSchemaConfig(
   config: DataSchemaConfig,
-  pathConfigMap: PathConfigMap<DataSchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<DataSchemaConfig>,
   filePath: readonly string[] = [],
   loadedPath: LoadedSchemaPath = [],
 ): DataSchema {
@@ -379,7 +379,7 @@ function parseDataSchemaConfig(
 
 function parseChildDataSchemaConfig(
   configOrReference: DataSchemaConfig | string,
-  pathConfigMap: PathConfigMap<DataSchemaConfig>,
+  pathConfigMap: FilePathConfigNamedItemMap<DataSchemaConfig>,
   filePath: readonly string[],
   loadedPath: LoadedSchemaPath,
 ): DataSchema {
@@ -396,8 +396,8 @@ export async function buildDataSchema(
   storage: DataStorage,
   formatter: DataFormatter,
 ): Promise<DataSchemaExcludeRecursive> {
-  const namedDataSchema: NamedItemNode<DataSchemaConfig> = {filePath: []};
-  const loadedDataSchema = new Map<string, NamedItemNode<DataSchemaConfig>>([['', namedDataSchema]]);
+  const namedDataSchema: WritableFileBaseNamedItemNode<DataSchemaConfig> = {filePath: []};
+  const loadedDataSchema = new Map([['', namedDataSchema]]);
   await loadNestedConfigFile(
     rootSchemaConfig.namedDataSchema || {},
     namedDataSchema,
@@ -410,8 +410,8 @@ export async function buildDataSchema(
 }
 
 export function buildSimpleDataSchema(rootSchemaConfig: RootSchemaConfig): DataSchemaExcludeRecursive {
-  const namedDataSchema: NamedItemNode<DataSchemaConfig> = {filePath: []};
-  const loadedDataSchema = new Map<string, NamedItemNode<DataSchemaConfig>>([['', namedDataSchema]]);
+  const namedDataSchema: WritableFileBaseNamedItemNode<DataSchemaConfig> = {filePath: []};
+  const loadedDataSchema = new Map([['', namedDataSchema]]);
   return parseDataSchemaConfig(rootSchemaConfig.dataSchema, loadedDataSchema) as DataSchemaExcludeRecursive; // TODO
 }
 

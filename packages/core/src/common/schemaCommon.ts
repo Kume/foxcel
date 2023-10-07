@@ -1,7 +1,6 @@
-import {NamedItemNode} from './commonTypes';
+import {FilePathConfigNamedItemMap} from './commonTypes';
 
 export type LoadedSchemaPath<T = never> = readonly (readonly [readonly string[], string | null, T?])[];
-export type PathConfigMap<T> = ReadonlyMap<string, Readonly<NamedItemNode<T>>>;
 
 function recursiveSchemaDepth<T, S>(
   filePath: readonly string[],
@@ -35,7 +34,7 @@ export type ConfigOrRecursive<T, S> = {
 
 export function resolveConfigOrRecursive<T, S = never>(
   configOrReference: T | string,
-  pathConfigMap: PathConfigMap<T>,
+  pathConfigMap: FilePathConfigNamedItemMap<T>,
   filePath: readonly string[],
   loadedPath: LoadedSchemaPath<S>,
   additionalPathInfo?: S,
@@ -47,7 +46,7 @@ export function resolveConfigOrRecursive<T, S = never>(
     }
     const [name, nestedName] = configOrReference.split('.');
     if (nestedName) {
-      const childNode = config.children?.get(name);
+      const childNode = config.refs?.get(name);
       if (!childNode) {
         if (config.named?.has(name)) {
           throw new Error(''); // TODO エラー処理 同ファイル内に定義があるので、 xxxx.yyy 形式の参照指定は不正
@@ -62,7 +61,7 @@ export function resolveConfigOrRecursive<T, S = never>(
       }
       const childConfig = childNode.named?.get(nestedName);
       if (!childConfig) {
-        if (childNode.children?.has(name)) {
+        if (childNode.refs?.has(name)) {
           throw new Error(''); // TODO エラー処理 ファイルを２つ跨いで参照することはできない
         } else {
           throw new Error(''); // TODO エラー処理 指定された識別子が参照先のファイルのどこにもなかった
@@ -85,7 +84,7 @@ export function resolveConfigOrRecursive<T, S = never>(
     } else {
       const childConfig = config.named?.get(name);
       if (!childConfig) {
-        if (config.children?.has(name)) {
+        if (config.refs?.has(name)) {
           throw new Error(''); // TODO エラー処理 定義は別ファイルにあるので、 xxxx 形式の参照指定は不正
         } else {
           throw new Error(''); // TODO エラー処理 指定された識別子がどこにもなかった
