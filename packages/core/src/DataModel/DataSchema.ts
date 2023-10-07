@@ -1,28 +1,23 @@
 import {
-  ConditionConfig,
   ConditionalDataSchemaItemConfig,
   ConditionalSchemaItem,
-  conditionIsMatch,
-  DataCollectionItem,
+  ConditionConfig,
   DataPath,
-  dataPathComponentIsListIndexLike,
-  dataPathComponentIsMapKeyLike,
+  dataPathComponentIsKey,
+  dataPathComponentIsPointer,
   DataSchemaConfig,
   DataSchemaConfigBase,
   ForwardDataPath,
   ForwardDataPathComponent,
+  forwardDataPathComponentToString,
   RootSchemaConfig,
   SelectDynamicOptionConfig,
   SelectOptionConfig,
   SelectOptionConfigItem,
   SelectStaticOptionConfig,
-  forwardDataPathComponentToString,
-  dataPathComponentIsKey,
-  dataPathComponentIsPointer,
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
 import {CommonReferenceSchema, NamedItemNode} from '../common/commonTypes';
-import {NestedNamedItem} from '../common/NestedNamedItem';
 import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
@@ -408,7 +403,6 @@ export async function buildDataSchema(
     namedDataSchema,
     loadedDataSchema,
     (config) => config, // TODO バリデーション
-    (schema) => schema,
     storage,
     formatter,
   );
@@ -425,105 +419,9 @@ export function getByKeyForFixedMapDataSchema(map: FixedMapDataSchema, key: stri
   return map.items[key];
 }
 
-export class NamedDataSchemaManager {
-  constructor(private container: NestedNamedItem<DataSchema>) {}
-
-  public resolve(schema: DataSchema | ReferenceDataSchema): DataSchema;
-  public resolve(schema: DataSchema | ReferenceDataSchema | undefined): DataSchema | undefined;
-  public resolve(schema: DataSchema | ReferenceDataSchema | undefined): DataSchema | undefined {
-    if (!schema) {
-      return undefined;
-    }
-    if (schema.t !== DataSchemaType.Reference) {
-      return schema;
-    }
-    return this.container.resolve(schema.ref, schema.namespaceRef, schema.namespace);
-  }
-}
-
-export function childDataSchemaForDataPathComponent(
-  schema: DataSchema | undefined,
-  pathComponent: ForwardDataPathComponent,
-  schemaManager: NamedDataSchemaManager,
-  collectDataForPath: undefined | ((path: MultiDataPath) => DataCollectionItem[]),
-): DataSchema | undefined {
-  if (!schema) {
-    return undefined;
-  }
-  schema = schemaManager.resolve(schema);
-  switch (schema.t) {
-    case DataSchemaType.FixedMap:
-      return undefined;
-    case DataSchemaType.Conditional:
-      if (!collectDataForPath) {
-        return undefined;
-      }
-      for (const key of Object.keys(schema.items)) {
-        if (conditionIsMatch(schema.items[key].condition, collectDataForPath)) {
-          return schemaManager.resolve(schema.items[key].item);
-        }
-      }
-      return undefined;
-
-    case DataSchemaType.List:
-      if (dataPathComponentIsListIndexLike(pathComponent)) {
-        return schemaManager.resolve(schema);
-      } else {
-        return undefined;
-      }
-
-    case DataSchemaType.Map:
-      if (dataPathComponentIsMapKeyLike(pathComponent)) {
-        return schemaManager.resolve(schema);
-      } else {
-        return undefined;
-      }
-
-    default:
-      return undefined;
-  }
-}
-
 export interface DataSchemaContextKeyItem {
   key: string;
   depth: number;
-}
-
-export function dataSchemaContextKeysForPath(
-  root: DataSchema | undefined,
-  path: ForwardDataPath,
-  manager: NamedDataSchemaManager,
-  collectDataForPath: undefined | ((path: MultiDataPath) => DataCollectionItem[]),
-): DataSchemaContextKeyItem[] {
-  const contextKeys: DataSchemaContextKeyItem[] = [];
-  let currentSchema: DataSchema | undefined = root;
-  for (const pathComponent of path.components) {
-    if (contextKeys.length > 0) {
-      contextKeys[contextKeys.length - 1].depth++;
-    }
-    if (currentSchema && 'contextKey' in currentSchema && currentSchema.contextKey) {
-      contextKeys.push({key: currentSchema.contextKey, depth: 0});
-    }
-    currentSchema =
-      currentSchema && childDataSchemaForDataPathComponent(currentSchema, pathComponent, manager, collectDataForPath);
-  }
-  return contextKeys;
-}
-
-export function dataSchemaContextKeyDepth(
-  context: readonly DataSchemaContextKeyItem[],
-  key: string,
-): number | undefined {
-  for (let i = context.length - 1; i >= 0; i--) {
-    if (context[i].key === key) {
-      let {depth} = context[i];
-      for (let j = i + 1; j < context.length; j++) {
-        depth += context[j].depth;
-      }
-      return depth;
-    }
-  }
-  return undefined;
 }
 
 export function dataSchemaIsFixedMap(schema: DataSchema | undefined): schema is FixedMapDataSchema {
