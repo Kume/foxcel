@@ -1,10 +1,8 @@
 import {
   dataPathComponentIsPointer,
+  EditingForwardDataPathComponent,
   emptyDataPath,
-  ForwardDataPath,
   ForwardDataPathComponent,
-  forwardDataPathComponentEquals,
-  forwardDataPathEquals,
   PointerPathComponent,
   pushDataPath,
   toMapKeyDataPathComponent,
@@ -12,16 +10,17 @@ import {
 import {UISchemaExcludeRecursive, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
 import {DataModel, DataPointer, MapDataModel} from '../DataModel/DataModelTypes';
 import {getMapDataAtPathComponent} from '../DataModel/DataModel';
+import type {UIModelDataPath} from './UIModelTypes';
 
-export type UIModelDataPathContext = {readonly parentPath: ForwardDataPath} & (
+export type UIModelDataPathContext = {readonly parentPath: UIModelDataPath} & (
   | {readonly isKey: true; readonly selfPointer: DataPointer; key: string | null}
-  | {readonly isKey?: void; readonly self: ForwardDataPathComponent; key?: string | null}
+  | {readonly isKey?: void; readonly self: EditingForwardDataPathComponent; key?: string | null}
 );
 
 export function buildDataPathFromUIModelDataPathContext(
   context: UIModelDataPathContext | undefined,
   schema: UISchemaExcludeRecursive,
-): ForwardDataPath {
+): UIModelDataPath {
   if (!context) {
     if (schema.key) {
       // TODO エラーハンドリング
@@ -61,7 +60,7 @@ export function makeKeyUIModelDataPathContext(
 
 // TODO 以下のメソッドはこのファイルに置くべきではないかも
 
-export function ensurePointerPathComponent(pathComponent: ForwardDataPathComponent): PointerPathComponent {
+export function ensurePointerPathComponent(pathComponent: EditingForwardDataPathComponent): PointerPathComponent {
   if (dataPathComponentIsPointer(pathComponent)) {
     return pathComponent;
   }
@@ -96,20 +95,20 @@ export function getChildDataModelByUISchemaKey(
   return getMapDataAtPathComponent(model, stringUISchemaKeyToDataPathComponent(key));
 }
 
-export function uiModelDataPathContextEquals(
-  lhs: UIModelDataPathContext | undefined,
-  rhs: UIModelDataPathContext | undefined,
-): boolean {
-  if (lhs === undefined || rhs === undefined) {
-    return lhs === rhs;
-  }
-  if (lhs.isKey) {
-    return !!rhs.isKey && lhs.key === rhs.key && forwardDataPathEquals(lhs.parentPath, rhs.parentPath);
-  } else {
-    return (
-      !rhs.isKey &&
-      forwardDataPathEquals(lhs.parentPath, rhs.parentPath) &&
-      forwardDataPathComponentEquals(lhs.self, rhs.self)
-    );
-  }
-}
+// export function uiModelDataPathContextEquals(
+//   lhs: UIModelDataPathContext | undefined,
+//   rhs: UIModelDataPathContext | undefined,
+// ): boolean {
+//   if (lhs === undefined || rhs === undefined) {
+//     return lhs === rhs;
+//   }
+//   if (lhs.isKey) {
+//     return !!rhs.isKey && lhs.key === rhs.key && forwardDataPathEquals(lhs.parentPath, rhs.parentPath);
+//   } else {
+//     return (
+//       !rhs.isKey &&
+//       forwardDataPathEquals(lhs.parentPath, rhs.parentPath) &&
+//       forwardDataPathComponentEquals(lhs.self, rhs.self)
+//     );
+//   }
+// }

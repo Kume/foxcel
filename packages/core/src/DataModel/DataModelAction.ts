@@ -1,31 +1,31 @@
-import {dataPathLength, ForwardDataPath} from './DataPath';
+import {dataPathLength, EditingForwardDataPath} from './DataPath';
 import {DataModel, DataPointer} from './DataModelTypes';
 import {deleteFromDataModel, insertToDataModel, pushToDataModel, setKeyToDataModel, setToDataModel} from './DataModel';
 import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
 
 export interface PushDataModelAction {
   readonly type: 'push';
-  readonly path: ForwardDataPath;
+  readonly path: EditingForwardDataPath;
   readonly data: DataModel;
   readonly key?: string | null;
 }
 
 export interface SetDataModelAction {
   readonly type: 'set';
-  readonly path: ForwardDataPath;
+  readonly path: EditingForwardDataPath;
   readonly data: DataModel;
 }
 
 export interface SetKeyDataModelAction {
   readonly type: 'setKey';
-  readonly path: ForwardDataPath;
+  readonly path: EditingForwardDataPath;
   readonly key: string | null;
   readonly sourceKeyPointer: DataPointer;
 }
 
 export interface InsertDataModelAction {
   readonly type: 'insert';
-  readonly path: ForwardDataPath;
+  readonly path: EditingForwardDataPath;
   readonly data: DataModel;
 
   /**
@@ -37,7 +37,7 @@ export interface InsertDataModelAction {
 export interface DeleteDataModelAction {
   readonly type: 'delete';
   readonly at?: DataPointer;
-  readonly path: ForwardDataPath;
+  readonly path: EditingForwardDataPath;
 }
 
 export type DataModelAction =

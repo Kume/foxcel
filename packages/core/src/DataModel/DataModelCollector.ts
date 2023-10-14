@@ -158,7 +158,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
     } else {
       return undefined;
     }
-  } else if (dataPathComponentIsPointer(pathComponent)) {
+  } /* else if (dataPathComponentIsPointer(pathComponent)) {
     if (dataModelIsList(model)) {
       const listIndex = getListDataIndexForPointer(model, pathComponent);
       if (listIndex === undefined) {
@@ -186,7 +186,7 @@ export function digForPathComponent<Return, PathComponent extends MultiDataPathC
     } else {
       return undefined;
     }
-  } else {
+  } */ else {
     // Genericsを使うとうまく Type Guard が効かないので、仕方なく Type Assertion を使う。
     return callbacks.other(pathComponent as Exclude<PathComponent, ForwardDataPathComponent | KeyPathComponent>);
   }

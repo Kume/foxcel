@@ -1,4 +1,4 @@
-import {ContentListIndex, MappingTableUIModelRow, TableUIModelRow, UIModel} from './UIModelTypes';
+import {ContentListIndex, MappingTableUIModelRow, TableUIModelRow, UIModel, UIModelDataPath} from './UIModelTypes';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {
@@ -63,7 +63,7 @@ import {getDataModelBySinglePath} from '../DataModel/DataModelCollector';
 function getMapChildContextForFlattenable(
   childContext: UISchemaContext,
   dataPathContext: UIModelDataPathContext | undefined,
-  dataPath: ForwardDataPath,
+  dataPath: UIModelDataPath,
   dataModelContext: DataModelContext,
   dataModel: DataModel | undefined,
   mapDataModelOrUndefined: MapDataModel | undefined,

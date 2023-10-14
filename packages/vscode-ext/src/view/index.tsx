@@ -63,6 +63,11 @@ interface InitialLoadItems {
   readonly uiSchema: UISchemaExcludeRecursive;
   readonly dataSchema: DataSchemaExcludeRecursive;
   readonly restoredActions?: AppAction[];
+
+  /**
+   * Saved actions for redo
+   */
+  readonly restoredForwardActions?: AppAction[];
   readonly fileStatus?: FileDataStatusMapNode;
 }
 
@@ -78,6 +83,7 @@ interface SavedState {
     readonly uiSchema: UISchemaExcludeRecursive;
   };
   readonly actions: AppAction[];
+  readonly forwardActions: AppAction[];
   readonly fileStatus: FileDataStatusMapNode;
 }
 
@@ -128,6 +134,7 @@ const App: React.FC = () => {
         dataSchema: restoredState.initial.uiSchema.dataSchema,
         uiSchema: restoredState.initial.uiSchema,
         restoredActions: restoredState.actions,
+        restoredForwardActions: restoredState.forwardActions,
         fileStatus: restoredState.fileStatus,
       });
     }
@@ -168,7 +175,8 @@ const App: React.FC = () => {
               uiSchema: loaded.uiSchema,
             },
             fileStatus: dataMapper.makeFileDataStatusMapNode(lastFileMap, state.data, dataModelStorageDataTrait),
-            actions: state.actions,
+            actions: state.actionHistories.map((i) => i.action),
+            forwardActions: state.forwardActions,
           });
         } else if (loaded.fileStatus && state.rootUISchemaContext) {
           // 本当はloadStateFromVsCodeした直後にこの処理をやりたいが、データモデルにアクションを適用するのはRootView内で行うので、

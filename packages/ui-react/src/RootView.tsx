@@ -53,7 +53,29 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeS
     onChangeState?.(state);
   }, [onChangeState, state]);
 
-  console.log('root', state);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // TODO 次回はselectでundoが効かない (フォーカスがselect内のtextareaに当たったまま) 問題を修正
+      console.log(e.target, e.key);
+      switch (e.key) {
+        case 'z':
+          if (e.target === document.body && (e.metaKey || e.ctrlKey)) {
+            if (e.shiftKey) {
+              console.log('xxxx redo');
+              dispatch({type: 'redo'});
+            } else {
+              console.log('xxxx undo');
+              dispatch({type: 'undo'});
+            }
+          }
+          break;
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
 
   return (
     <LayoutRoot>

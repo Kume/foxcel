@@ -40,7 +40,7 @@ import {
   TableUISelection,
 } from '@foxcel/core/dist/UIModel/TableUIModel';
 import styled from 'styled-components';
-import {ForwardDataPath} from '@foxcel/core';
+import {EditingForwardDataPath} from '@foxcel/core';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;
@@ -315,7 +315,7 @@ MappingTableRowView.displayName = 'MappingTableRowView';
 interface MappingTableEmptyRowViewProps {
   readonly row: MappingTableUIModelEmptyRow;
   readonly rowNumber: number;
-  readonly tableDataPath: ForwardDataPath;
+  readonly tableDataPath: EditingForwardDataPath;
   readonly selectionRange: TableRange | undefined;
   readonly isSelectionStart: boolean;
   readonly isSelectionEnd: boolean;

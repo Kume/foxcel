@@ -64,3 +64,7 @@ Object.freeze(emptyArray);
 export function emptyFunction(): void {
   // 何もしない
 }
+
+export function compact<T>(values: readonly (T | null | undefined | false)[]): T[] {
+  return values.filter((i) => i !== undefined && i !== null && i !== false) as T[];
+}

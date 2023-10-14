@@ -1,4 +1,4 @@
-import {ForwardDataPath} from '../DataModel/DataPath';
+import {ForwardDataPath, EditingForwardDataPath} from '../DataModel/DataPath';
 import {
   BooleanDataModel,
   DataModel,
@@ -25,8 +25,10 @@ import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {DataModelContext} from '../DataModel/DataModelContext';
 import {UISchemaExcludeRecursive} from './UISchema';
 
+export type UIModelDataPath = EditingForwardDataPath;
+
 interface UIModelCommon {
-  readonly dataPath: ForwardDataPath;
+  readonly dataPath: UIModelDataPath;
   readonly dataContext: DataModelContext;
   readonly dataPathFocus: ForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
@@ -45,7 +47,7 @@ export interface TabUIModel extends UIModelCommon {
 
 export interface TabUIModelTab {
   readonly label: string;
-  readonly dataPath: ForwardDataPath;
+  readonly dataPath: UIModelDataPath;
 }
 
 export interface FormUIModel extends UIModelCommon {
@@ -65,7 +67,7 @@ interface KeyTextUIModel {
   readonly type: 'text';
   readonly isKey: true;
   readonly schema?: undefined;
-  readonly parentDataPath: ForwardDataPath;
+  readonly parentDataPath: UIModelDataPath;
   readonly selfPointer: DataPointer;
   readonly value: string | null;
 }
@@ -75,7 +77,6 @@ interface StandardTextUIModel extends UIModelCommon {
   readonly isKey?: void;
   readonly schema: TextUISchema;
   readonly data: StringDataModel | undefined;
-  readonly dataPath: ForwardDataPath;
   readonly value: StringDataModel | NullDataModel;
 }
 
@@ -106,7 +107,7 @@ export type ContentListUIModel = EmptyContentListUIModel | NonEmptyContentListUI
 export interface ContentListIndex {
   readonly label: FilledTemplate;
   readonly pointer: DataPointer;
-  readonly dataPath: ForwardDataPath;
+  readonly dataPath: UIModelDataPath;
 }
 
 export interface TableUIModel extends UIModelCommon {
@@ -126,7 +127,7 @@ export interface TableUIModelRow {
   readonly pointer: DataPointer;
   readonly key: string | null | undefined;
   readonly data: MapDataModel | undefined;
-  readonly dataPath: ForwardDataPath;
+  readonly dataPath: UIModelDataPath;
   readonly dataPathFocus: ForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly cells: readonly UIModel[];
@@ -170,7 +171,7 @@ export interface SingleSelectUIModel extends SelectUIModelCommon {
 export interface MultiSelectUIModel extends SelectUIModelCommon {
   readonly isMulti: true;
   readonly data: ListDataModel | undefined;
-  readonly currents: readonly (SelectUIModelCurrentValue & {readonly dataPath: ForwardDataPath})[];
+  readonly currents: readonly (SelectUIModelCurrentValue & {readonly dataPath: UIModelDataPath})[];
 }
 
 export type SelectUIModel = SingleSelectUIModel | MultiSelectUIModel;

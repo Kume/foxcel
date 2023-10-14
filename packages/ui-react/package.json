@@ -18,12 +18,9 @@
     "@floating-ui/react-dom": "^1.0.0",
     "react": "^18.2.0",
     "react-icons": "^4.3.1",
-    "react-redux": "^8.0.7",
-    "redux": "^4.1.0",
     "styled-components": "^6.0.0-rc.3"
   },
   "devDependencies": {
-    "@types/react": "^18.2.10",
-    "@types/react-redux": "^7.1.25"
+    "@types/react": "^18.2.10"
   }
 }
