@@ -1,12 +1,20 @@
-import {createRootUiSchemaParsingContext, getUiSchemaUniqueKeyOrUndefined, parseUISchemaConfig} from '../UISchema';
+import {
+  buildUISchema,
+  createRootUiSchemaParsingContext,
+  getUiSchemaUniqueKeyOrUndefined,
+  parseUISchemaConfig,
+} from '../UISchema';
 import {UISchemaConfig} from '../..';
-import {DataSchema, DataSchemaType} from '../../DataModel/DataSchema';
+import {buildDataSchema, DataSchema, DataSchemaType} from '../../DataModel/DataSchema';
 import {mapToObject} from '../../common/utils';
-import {TabUISchema, UISchema} from '../UISchemaTypes';
+import {TabUISchema, UISchemaOrRecursive} from '../UISchemaTypes';
+import ObjectDataStorage from '../../Storage/ObjectDataStorage';
+import YamlDataFormatter from '../../Storage/YamlDataFormatter';
+import {configFixtures} from '../../common/testFixtures';
 
 const emptyRootContext = createRootUiSchemaParsingContext(undefined);
 
-type TestData = {readonly uiSchema: UISchema; readonly dataSchema: DataSchema};
+type TestData = {readonly uiSchema: UISchemaOrRecursive; readonly dataSchema: DataSchema};
 type TestDataParam = {readonly key?: string};
 
 const testDataCreator = {
@@ -17,7 +25,7 @@ const testDataCreator = {
   },
   text: (): TestData => {
     const dataSchema = {t: DataSchemaType.String} as const;
-    const uiSchema = {type: 'text', key: 'test_text', dataSchema} as const;
+    const uiSchema = {type: 'text', key: 'test_text', dataSchema, multiline: undefined} as const;
     return {uiSchema, dataSchema} as const;
   },
   form: (param: TestDataParam, children: readonly TestData[]): TestData => {
@@ -123,5 +131,16 @@ describe('Unit tests for parseUISchemaConfig', () => {
         expect(result).toMatchSnapshot();
       });
     });
+  });
+});
+
+describe('Unit tests for buildUISchema', () => {
+  it('Recursive', async () => {
+    const storage = new ObjectDataStorage();
+    const fixture = configFixtures.simpleRecursive;
+    const dataSchema = await buildDataSchema(fixture.schema, storage, new YamlDataFormatter());
+    const uiSchema = await buildUISchema(fixture.schema, dataSchema, storage, new YamlDataFormatter());
+    // TODO expect書く
+    console.log(uiSchema);
   });
 });

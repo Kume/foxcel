@@ -5,7 +5,7 @@ import {logDataFocus, logSchemaFocus, UIDataFocusLogNode, UISchemaFocusLogNode} 
 import {applyDataModelAction, DataModelAction} from '../DataModel/DataModelAction';
 import {buildUIModel} from '../UIModel/UIModel';
 import {UISchemaContext} from '../UIModel/UISchemaContext';
-import {UISchema} from '../UIModel/UISchemaTypes';
+import {UISchemaOrRecursive} from '../UIModel/UISchemaTypes';
 import {DataSchemaExcludeRecursive} from '../DataModel/DataSchema';
 import {nullDataModel} from '../DataModel/DataModel';
 import {UISchemaExcludeRecursive} from '../UIModel/UISchema';
@@ -14,7 +14,7 @@ import {emptyDataModelContext} from '../DataModel/DataModelContext';
 export interface AppState {
   readonly data: DataModel | undefined;
   readonly uiModel: UIModel | undefined;
-  readonly uiSchema: UISchema | undefined;
+  readonly uiSchema: UISchemaOrRecursive | undefined;
   readonly dataSchema: DataSchemaExcludeRecursive | undefined;
   readonly rootUISchemaContext: UISchemaContext;
   readonly focus?: EditingForwardDataPath;

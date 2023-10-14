@@ -1,5 +1,5 @@
-import {UISchemaExcludeRecursive, uiSchemaKeyIsParentKey} from './UISchema';
-import {UISchema} from './UISchemaTypes';
+import {uiSchemaKeyIsParentKey} from './UISchema';
+import {UISchema, UISchemaOrRecursive} from './UISchemaTypes';
 import {
   dataPathComponentIsKey,
   dataPathComponentIsMapKeyLike,
@@ -21,22 +21,22 @@ import {validIndexOrUndefined} from '../common/utils';
 import {uiSchemaKeyToDataPathComponent} from './DataPathContext';
 
 export class UISchemaContext {
-  public static createRootContext(rootSchema: UISchemaExcludeRecursive): UISchemaContext {
+  public static createRootContext(rootSchema: UISchema): UISchemaContext {
     return new UISchemaContext(rootSchema, rootSchema, []);
   }
 
   private constructor(
-    public readonly rootSchema: UISchemaExcludeRecursive,
-    public readonly currentSchema: UISchemaExcludeRecursive,
-    private readonly path: readonly UISchemaExcludeRecursive[],
+    public readonly rootSchema: UISchema,
+    public readonly currentSchema: UISchema,
+    private readonly path: readonly UISchema[],
   ) {}
 
-  public resolve(schema: UISchema): UISchemaExcludeRecursive {
+  public resolve(schema: UISchemaOrRecursive): UISchema {
     if (schema.type === 'recursive') {
-      if (schema.depth >= this.path.length) {
+      if (schema.depth > this.path.length) {
         throw new Error('Invalid ui schema depth');
       }
-      return this.path[this.path.length - schema.depth - 1];
+      return {...this.path[this.path.length - (schema.depth - 1)], key: schema.key};
     } else {
       return schema;
     }

@@ -2,7 +2,7 @@ import {DataPointer, getIdFromDataPointer} from '..';
 import {UISchemaContext} from './UISchemaContext';
 import {UIModel} from './UIModelTypes';
 import {Writable} from '../common/utilTypes';
-import {UISchema} from './UISchemaTypes';
+import {UISchemaOrRecursive} from './UISchemaTypes';
 
 export interface ContentListUIFocusNode {
   readonly type: 'contentList';
@@ -58,11 +58,11 @@ export interface UISchemaFocusLogNode {
   readonly c: {readonly [index: number]: UISchemaFocusLogNode | undefined};
 }
 
-type MatchedModel<Schema extends UISchema, Model extends UIModel> = Model extends {type: Schema['type']}
+type MatchedModel<Schema extends UISchemaOrRecursive, Model extends UIModel> = Model extends {type: Schema['type']}
   ? Model
   : never;
 
-function assertModelTypeForSchema<Schema extends UISchema>(
+function assertModelTypeForSchema<Schema extends UISchemaOrRecursive>(
   schema: Schema,
   model: UIModel,
 ): asserts model is MatchedModel<Schema, UIModel> {

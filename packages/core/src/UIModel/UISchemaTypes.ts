@@ -1,7 +1,6 @@
 import {
   BooleanDataSchema,
   ConditionalDataSchema,
-  DataSchema,
   FixedMapDataSchema,
   KeyDataSchema,
   ListDataSchema,
@@ -21,6 +20,8 @@ export type FlattenableUISchemaCommon =
   | {keyFlatten: true; flatKeys: ReadonlyMap<UISchemaKey, readonly UISchemaKey[]>}
   | {keyFlatten?: false};
 
+export type UISchemaOrRecursive = UISchema | RecursiveUISchema;
+
 export type UISchema =
   | MappingTableUISchema
   | CheckBoxUISchema
@@ -31,8 +32,7 @@ export type UISchema =
   | TableUISchema
   | TabUISchema
   | TextUISchema
-  | ConditionalUISchema
-  | RecursiveUISchema;
+  | ConditionalUISchema;
 
 export interface MappingTableUISchema extends UISchemaBase {
   readonly type: 'mappingTable';
@@ -40,7 +40,7 @@ export interface MappingTableUISchema extends UISchemaBase {
   readonly keyFlatten?: undefined;
   readonly dataSchema: MapDataSchema;
   readonly sourcePath: DataPath;
-  readonly contents: ReadonlyArray<UISchema>;
+  readonly contents: ReadonlyArray<UISchemaOrRecursive>;
 }
 
 export interface TextUISchema extends UISchemaBase {
@@ -55,7 +55,7 @@ export type TabUISchema = {
   readonly type: 'tab';
   readonly key?: UISchemaKey;
   readonly dataSchema: FixedMapDataSchema;
-  readonly contents: ReadonlyArray<UISchema>;
+  readonly contents: ReadonlyArray<UISchemaOrRecursive>;
 } & UISchemaBase &
   FlattenableUISchemaCommon;
 
@@ -64,7 +64,7 @@ export interface TableUISchema extends UISchemaBase {
   readonly key?: string;
   readonly keyFlatten?: undefined;
   readonly dataSchema: ListDataSchema | MapDataSchema;
-  readonly contents: ReadonlyArray<UISchema>;
+  readonly contents: ReadonlyArray<UISchemaOrRecursive>;
 }
 
 export type SelectUISchema = SingleSelectUISchema | MultiSelectUISchema;
@@ -97,7 +97,7 @@ export type FormUISchema = {
   readonly type: 'form';
   readonly key?: UISchemaKey;
   readonly dataSchema: FixedMapDataSchema;
-  readonly contents: ReadonlyArray<UISchema>;
+  readonly contents: ReadonlyArray<UISchemaOrRecursive>;
 } & UISchemaBase &
   FlattenableUISchemaCommon;
 
@@ -106,7 +106,7 @@ export interface ContentListUISchema extends UISchemaBase {
   readonly key?: string;
   readonly keyFlatten?: undefined;
   readonly dataSchema: ListDataSchema | MapDataSchema;
-  readonly content: UISchema;
+  readonly content: UISchemaOrRecursive;
 }
 
 export interface CheckBoxUISchema extends UISchemaBase {
@@ -121,18 +121,17 @@ export interface ConditionalUISchema extends UISchemaBase {
   readonly key?: string;
   readonly keyFlatten?: undefined;
   readonly dataSchema: ConditionalDataSchema;
-  readonly contents: {readonly [key: string]: UISchema};
-}
-
-export interface ReferenceUISchema {
-  readonly type: 'reference';
-  readonly ref: string;
-  readonly namespaceRef?: string;
-  readonly namespace: readonly string[];
+  readonly contents: {readonly [key: string]: UISchemaOrRecursive};
 }
 
 export interface RecursiveUISchema {
   readonly type: 'recursive';
-  readonly dataSchema: DataSchema;
   readonly depth: number;
+
+  readonly key?: string;
+  /**
+   * 参照先のUISchemaに定義されているDataSchemaを使うべきなのでRecursiveだけdataSchemaを定義しないが、
+   * optionalChaining中にアクセスする場合に型定義だけあった方が便利なのでnever型で明示的にプロパティの存在を定義。
+   */
+  readonly dataSchema?: never;
 }

@@ -160,9 +160,7 @@ export function dataPathComponentIsIndexOrKey(
   return typeof component === 'object' && component.t === DataPathComponentType.IndexOrKey;
 }
 
-export function dataPathComponentIsPointer(
-  component: EditingForwardDataPathComponent,
-): component is PointerPathComponent {
+export function dataPathComponentIsPointer(component: AnyDataPathComponent): component is PointerPathComponent {
   return typeof component === 'object' && component.t === DataPathComponentType.Pointer;
 }
 
@@ -190,12 +188,6 @@ export function getMapKeyFromDataPathElementOrFail(component: MultiDataPathCompo
     return getMapKeyFromDataPathElement(component);
   } else {
     throw new DataModelOperationError('Only can get value from map by key like path component.');
-  }
-}
-
-function copyPathOption(source: MultiDataPath, dist: ShallowWritable<MultiDataPath>): void {
-  if (source.isAbsolute) {
-    dist.isAbsolute = true;
   }
 }
 

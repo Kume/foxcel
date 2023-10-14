@@ -1,5 +1,6 @@
 export type RootSchemaConfig = {
   readonly namedDataSchema?: SubDataSchemaConfig;
+  // TODO optionalにする
   readonly dataSchema: DataSchemaConfig;
   readonly namedUiSchema?: SubUISchemaConfig;
   readonly fileMap: DataMapperConfig;
@@ -9,7 +10,7 @@ type UISchemaConfigHolder = {readonly uiRoot: UISchemaConfig /* old schema */} |
 
 export type SubDataSchemaConfig = {readonly [key: string]: string | DataSchemaConfig};
 
-export type SubUISchemaConfig = {readonly [key: string]: UISchemaConfig | string};
+export type SubUISchemaConfig = {readonly [key: string]: UISchemaConfigOrReference};
 
 ////////////////////////////////////////////////////////////////////////////
 // DataMapper Config
@@ -34,7 +35,7 @@ interface SingleDataMapperNodeConfig extends DataMapperNodeConfigBase {
 }
 
 export interface DataMapperConfig {
-  children: Array<DataMapperNodeConfig>;
+  children: readonly DataMapperNodeConfig[];
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -151,12 +152,20 @@ export type UISchemaConfig =
   | TextUISchemaConfig
   | ConditionalUISchemaConfig;
 
+export interface UISchemaReference {
+  readonly type: 'ref';
+  readonly ref: string;
+  readonly key?: string;
+}
+
+export type UISchemaConfigOrReference = UISchemaConfig | UISchemaReference;
+
 export type UISchemaConfigType = UISchemaConfig['type'];
 
 export interface MappingTableUISchemaConfig extends UISchemaConfigBase {
   readonly type: 'mappingTable';
   readonly sourcePath: string;
-  readonly contents: ReadonlyArray<UISchemaConfig | string>;
+  readonly contents: ReadonlyArray<UISchemaConfigOrReference>;
 }
 
 export interface TextUISchemaConfig extends UISchemaConfigBase {
@@ -169,13 +178,13 @@ export interface TextUISchemaConfig extends UISchemaConfigBase {
 export type TabUISchemaConfig = {
   readonly type: 'tab';
   readonly label?: string;
-  readonly contents: ReadonlyArray<UISchemaConfig | string>;
+  readonly contents: ReadonlyArray<UISchemaConfigOrReference>;
 } & KeyOrKeyFlatten;
 
 export interface TableUISchemaConfig extends UISchemaConfigBase {
   readonly type: 'table';
   readonly dataType?: CollectionDataModelTypeString;
-  readonly contents: ReadonlyArray<UISchemaConfig | string>;
+  readonly contents: ReadonlyArray<UISchemaConfigOrReference>;
 }
 
 export interface SelectUISchemaConfig extends UISchemaConfigBase {
@@ -192,14 +201,14 @@ export interface NumberUISchemaConfig extends UISchemaConfigBase {
 export type FormUISchemaConfig = {
   readonly type: 'form';
   readonly label?: string;
-  readonly contents: Array<UISchemaConfig | string>;
+  readonly contents: ReadonlyArray<UISchemaConfigOrReference>;
 } & KeyOrKeyFlatten;
 
 export interface ContentListUISchemaConfig extends UISchemaConfigBase {
   readonly type: 'contentList';
   readonly listIndexKey?: string;
   readonly dataType?: CollectionDataModelTypeString;
-  readonly content: UISchemaConfig | string;
+  readonly content: UISchemaConfigOrReference;
 }
 
 export interface CheckBoxUISchemaConfig extends UISchemaConfigBase {
@@ -209,7 +218,7 @@ export interface CheckBoxUISchemaConfig extends UISchemaConfigBase {
 export interface ConditionalUISchemaConfig extends UISchemaConfigBase {
   readonly type: 'conditional';
   readonly conditions?: {readonly [key: string]: ConditionConfig};
-  readonly conditionalContents: {readonly [key: string]: UISchemaConfig | string};
+  readonly conditionalContents: {readonly [key: string]: UISchemaConfigOrReference};
 }
 
 export type CollectionDataModelTypeString = 'list' | 'map';

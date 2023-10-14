@@ -15,6 +15,8 @@ import {
   SelectUISchemaConfig,
   TableUISchemaConfig,
   UISchemaConfig,
+  UISchemaConfigOrReference,
+  UISchemaReference,
 } from '..';
 import pick from 'lodash.pick';
 import {mapObjectToObject, mapToObject} from '../common/utils';
@@ -22,7 +24,7 @@ import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
 import {loadNestedConfigFile} from '../Storage/utils';
-import {LoadedSchemaPath, resolveConfigOrRecursive} from '../common/schemaCommon';
+import {LoadedSchemaPath, parseSchemaReferenceConfig, resolveConfigOrRecursive} from '../common/schemaCommon';
 import {
   BooleanDataSchema,
   ConditionalDataSchema,
@@ -51,12 +53,12 @@ import {
   SelectUISchema,
   TableUISchema,
   TabUISchema,
-  UISchema,
+  UISchemaOrRecursive,
 } from './UISchemaTypes';
 
-export type UISchemaExcludeRecursive<E = UISchema> = E extends RecursiveUISchema ? never : E;
+export type UISchemaExcludeRecursive<E = UISchemaOrRecursive> = E extends RecursiveUISchema ? never : E;
 
-export type UISchemaType = UISchema['type'];
+export type UISchemaType = UISchemaOrRecursive['type'];
 
 /**
  * trueは$keyを表す
@@ -283,13 +285,13 @@ function overwriteObject<T>(...items: readonly (Partial<T> | undefined)[]): T {
   return ret as T;
 }
 
-function isFlattenableUISchema(schema: UISchema): schema is FormUISchema | TabUISchema {
+function isFlattenableUISchema(schema: UISchemaOrRecursive): schema is FormUISchema | TabUISchema {
   return schema.type === 'form' || schema.type === 'tab';
 }
 
 function makeKeyFlattenable(
   config: KeyOrKeyFlatten,
-  contents: readonly UISchema[],
+  contents: readonly UISchemaOrRecursive[],
 ): FlattenableUISchemaCommon & {key?: UISchemaKey} {
   if (config.keyFlatten) {
     const flatKeys: Map<UISchemaKey, UISchemaKey[]> = new Map();
@@ -357,7 +359,7 @@ function parseContentListUISchemaConfig(
     nextContext,
     nextContext.dataSchemaContext?.resolveRecursive(dataSchema?.item),
   );
-  if (content.dataSchema.t === DataSchemaType.Key) {
+  if (content.dataSchema?.t === DataSchemaType.Key) {
     throw new Error('ContentListの要素としてkeyに$keyを持つ要素を直接持つことはできません。');
   }
   return {
@@ -372,25 +374,21 @@ function parseContentListUISchemaConfig(
   };
 }
 
-export function getUiSchemaUniqueKeyOrUndefined(schema: UISchema): string | undefined {
-  if (schema.type === 'recursive') {
-    throw new Error('Not implemented');
-  } else {
-    return schema.key === true ? undefined : schema.key;
-  }
+export function getUiSchemaUniqueKeyOrUndefined(schema: UISchemaOrRecursive): string | undefined {
+  return schema.key === true ? undefined : schema.key;
 }
 
 function parseChildrenDataSchema(
-  contentsConfig: ReadonlyArray<UISchemaConfig | string>,
+  contentsConfig: ReadonlyArray<UISchemaConfigOrReference>,
   pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   childDataSchema: FixedMapDataSchema | undefined,
-): {dataSchema: FixedMapDataSchema; contents: readonly UISchema[]} {
+): {dataSchema: FixedMapDataSchema; contents: readonly UISchemaOrRecursive[]} {
   const contents = contentsConfig.map((rowConfig) => {
     const [cellContext, cellDataSchema] = nextChildDataSchema(rowConfig, pathConfigMap, childDataSchema, context);
     return parseConfigOrReference(rowConfig, pathConfigMap, cellContext, cellDataSchema);
   });
-  const contentsByKey = new Map<string, UISchema>(
+  const contentsByKey = new Map<string, UISchemaOrRecursive>(
     contents
       .map((content) => [getUiSchemaUniqueKeyOrUndefined(content) || '', content] as const)
       .filter(([key]) => key),
@@ -471,20 +469,30 @@ function parseMappingTableUISchemaConfig(
 }
 
 function nextChildDataSchema(
-  configOrReference: UISchemaConfig | string,
+  configOrReference: UISchemaConfigOrReference,
   pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   dataSchema: FixedMapDataSchema | undefined,
   context: UISchemaParsingContext,
 ): [UISchemaParsingContext, DataSchema | undefined] {
   const resolved = resolveConfigOrRecursive(
     configOrReference,
+    uiSchemaConfigIsReference,
+    ({ref}) => parseSchemaReferenceConfig(ref),
     pathConfigMap,
     context.filePath,
     context.loadedPath,
     dataSchema,
   );
   if (resolved.type === 'recursive') {
-    throw new Error('Not implemented'); // TODO
+    // TODO childrenはハードコーディングではいけない
+    const childDataSchema =
+      dataSchema && context.dataSchemaContext?.resolveRecursive(getByKeyForFixedMapDataSchema(dataSchema, 'children'));
+    const dataPathComponent = childDataSchema && {key: 'children', type: childDataSchema.t};
+    console.log('xxxx childDataSchem', childDataSchema);
+    // TODO pushで良い？遡らないといけなくはない？ => スキーマ時点だとそんなことは無い気がするが…
+    return [pushToContext(context, undefined, dataPathComponent), childDataSchema];
+    // TODO dataSchemaをdepth分遡る必要がある。そのためには、引数にデータスキーマのコンテキストが必要
+    throw new Error('Not implemented');
     // return [pushToContext(), result.additionalPathInfo];
   } else {
     if (isKeyFlatten(resolved.config)) {
@@ -635,15 +643,21 @@ export function parseUISchemaConfig(
 }
 
 function parseConfigOrReference(
-  configOrReference: UISchemaConfig | string,
+  configOrReference: UISchemaConfigOrReference,
   pathConfigMap: FilePathConfigNamedItemMap<UISchemaConfig>,
   context: UISchemaParsingContext,
   dataSchema: DataSchema | undefined,
-): UISchema {
-  const resolved = resolveConfigOrRecursive(configOrReference, pathConfigMap, context.filePath, context.loadedPath);
+): UISchemaOrRecursive {
+  const resolved = resolveConfigOrRecursive(
+    configOrReference,
+    uiSchemaConfigIsReference,
+    ({ref}) => parseSchemaReferenceConfig(ref),
+    pathConfigMap,
+    context.filePath,
+    context.loadedPath,
+  );
   if (resolved.type === 'recursive') {
-    throw new Error('Not implemented'); // TODO
-    // return {type: 'recursive', depth: resolved.depth, dataSchema:};
+    return {type: 'recursive', depth: resolved.depth, key: resolved.ref.key};
   } else {
     const nextContext = setFilePathToContext(context, resolved.loadedPath, resolved.filePath);
     return parseUISchemaConfig(resolved.config, pathConfigMap, nextContext, dataSchema);
@@ -655,7 +669,7 @@ export async function buildUISchema(
   rootDataSchema: DataSchemaExcludeRecursive,
   storage: DataStorage,
   formatter: DataFormatter,
-): Promise<UISchema> {
+): Promise<UISchemaOrRecursive> {
   const rootUiSchemaConfig = 'uiSchema' in rootSchemaConfig ? rootSchemaConfig.uiSchema : rootSchemaConfig.uiRoot;
   const namedUiSchemaConfig: WritableFileBaseNamedItemNode<UISchemaConfig> = {filePath: []};
   const loadedUISchemaConfig = new Map([['', namedUiSchemaConfig]]);
@@ -683,7 +697,7 @@ export function buildSimpleUISchema(
 }
 
 export function uiSchemaHasFlattenDataPathComponent(
-  schema: UISchema,
+  schema: UISchemaOrRecursive,
   pathComponent: ForwardDataPathComponent,
   context: UISchemaContext,
 ): boolean {
@@ -725,4 +739,10 @@ export function stringUISchemaKeyToString(key: string | undefined): string | und
 
 export function uiSchemaKeyIsParentKey(key: UISchemaKey | undefined): key is true {
   return key === true;
+}
+
+function uiSchemaConfigIsReference(
+  configOrReference: UISchemaConfigOrReference,
+): configOrReference is UISchemaReference {
+  return configOrReference.type === 'ref';
 }

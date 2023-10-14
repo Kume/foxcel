@@ -17,13 +17,14 @@ function recursiveSchemaDepth<T, S>(
   }
 }
 
-export type ConfigOrRecursive<T, S> = {
+export type ConfigOrRecursive<T, S, Ref> = {
   readonly filePath: readonly string[];
   readonly loadedPath: LoadedSchemaPath<S>;
 } & (
   | {
       readonly type: 'recursive';
       readonly depth: number;
+      readonly ref: Ref;
       readonly additionalPathInfo: S | undefined;
     }
   | {
@@ -32,19 +33,31 @@ export type ConfigOrRecursive<T, S> = {
     }
 );
 
-export function resolveConfigOrRecursive<T, S = never>(
-  configOrReference: T | string,
-  pathConfigMap: FilePathConfigNamedItemMap<T>,
+export function parseSchemaReferenceConfig(value: string): [string, string?] {
+  const names = value.split('.');
+  // TODO 名前が正しいことをバリデーション
+  if (names.length > 2) {
+    throw new Error();
+  }
+  const [namespaceOrName, name] = names;
+  return [namespaceOrName, name];
+}
+
+export function resolveConfigOrRecursive<Config, Ref, S = never>(
+  configOrReference: Config | Ref,
+  configIsRef: (configOrReference: Config | Ref) => configOrReference is Ref,
+  getReference: (reference: Ref) => [string, string?],
+  pathConfigMap: FilePathConfigNamedItemMap<Config>,
   filePath: readonly string[],
   loadedPath: LoadedSchemaPath<S>,
   additionalPathInfo?: S,
-): ConfigOrRecursive<T, S> {
-  if (typeof configOrReference === 'string') {
+): ConfigOrRecursive<Config, S, Ref> {
+  if (configIsRef(configOrReference)) {
     const config = pathConfigMap.get(filePath.join('/'));
     if (!config) {
       throw new Error(''); // TODO 自身のファイルパスの設定が見つからなかった。バグがない限りは起こらないエラー。
     }
-    const [name, nestedName] = configOrReference.split('.');
+    const [name, nestedName] = getReference(configOrReference);
     if (nestedName) {
       const childNode = config.refs?.get(name);
       if (!childNode) {
@@ -74,6 +87,7 @@ export function resolveConfigOrRecursive<T, S = never>(
           type: 'recursive',
           depth: recursiveDepth,
           filePath: targetNode[0],
+          ref: configOrReference,
           loadedPath: loadedPath.slice(0, -recursiveDepth),
           additionalPathInfo: targetNode[2],
         };
@@ -97,11 +111,12 @@ export function resolveConfigOrRecursive<T, S = never>(
           type: 'recursive',
           depth: recursiveDepth,
           filePath: targetNode[0],
+          ref: configOrReference,
           loadedPath: loadedPath.slice(0, -recursiveDepth),
           additionalPathInfo: targetNode[2],
         };
       } else {
-        const nextLoadedPath = [...loadedPath, [filePath, nestedName, additionalPathInfo] as const];
+        const nextLoadedPath = [...loadedPath, [filePath, name, additionalPathInfo] as const];
         return {type: 'config', config: childConfig, filePath, loadedPath: nextLoadedPath};
       }
     }

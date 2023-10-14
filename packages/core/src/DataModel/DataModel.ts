@@ -1,4 +1,5 @@
 import {
+  AnyDataPathComponent,
   dataPathComponentIsIndexOrKey,
   dataPathComponentIsListIndex,
   dataPathComponentIsListIndexLike,
@@ -512,7 +513,7 @@ type CreateNextChildData = (
 
 //#region For ListDataModel
 export function getListDataAt(list: ListDataModel, at: number): DataModel | undefined {
-  return list.v[at][listItemDataIndex];
+  return list.v[at]?.[listItemDataIndex];
 }
 
 export function getListItemAt(list: ListDataModel, at: number): PublicListDataItem | undefined {
@@ -542,12 +543,12 @@ export function getListDataPointerByPathComponent(
 
 export function getListDataIndexByPathComponent(
   list: ListDataModel,
-  pathComponent: ForwardDataPathComponent,
+  pathComponent: AnyDataPathComponent,
 ): number | undefined {
   if (dataPathComponentIsListIndexLike(pathComponent)) {
     return dataPathComponentToListIndex(pathComponent);
   } else if (dataPathComponentIsPointer(pathComponent)) {
-    return pathComponent.i;
+    return getListDataIndexForPointer(list, pathComponent);
   } else {
     return undefined;
   }
@@ -557,7 +558,7 @@ export function getListDataIndexForPointer(list: ListDataModel, pointer: DataPoi
   if (getListDataIdAtIndex(list, pointer.i) === pointer.d) {
     return pointer.i;
   }
-  return list.v.findIndex((id) => pointer.d);
+  return list.v.findIndex((item) => pointer.d === item[listItemIdIndex]);
 }
 
 export function getListDataIndexForId(list: ListDataModel, id: number): number | undefined {
@@ -619,12 +620,17 @@ function setToListDataRecursive(
   schema: DataSchemaContext | undefined,
   createNextChildData: CreateNextChildData,
 ): ListDataModel | undefined {
-  const index = dataPathComponentToListIndexOrFail(headDataPathComponent(path));
+  const index = getListDataIndexByPathComponent(list, headDataPathComponent(path));
+  if (index === undefined) {
+    throw new DataModelOperationError(
+      `Invalid data path type for set to list data [${JSON.stringify(headDataPathComponent(path))}]`,
+    );
+  }
   const childData = getListDataAt(list, index);
-  const childSchema = schema && schema.getListChild();
   if (!childData) {
     throw new DataModelOperationError('Cannot set data to out of index range of list.');
   }
+  const childSchema = schema && schema.getListChild();
   const nextChildData = createNextChildData(shiftDataPath(path), childData, childSchema);
   return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, index);
 }

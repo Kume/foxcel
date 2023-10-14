@@ -18,11 +18,11 @@ import {
   EditingForwardDataPathComponent,
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
-import {CommonReferenceSchema, FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
+import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
 import DataStorage from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
-import {LoadedSchemaPath, resolveConfigOrRecursive} from '../common/schemaCommon';
+import {LoadedSchemaPath, parseSchemaReferenceConfig, resolveConfigOrRecursive} from '../common/schemaCommon';
 import {dataPathToTemplateLine, parseTemplateLine, TemplateLine} from './TemplateEngine';
 
 export enum DataSchemaType {
@@ -32,7 +32,6 @@ export enum DataSchemaType {
   Map,
   FixedMap,
   List,
-  Reference,
   Conditional,
   Recursive,
   Key,
@@ -112,10 +111,6 @@ export interface ListDataSchema extends DataSchemaBase<any[]> {
   readonly item?: DataSchema;
 }
 
-export interface ReferenceDataSchema extends CommonReferenceSchema {
-  readonly t: DataSchemaType.Reference;
-}
-
 export interface RecursiveDataSchema {
   readonly t: DataSchemaType.Recursive;
   readonly depth: number;
@@ -137,7 +132,7 @@ export interface KeyDataSchema {
 
 export class DataSchemaContext {
   public static createRootContext(rootSchema: DataSchemaExcludeRecursive | undefined): DataSchemaContext | undefined {
-    return rootSchema && new DataSchemaContext(rootSchema, rootSchema, []);
+    return rootSchema && new DataSchemaContext(rootSchema, rootSchema, [rootSchema]);
   }
 
   private constructor(
@@ -231,7 +226,7 @@ export class DataSchemaContext {
       if (next.depth > path.length) {
         throw new Error('Invalid recursive depth');
       }
-      return new DataSchemaContext(rootSchema, path[path.length - next.depth], path.slice(0, -next.depth));
+      return new DataSchemaContext(rootSchema, path[path.length - next.depth], path.slice(0, -next.depth + 1));
     } else {
       return new DataSchemaContext(rootSchema, next, [...path, next]);
     }
@@ -384,7 +379,14 @@ function parseChildDataSchemaConfig(
   filePath: readonly string[],
   loadedPath: LoadedSchemaPath,
 ): DataSchema {
-  const result = resolveConfigOrRecursive(configOrReference, pathConfigMap, filePath, loadedPath);
+  const result = resolveConfigOrRecursive(
+    configOrReference,
+    dataSchemaConfigIsReference,
+    (ref) => parseSchemaReferenceConfig(ref),
+    pathConfigMap,
+    filePath,
+    loadedPath,
+  );
   if (result.type === 'recursive') {
     return {t: DataSchemaType.Recursive, depth: result.depth};
   } else {
@@ -447,4 +449,8 @@ export function dataSchemaIsNumber(schema: DataSchema | undefined): schema is Nu
 
 export function dataSchemaIsBoolean(schema: DataSchema | undefined): schema is BooleanDataSchema {
   return schema?.t === DataSchemaType.Boolean;
+}
+
+function dataSchemaConfigIsReference(configOrReference: DataSchemaConfig | string): configOrReference is string {
+  return typeof configOrReference === 'string';
 }
