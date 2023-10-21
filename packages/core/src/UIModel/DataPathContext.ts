@@ -1,5 +1,6 @@
 import {
   dataPathComponentIsPointer,
+  EditingForwardDataPath,
   EditingForwardDataPathComponent,
   emptyDataPath,
   ForwardDataPathComponent,
@@ -8,19 +9,15 @@ import {
   toMapKeyDataPathComponent,
 } from '../DataModel/DataPath';
 import {UISchemaExcludeRecursive, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
-import {DataModel, DataPointer, MapDataModel} from '../DataModel/DataModelTypes';
+import {DataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {getMapDataAtPathComponent} from '../DataModel/DataModel';
-import type {UIModelDataPath} from './UIModelTypes';
 
-export type UIModelDataPathContext = {readonly parentPath: UIModelDataPath} & (
-  | {readonly isKey: true; readonly selfPointer: DataPointer; key: string | null}
-  | {readonly isKey?: void; readonly self: EditingForwardDataPathComponent; key?: string | null}
-);
+export type UIModelDataPathContext = unknown;
 
 export function buildDataPathFromUIModelDataPathContext(
   context: UIModelDataPathContext | undefined,
   schema: UISchemaExcludeRecursive,
-): UIModelDataPath {
+): EditingForwardDataPath {
   if (!context) {
     if (schema.key) {
       // TODO エラーハンドリング
