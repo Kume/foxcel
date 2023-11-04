@@ -1,24 +1,16 @@
-import {uiSchemaKeyIsParentKey} from './UISchema';
+import {UISchemaExcludeRecursive, uiSchemaKeyIsParentKey} from './UISchema';
 import {UISchema, UISchemaOrRecursive} from './UISchemaTypes';
 import {
   dataPathComponentIsKey,
   dataPathComponentIsMapKeyLike,
   dataPathComponentIsPointer,
   dataPathComponentToMapKey,
-  ForwardDataPath,
+  EditingForwardDataPathComponent,
   ForwardDataPathComponent,
-  tailDataPathComponent,
 } from '../DataModel/DataPath';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {
-  dataModelIsMap,
-  dataPathComponentToStringDataModel,
-  getMapDataAt,
-  getMapDataIndexForPointer,
-  getMapKeyAtIndex,
-} from '../DataModel/DataModel';
+import {dataModelIsMap, getMapDataIndexForPointer, getMapKeyAtIndex} from '../DataModel/DataModel';
 import {validIndexOrUndefined} from '../common/utils';
-import {uiSchemaKeyToDataPathComponent} from './DataPathContext';
 
 export class UISchemaContext {
   public static createRootContext(rootSchema: UISchema): UISchemaContext {
@@ -27,7 +19,7 @@ export class UISchemaContext {
 
   private constructor(
     public readonly rootSchema: UISchema,
-    public readonly currentSchema: UISchema,
+    public readonly currentSchema: UISchemaExcludeRecursive,
     private readonly path: readonly UISchema[],
   ) {}
 
@@ -40,6 +32,10 @@ export class UISchemaContext {
     } else {
       return schema;
     }
+  }
+
+  public get dataContextKey(): string | undefined {
+    return this.currentSchema.dataSchema.contextKey;
   }
 
   public digForIndex(index: number): UISchemaContext {
@@ -65,7 +61,7 @@ export class UISchemaContext {
   }
 
   public contentIndexForDataPathComponent(
-    dataPathComponent: ForwardDataPathComponent | undefined,
+    dataPathComponent: EditingForwardDataPathComponent | undefined,
     currentData: DataModel | undefined,
   ): number | undefined {
     if (dataPathComponent === undefined) {
@@ -145,36 +141,6 @@ export class UISchemaContext {
 
       default:
         throw new Error(`cannot get content from ${this.currentSchema.type} ui schema`);
-    }
-  }
-
-  public getDataFromParentData(
-    parentData: DataModel | undefined,
-    dataPath: ForwardDataPath,
-  ): {model: DataModel | undefined; pathComponent?: ForwardDataPathComponent} {
-    // TODO tabやformなどのfixedMapのみで利用できるメソッドであるため、それと分かる様な名前にするべきかも
-
-    if (this.currentSchema.keyFlatten) {
-      return {model: parentData};
-    } else {
-      const key = this.currentSchema.key;
-      if (key === undefined) {
-        throw new Error('content must have key or keyFlatten');
-      }
-
-      const nextPathComponent = uiSchemaKeyToDataPathComponent(key);
-      if (dataModelIsMap(parentData)) {
-        if (uiSchemaKeyIsParentKey(key)) {
-          return {
-            model: dataPathComponentToStringDataModel(tailDataPathComponent(dataPath)),
-            pathComponent: nextPathComponent,
-          };
-        } else {
-          return {model: getMapDataAt(parentData, key), pathComponent: nextPathComponent};
-        }
-      }
-
-      return {model: undefined, pathComponent: nextPathComponent};
     }
   }
 

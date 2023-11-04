@@ -9,7 +9,7 @@ import {UISchemaOrRecursive} from '../UIModel/UISchemaTypes';
 import {DataSchemaExcludeRecursive} from '../DataModel/DataSchema';
 import {nullDataModel} from '../DataModel/DataModel';
 import {UISchemaExcludeRecursive} from '../UIModel/UISchema';
-import {emptyDataModelContext} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
 
 export interface AppState {
   readonly data: DataModel | undefined;
@@ -84,8 +84,7 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
         rootSchemaContext,
         data,
         undefined,
-        undefined,
-        emptyDataModelContext,
+        DataModelContext.createRoot({model: data, schema: action.uiSchema.dataSchema}),
         {model: data, schema: action.dataSchema},
         undefined,
         undefined,
@@ -110,15 +109,13 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
       return initializingState;
     }
     case 'focus': {
+      const root: DataModelRoot = {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema};
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         state.data,
         state.uiModel,
-        undefined,
-        emptyDataModelContext,
-        // TODO
-        // @ts-ignore
-        {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
+        DataModelContext.createRoot(root),
+        root,
         action.path,
         state.dataFocusLog,
         state.schemaFocusLog,
@@ -145,13 +142,13 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
         return state;
       }
       const focus = undefined; // TODO actionからDataPathを取得してセットする
+      const root = {model: data, schema: state.rootUISchemaContext.rootSchema.dataSchema};
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
         data,
         state.uiModel,
-        undefined,
-        emptyDataModelContext,
-        {model: data, schema: state.rootUISchemaContext.rootSchema.dataSchema},
+        DataModelContext.createRoot(root),
+        root,
         focus,
         state.dataFocusLog,
         state.schemaFocusLog,

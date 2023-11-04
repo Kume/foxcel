@@ -1,11 +1,8 @@
-export type ParsedPathElement =
-  | {type: 'wildcard'}
-  | {type: 'variable'; path: ParsedPath}
-  | {type: 'parent'}
-  | {type: 'absolute'}
-  | {type: 'key'}
-  | {type: 'context'; key: string};
+export type ParsedPathComponent = {type: 'wildcard'} | {type: 'variable'; path: ParsedPath} | string;
 
-export type ParsedPath = Array<ParsedPathElement | string>;
+export type ParsedPath =
+  | {t: 'abs'; c: ParsedPathComponent[]; p: boolean}
+  | {t: 'ctx'; r: number; c: ParsedPathComponent[]; p: boolean}
+  | {t: 'rel'; r: number; c: ParsedPathComponent[]; p: boolean};
 
 declare function parse(source: string): ParsedPath;

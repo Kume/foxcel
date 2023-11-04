@@ -16,7 +16,7 @@ import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {SelectUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {VscClose} from 'react-icons/vsc';
 import {AppAction} from '@foxcel/core/dist/App/AppState';
-import {DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowUp,
@@ -61,7 +61,8 @@ function getOptions(
   if (model) {
     return getSelectUIOptions(model, getRoot());
   } else if (schema) {
-    return getSelectUIOptionsWithSchema(schema.schema, schema.dataContext, getRoot());
+    const root = getRoot();
+    return getSelectUIOptionsWithSchema(schema.schema, DataModelContext.deserialize(schema.dataContext, root), root);
   }
   return [];
 }
@@ -423,11 +424,12 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
     if (model) {
       callbacks.onAction(selectUIModelSetValue(model, value));
     } else if (schema) {
+      const root = callbacks.getRoot();
       const result = selectUIModelHandleInputForSchema(
         schema.schema,
         value?.value ?? null,
-        schema.dataContext,
-        callbacks.getRoot(),
+        DataModelContext.deserialize(schema.dataContext, root),
+        root,
       );
       if (result !== undefined) {
         schema.onEdit(result);

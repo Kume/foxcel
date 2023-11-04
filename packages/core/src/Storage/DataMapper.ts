@@ -623,7 +623,6 @@ export class SingleMappingNode<T> extends MappingNode {
     storageAccess: StorageAccess<T>,
   ): Promise<[T, boolean]> {
     const model = storageAccess.modelManager.getForPath(parentModel, this.path);
-    console.log('xxxx', this.path, this._fileName, model);
     if (model === undefined) {
       return [parentModel, false];
     }
@@ -769,7 +768,7 @@ export default class DataMapper extends MappingNodeBase {
     return mapper;
   }
 
-  private static _build(configs: Array<DataMapperNodeConfig>, parent: MappingNodeBase): void {
+  private static _build(configs: readonly DataMapperNodeConfig[], parent: MappingNodeBase): void {
     configs.forEach((config: DataMapperNodeConfig) => {
       const path = config.path ? config.path.split('.') : [];
       const directory = config.directory === '' || !config.directory ? [] : config.directory.split('/');

@@ -53,6 +53,7 @@ import {
   SelectUISchema,
   TableUISchema,
   TabUISchema,
+  UISchema,
   UISchemaOrRecursive,
 } from './UISchemaTypes';
 
@@ -68,7 +69,7 @@ export type UISchemaKey = string | true;
 export interface UISchemaParsingContext {
   readonly uiPath: ReadonlyArray<{key?: string; type: UISchemaType}>;
   // readonly dataPath: ReadonlyArray<{key: string | number | null; type: DataSchemaType}> | undefined;
-  readonly dataSchemaContext: DataSchemaContext | undefined;
+  readonly dataSchemaContext: DataSchemaContext;
   readonly loadedPath: LoadedSchemaPath<DataSchema>;
   readonly filePath: readonly string[];
 }
@@ -111,27 +112,6 @@ function setFilePathToContext(
     loadedPath: loadedPath ?? context.loadedPath,
     filePath: filePath ?? context.filePath,
   };
-}
-
-function pushToDataSchemaContext(
-  context: DataSchemaContext | undefined,
-  data: {key: string | number | null; type: DataSchemaType} | undefined,
-): DataSchemaContext | undefined {
-  if (!context) {
-    return undefined;
-  }
-  switch (data?.type) {
-    case DataSchemaType.List:
-      return context.getListChild();
-    case DataSchemaType.Map:
-      return context.getMapChild();
-    case DataSchemaType.FixedMap:
-      return typeof data?.key === 'string' ? context.getFixedMapChild(data?.key) : undefined;
-
-    case DataSchemaType.Conditional: // TODO
-    default:
-      return undefined;
-  }
 }
 
 function createConditionMap(dataSchema: ConditionalDataSchema | undefined, config: ConditionalUISchemaConfig) {
@@ -488,7 +468,6 @@ function nextChildDataSchema(
     const childDataSchema =
       dataSchema && context.dataSchemaContext?.resolveRecursive(getByKeyForFixedMapDataSchema(dataSchema, 'children'));
     const dataPathComponent = childDataSchema && {key: 'children', type: childDataSchema.t};
-    console.log('xxxx childDataSchem', childDataSchema);
     // TODO pushで良い？遡らないといけなくはない？ => スキーマ時点だとそんなことは無い気がするが…
     return [pushToContext(context, undefined, dataPathComponent), childDataSchema];
     // TODO dataSchemaをdepth分遡る必要がある。そのためには、引数にデータスキーマのコンテキストが必要
@@ -669,7 +648,7 @@ export async function buildUISchema(
   rootDataSchema: DataSchemaExcludeRecursive,
   storage: DataStorage,
   formatter: DataFormatter,
-): Promise<UISchemaOrRecursive> {
+): Promise<UISchema> {
   const rootUiSchemaConfig = 'uiSchema' in rootSchemaConfig ? rootSchemaConfig.uiSchema : rootSchemaConfig.uiRoot;
   const namedUiSchemaConfig: WritableFileBaseNamedItemNode<UISchemaConfig> = {filePath: []};
   const loadedUISchemaConfig = new Map([['', namedUiSchemaConfig]]);

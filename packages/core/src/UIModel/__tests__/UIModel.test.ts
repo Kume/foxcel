@@ -4,8 +4,8 @@ import YamlDataFormatter from '../../Storage/YamlDataFormatter';
 import {buildUISchema} from '../UISchema';
 import {buildUIModel} from '../UIModel';
 import {UISchemaContext} from '../UISchemaContext';
-import {emptyDataModelContext} from '../../DataModel/DataModelContext';
 import {configFixtures} from '../../common/testFixtures';
+import {DataModelContext} from '../../DataModel/DataModelContext';
 
 describe('Unit tests for buildUIModel', () => {
   it('Can build simple recursive ui.', async () => {
@@ -14,16 +14,13 @@ describe('Unit tests for buildUIModel', () => {
     const dataSchema = await buildDataSchema(fixture.schema, storage, new YamlDataFormatter());
     const uiSchema = await buildUISchema(fixture.schema, dataSchema, storage, new YamlDataFormatter());
 
+    const root = {model: fixture.data, schema: dataSchema};
     const uiModel = buildUIModel(
       UISchemaContext.createRootContext(uiSchema),
       fixture.data,
       undefined,
-      undefined,
-      emptyDataModelContext,
-      {
-        model: fixture.data,
-        schema: dataSchema,
-      },
+      DataModelContext.createRoot(root),
+      root,
       undefined,
       undefined,
       undefined,

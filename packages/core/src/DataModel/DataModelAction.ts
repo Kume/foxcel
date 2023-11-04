@@ -52,7 +52,7 @@ export function applyDataModelAction(
   schema: DataSchemaExcludeRecursive | undefined,
   action: DataModelAction,
 ): DataModel | undefined {
-  const schemaContext = schema && DataSchemaContext.createRootContext(schema);
+  const schemaContext = DataSchemaContext.createRootContext(schema);
   switch (action.type) {
     case 'set':
       if (dataPathLength(action.path) === 0) {

@@ -243,7 +243,7 @@ export function setToDataModel(
   path: EditingForwardDataPath,
   value: DataModel,
   _to: DataModel,
-  schema: DataSchemaContext | undefined,
+  schema: DataSchemaContext,
 ): DataModel | undefined {
   // TODO データスキーマが存在していて、現在のデータがスキーマと不一致だったらスキーマを優先して置き換えるように修正すべき
 
@@ -252,7 +252,7 @@ export function setToDataModel(
   }
   let __to: DataModel | undefined = _to;
   if (!dataModelIsMapOrList(__to)) {
-    __to = schema && defaultDataModelForSchema(schema.currentSchema);
+    __to = schema.currentSchema && defaultDataModelForSchema(schema.currentSchema);
     if (!__to || !dataModelIsMap(__to)) {
       throw new DataModelOperationError(
         `Cannot set data to ${__to ? dataModelTypeToLabel(dataModelType(__to)) : 'undefined'}`,
@@ -279,7 +279,7 @@ export function setToDataModel(
       if (pathLength === 1) {
         return forceAddToMapData(to, value, key);
       }
-      if (pathLength > 1 && schema) {
+      if (pathLength > 1 && schema.currentSchema) {
         const defaultData = defaultDataModelForSchema(schema.currentSchema);
         const newModel = setToDataModel(shiftDataPath(path), value, defaultData, schema) ?? emptyMapModel;
         return forceAddToMapData(to, newModel, key);
@@ -297,7 +297,7 @@ export function setKeyToDataModel(
   sourceKeyPointer: DataPointer,
   key: string | null,
   to: DataModel,
-  schema: DataSchemaContext | undefined,
+  schema: DataSchemaContext,
 ): DataModel | undefined {
   if (dataPathLength(path) === 0) {
     if (dataModelIsMap(to)) {
@@ -338,7 +338,7 @@ export function insertToDataModel(
   after: DataPointer | undefined,
   value: DataModel,
   to: DataModel,
-  schema: DataSchemaContext | undefined,
+  schema: DataSchemaContext,
 ): DataModel | undefined {
   if (dataPathLength(path) === 0) {
     if (dataModelIsMap(to)) {
@@ -384,7 +384,7 @@ export function pushToDataModel(
   path: EditingForwardDataPath,
   value: DataModel,
   to: DataModel,
-  schema?: DataSchemaContext,
+  schema: DataSchemaContext,
   key?: string,
 ): DataModel | undefined {
   const pathLength = dataPathLength(path);
@@ -423,7 +423,7 @@ export function deleteFromDataModel(
   path: EditingForwardDataPath,
   at: DataPointer | undefined,
   from: DataModel,
-  schema: DataSchemaContext | undefined,
+  schema: DataSchemaContext,
 ): DataModel | undefined {
   const pathLength = dataPathLength(path);
   if (pathLength === 0) {
@@ -508,7 +508,7 @@ export function getFromDataModel(model: DataModel, path: ForwardDataPath): DataM
 type CreateNextChildData = (
   nextPath: EditingForwardDataPath,
   childData: DataModel,
-  childSchema: DataSchemaContext | undefined,
+  childSchema: DataSchemaContext,
 ) => DataModel | undefined;
 
 //#region For ListDataModel
@@ -617,7 +617,7 @@ export function deleteFromListDataAtPathComponent(
 function setToListDataRecursive(
   list: ListDataModel,
   path: EditingForwardDataPath,
-  schema: DataSchemaContext | undefined,
+  schema: DataSchemaContext,
   createNextChildData: CreateNextChildData,
 ): ListDataModel | undefined {
   const index = getListDataIndexByPathComponent(list, headDataPathComponent(path));
@@ -698,13 +698,6 @@ export function mapDataModelKeyIndexMap(map: MapDataModel): Map<string | null, n
   return keyIndexMap;
 }
 
-export function getMapDataAtWithIndexCache(map: MapDataModel, key: string, indexCache: number): DataModel | undefined {
-  if (map.v[indexCache][mapItemKeyIndex] === key) {
-    return getMapDataAtIndex(map, indexCache);
-  }
-  return getMapDataAt(map, key);
-}
-
 export function getMapDataAtIndex(map: MapDataModel, index: number): DataModel | undefined {
   return map.v[index][mapItemDataIndex];
 }
@@ -728,6 +721,11 @@ export function getMapDataIndexForPointer(map: MapDataModel, pointer: DataPointe
     }
   }
   return undefined;
+}
+
+export function getMapDataPointerAt(map: MapDataModel, key: string): DataPointer | undefined {
+  const index = findMapDataIndexOfKey(map, key);
+  return index === undefined ? undefined : getMapDataPointerAtIndex(map, index);
 }
 
 export function getMapDataAtPointer(map: MapDataModel, pointer: DataPointer): DataModel | undefined {
@@ -766,7 +764,7 @@ export function getMapDataPointerByPathComponent(
 
 export function getMapDataIndexByPathComponent(
   map: MapDataModel,
-  pathComponent: ForwardDataPathComponent,
+  pathComponent: EditingForwardDataPathComponent,
 ): number | undefined {
   if (dataPathComponentIsMapKeyLike(pathComponent)) {
     return findMapDataIndexOfKey(map, dataPathComponentToMapKey(pathComponent));
@@ -840,9 +838,9 @@ function deleteFromMapDataAtPathComponent(
 function setToMapDataRecursive(
   map: MapDataModel,
   path: EditingForwardDataPath,
-  schema: DataSchemaContext | undefined,
+  schema: DataSchemaContext,
   createNextChildData: CreateNextChildData,
-  onKeyMissing?: (key: string | null | undefined, schema: DataSchemaContext | undefined) => MapDataModel | undefined,
+  onKeyMissing?: (key: string | null | undefined, schema: DataSchemaContext) => MapDataModel | undefined,
 ): MapDataModel | undefined {
   const firstPathComponent = headDataPathComponent(path);
   const {key, index} = getMapKeyAndIndex(map, firstPathComponent);

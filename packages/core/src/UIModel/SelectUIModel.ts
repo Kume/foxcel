@@ -16,7 +16,7 @@ import {
   unknownToDataModel,
 } from '../DataModel/DataModel';
 import {collectDataModel} from '../DataModel/DataModelCollector';
-import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot, SerializedDataModelContext} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {dataSchemaIsString, SelectDynamicOptionSchema} from '../DataModel/DataSchema';
 import {findDataModel} from '../DataModel/DataModelSearcher';
@@ -29,7 +29,7 @@ export interface SelectUIOption {
 }
 
 export function getSelectUIOptions(model: SelectUIModel, root: DataModelRoot): SelectUIOption[] {
-  return getSelectUIOptionsImpl(model.schema, model.data, model.dataContext, root);
+  return getSelectUIOptionsImpl(model.schema, model.data, DataModelContext.deserialize(model.dataContext, root), root);
 }
 
 function getSelectUIOptionsImpl(
@@ -45,7 +45,7 @@ function getSelectUIOptionsImpl(
   for (const optionSchema of schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
-      const collectResults = collectDataModel(data, optionSchema.path, dataContext, root);
+      const collectResults = collectDataModel(optionSchema.path, data, dataContext, root);
       for (const {data, context} of collectResults) {
         if (excludeOptions.every((excludeOption) => !dataModelEquals(excludeOption, data))) {
           options.push(formatDynamicSelectUIOption(optionSchema, data, context, root));
@@ -73,16 +73,6 @@ export function getSelectUIOptionsWithSchema(
   root: DataModelRoot,
 ): SelectUIOption[] {
   return getSelectUIOptionsImpl(schema, undefined, dataContext, root);
-}
-
-export function selectUIModelDefaultOptions(model: SelectUIModel): SelectUIOption[] {
-  // React-Selectやめたので、このメソッド要らなくなってるかも
-  // 元々は選択肢が0だと現在の値の初期表示ができないからこういう仕組みを作ったはずなので
-  if (model.isMulti) {
-    return [];
-  } else {
-    return model.current && !model.current.isInvalid ? [model.current] : [];
-  }
 }
 
 export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOption | null): AppAction {
@@ -125,7 +115,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         action: {
           type: 'set',
           path: model.dataPath,
-          data: value === null ? nullDataModel : value.data,
+          data: value.data,
         },
       };
     }
@@ -137,7 +127,12 @@ export function selectUIModelSetString(
   value: string,
   root: DataModelRoot,
 ): AppAction | undefined {
-  const resultData = selectUIModelHandleInputForSchema(model.schema, value, model.dataContext, root);
+  const resultData = selectUIModelHandleInputForSchema(
+    model.schema,
+    value,
+    DataModelContext.deserialize(model.dataContext, root),
+    root,
+  );
   return resultData === undefined
     ? undefined
     : {type: 'data', action: {type: 'set', path: model.dataPath, data: resultData}};
@@ -178,6 +173,7 @@ export function selectUIModelGetCurrent(
   if (dataModel === undefined) {
     return undefined;
   }
+  console.log('xxxx selectUIModelGetCurrent');
   for (const option of schema.options) {
     if (option.label === undefined) {
       // Dynamic option
@@ -187,7 +183,6 @@ export function selectUIModelGetCurrent(
         {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
         context,
         dataRoot,
-        {} as any, // TODO ちゃんとログの仕組みを整える
       );
       if (findResult) {
         return formatDynamicSelectUIOption(option, findResult.data, findResult.context, dataRoot);
@@ -234,7 +229,6 @@ export function selectUIModelHandleInputForSchema(
         {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: valueDataModel}},
         dataContext,
         root,
-        {} as any, // TODO ちゃんとログの仕組みを整える
       );
       if (findResult) {
         return valueDataModel;

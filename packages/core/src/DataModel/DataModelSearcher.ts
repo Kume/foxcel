@@ -2,7 +2,6 @@ import {DataModel} from './DataModelTypes';
 import {
   DataPath,
   DataPathComponentType,
-  dataPathConsecutiveReverseCount,
   dataPathLength,
   headDataPathComponent,
   MultiDataPath,
@@ -10,28 +9,15 @@ import {
   shiftDataPath,
   unshiftDataPath,
 } from './DataPath';
-import {
-  DataModelContext,
-  DataModelRoot,
-  emptyDataModelContext,
-  getCurrentKeyOrUndefinedFromDataModelContext,
-  popDataModelContextPath,
-  pushDataModelContextPath,
-  pushKeyToDataModelContextPath,
-} from './DataModelContext';
-import {WritableDataModelReferenceLogNode} from './DataModelReferenceLog';
-import {
-  digForPathComponent,
-  getAncestorDataModel,
-  getDataModelBySinglePath,
-  withNestedDataPath,
-} from './DataModelCollector';
+import {DataModelContext, dataModelForPathStart, DataModelRoot} from './DataModelContext';
+import {digForPathComponent, getDataModelBySinglePath, withNestedDataPath} from './DataModelCollector';
 import {
   dataModelEquals,
   dataModelIsList,
   dataModelIsMap,
   eachListDataItem,
   eachMapDataItem,
+  getListDataPointerAt,
   stringToDataModel,
 } from './DataModel';
 
@@ -88,7 +74,6 @@ function findDataModelImpl(
   originalContext: DataModelContext,
   root: DataModelRoot,
   originalModel: DataModel | undefined,
-  writableReferenceLog: WritableDataModelReferenceLogNode,
 ): DataModelSearchSingleResult | undefined {
   if (!data) {
     // TODO ログ記録?
@@ -105,38 +90,36 @@ function findDataModelImpl(
   return digForPathComponent<DataModelSearchSingleResult | undefined, MultiDataPathComponent>(data, head, {
     key: () => {
       // TODO ログ記録?
-      const key = getCurrentKeyOrUndefinedFromDataModelContext(currentContext);
+      const key = currentContext.parentKeyDataModel;
       return key !== undefined && keyIsMatch(key, matcher)
-        ? {data: stringToDataModel(key), context: pushKeyToDataModelContextPath(currentContext)}
+        ? {data: stringToDataModel(key), context: currentContext.pushIsParentKey()}
         : undefined;
     },
-    collection: (childData, contextPathComponent) =>
+    collection: (childData, pushContext) =>
       findDataModelImpl(
         childData,
         matcher,
         shiftDataPath(path),
-        pushDataModelContextPath(currentContext, contextPathComponent),
+        pushContext(currentContext),
         originalContext,
         root,
         originalModel,
-        writableReferenceLog,
       ),
     other: (otherPathComponent): DataModelSearchSingleResult | undefined => {
       switch (otherPathComponent.t) {
         case DataPathComponentType.WildCard:
           if (dataModelIsMap(data)) {
             // TODO ログ記録
-            for (const [childData, , key, index] of eachMapDataItem(data)) {
+            for (const [childData, , key] of eachMapDataItem(data)) {
               if (key !== null) {
                 const findResult = findDataModelImpl(
                   childData,
                   matcher,
                   shiftDataPath(path),
-                  pushDataModelContextPath(currentContext, {type: 'map', at: key, indexCache: index}),
+                  currentContext.pushMapKeyOrPointer(data, key),
                   originalContext,
                   root,
                   originalModel,
-                  writableReferenceLog,
                 );
                 if (findResult) {
                   return findResult;
@@ -150,11 +133,10 @@ function findDataModelImpl(
                 childData,
                 matcher,
                 shiftDataPath(path),
-                pushDataModelContextPath(currentContext, {type: 'list', at: index}),
+                currentContext.pushListPointer(index, getListDataPointerAt(data, index)),
                 originalContext,
                 root,
                 originalModel,
-                writableReferenceLog,
               );
               if (findResult) {
                 return findResult;
@@ -181,7 +163,6 @@ function findDataModelImpl(
               originalContext,
               root,
               originalModel,
-              writableReferenceLog,
             );
             if (findResult) {
               return findResult;
@@ -189,23 +170,6 @@ function findDataModelImpl(
           }
           return undefined;
         }
-        case DataPathComponentType.Reverse: {
-          const reverseCount = dataPathConsecutiveReverseCount(path);
-          // TODO ログ記録を開始するフラグ管理
-          return findDataModelImpl(
-            getAncestorDataModel(currentContext, reverseCount, root.model),
-            matcher,
-            shiftDataPath(path, reverseCount),
-            popDataModelContextPath(currentContext, reverseCount),
-            originalContext,
-            root,
-            originalModel,
-            writableReferenceLog,
-          );
-        }
-        case DataPathComponentType.ContextKey:
-          // TODO
-          return undefined;
         case DataPathComponentType.Union:
           for (const pathComponent of otherPathComponent.v) {
             const findResult = findDataModelImpl(
@@ -216,7 +180,6 @@ function findDataModelImpl(
               originalContext,
               root,
               originalModel,
-              writableReferenceLog,
             );
             if (findResult) {
               return findResult;
@@ -233,20 +196,7 @@ export function findDataModel(
   params: DataModelSearchParams,
   context: DataModelContext,
   root: DataModelRoot,
-  writableReferenceLog: WritableDataModelReferenceLogNode,
 ): DataModelSearchSingleResult | undefined {
-  if (params.path.isAbsolute) {
-    return findDataModelImpl(
-      root.model,
-      params.matcher,
-      params.path,
-      emptyDataModelContext,
-      context,
-      root,
-      data,
-      writableReferenceLog,
-    );
-  } else {
-    return findDataModelImpl(data, params.matcher, params.path, context, context, root, data, writableReferenceLog);
-  }
+  const [startModel, startContext] = dataModelForPathStart(root, data, params.path, context);
+  return findDataModelImpl(startModel, params.matcher, params.path, startContext, context, root, data);
 }

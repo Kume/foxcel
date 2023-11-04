@@ -1,6 +1,6 @@
 import React from 'react';
 import {AppAction} from '@foxcel/core/dist/App/AppState';
-import {DataModelContext, DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
+import {DataModelRoot, SerializedDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {DataModel} from '@foxcel/core';
 
 export interface TableCellCallbacks {
@@ -21,7 +21,7 @@ export interface TableUIViewCellProps {
 
 export interface TableUIViewCellSchemaInfo<Schema> {
   readonly schema: Schema;
-  readonly dataContext: DataModelContext;
+  readonly dataContext: SerializedDataModelContext;
   readonly onEdit: (model: DataModel) => void;
 }
 

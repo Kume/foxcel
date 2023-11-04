@@ -10,11 +10,7 @@ import {
 } from '../DataModel/DataModel';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {selectUIModelHandleInputForSchema, selectUIModelSetString} from './SelectUIModel';
-import {
-  DataModelRoot,
-  mapDataModelContextPathForDataModel,
-  pushDataModelContextPath,
-} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
 import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} from './CheckboxUIModel';
 import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
 import {DataSchema, dataSchemaIsBoolean, DataSchemaType} from '../DataModel/DataSchema';
@@ -122,6 +118,7 @@ export function tableUIModelMakeNewRow(
   let rowData = emptyMapModel;
   let key: string | null | undefined;
 
+  const context = DataModelContext.deserialize(model.dataContext, root);
   for (const defaultValue of defaultValues) {
     const columnSchema = model.schema.contents[defaultValue.columnIndex];
     switch (columnSchema.type) {
@@ -136,10 +133,7 @@ export function tableUIModelMakeNewRow(
       }
       case 'select': {
         if (typeof columnSchema.key === 'string') {
-          const cellContext = pushDataModelContextPath(
-            model.dataContext,
-            mapDataModelContextPathForDataModel(rowData, columnSchema.key),
-          );
+          const cellContext = context.pushMapKeyOrPointer(rowData, columnSchema.key);
           const result = selectUIModelHandleInputForSchema(columnSchema, defaultValue.value, cellContext, root);
           if (result !== undefined) {
             rowData = setToMapDataModel(rowData, columnSchema.key, result);
@@ -483,6 +477,5 @@ export function tableUIModelAddRows(
   if (model.data === undefined) {
     insertActions.unshift({type: 'data', action: {type: 'set', path: model.dataPath, data: initialData(model)}});
   }
-  console.log('xxxx', insertActions);
   return {t: 'action', action: {type: 'batch', actions: insertActions}};
 }

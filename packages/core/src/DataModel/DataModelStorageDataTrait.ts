@@ -11,6 +11,7 @@ import {
 } from './DataModel';
 import {getDataModelByForwardPath} from './DataModelCollector';
 import {stringArrayToDataPath} from './DataPath';
+import {DataSchemaContext} from './DataSchema';
 
 export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
   convert(source: unknown): DataModel {
@@ -26,7 +27,12 @@ export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
   },
 
   setForPath(destination: DataModel, model: DataModel, path: readonly string[]): DataModel {
-    const result = setToDataModel(stringArrayToDataPath(path), model, destination, undefined);
+    const result = setToDataModel(
+      stringArrayToDataPath(path),
+      model,
+      destination,
+      DataSchemaContext.createRootContext(undefined),
+    );
     return result ?? destination;
   },
 

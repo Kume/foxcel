@@ -8,7 +8,6 @@ import {
   DataSchemaConfig,
   DataSchemaConfigBase,
   ForwardDataPath,
-  ForwardDataPathComponent,
   forwardDataPathComponentToString,
   RootSchemaConfig,
   SelectDynamicOptionConfig,
@@ -67,10 +66,12 @@ export interface DataSchemaBase<T> {
 
 export interface NumberDataSchema extends DataSchemaBase<number> {
   readonly t: DataSchemaType.Number;
+  readonly contextKey?: never;
 }
 
 export interface BooleanDataSchema extends DataSchemaBase<boolean> {
   readonly t: DataSchemaType.Boolean;
+  readonly contextKey?: never;
 }
 
 export interface SelectStaticOptionSchema<T> {
@@ -89,6 +90,7 @@ export type SelectOptionSchema<T> = SelectStaticOptionSchema<T> | SelectDynamicO
 
 export interface StringDataSchema extends DataSchemaBase<string> {
   readonly t: DataSchemaType.String;
+  readonly contextKey?: never;
   readonly in?: readonly SelectOptionSchema<string>[];
 }
 
@@ -113,11 +115,14 @@ export interface ListDataSchema extends DataSchemaBase<any[]> {
 
 export interface RecursiveDataSchema {
   readonly t: DataSchemaType.Recursive;
+  // TODO recursiveのcontextKeyにアクセスさせては行けない気はする
+  readonly contextKey?: never;
   readonly depth: number;
 }
 
 export interface ConditionalDataSchema {
   readonly t: DataSchemaType.Conditional;
+  readonly contextKey?: never;
   readonly label: string | undefined;
   readonly items: {
     readonly [key: string]: ConditionalSchemaItem<DataSchema, DataPath>;
@@ -127,62 +132,67 @@ export interface ConditionalDataSchema {
 
 export interface KeyDataSchema {
   readonly t: DataSchemaType.Key;
+  readonly contextKey?: never;
   readonly label: string | undefined;
 }
 
 export class DataSchemaContext {
-  public static createRootContext(rootSchema: DataSchemaExcludeRecursive | undefined): DataSchemaContext | undefined {
-    return rootSchema && new DataSchemaContext(rootSchema, rootSchema, [rootSchema]);
+  public static createRootContext(rootSchema: DataSchemaExcludeRecursive | undefined): DataSchemaContext {
+    return new DataSchemaContext(rootSchema, rootSchema, rootSchema ? [rootSchema] : [], rootSchema ? 0 : 1, false);
   }
 
   private constructor(
-    public readonly rootSchema: DataSchemaExcludeRecursive,
-    public readonly currentSchema: DataSchemaExcludeRecursive,
+    public readonly rootSchema: DataSchemaExcludeRecursive | undefined,
+    public readonly currentSchema: DataSchemaExcludeRecursive | undefined,
     private readonly path: readonly DataSchemaExcludeRecursive[],
+    private readonly emptyCount: number,
+    public readonly isParentKey: boolean,
   ) {}
 
-  public dig(key: {t: 'key'} | string | number | undefined | null): DataSchemaContext | undefined {
+  public dig(key: {t: 'key'} | string | number | undefined | null): DataSchemaContext {
     if (key !== null && typeof key === 'object') {
-      // TODO DataSchemaContextをkeyまで対応させるなら何かしら実装が必要
-      return undefined;
+      return this.pushParentKey();
     }
 
-    switch (this.currentSchema.t) {
+    switch (this.currentSchema?.t) {
       case DataSchemaType.Map:
       case DataSchemaType.List:
         // MapとListはキー(インデックス)に関わらず子のスキーマは一つであるため、そのまま子を返す。
-        return this.currentSchema.item && this.createFromNext(this.currentSchema.item);
+        return this.createFromNext(this.currentSchema.item);
       case DataSchemaType.FixedMap:
         if (typeof key === 'string') {
-          return this.currentSchema.items[key] && this.createFromNext(this.currentSchema.items[key]);
+          return this.createFromNext(this.currentSchema.items[key]);
         } else {
-          return undefined;
+          return this.pushEmpty();
         }
       case DataSchemaType.Conditional:
         if (typeof key === 'string') {
-          return this.currentSchema.items[key] && this.createFromNext(this.currentSchema.items[key].item);
+          return this.createFromNext(this.currentSchema.items[key].item);
         } else {
-          return undefined;
+          return this.pushEmpty();
         }
       default:
-        return undefined;
+        return this.pushEmpty();
     }
   }
 
-  public digByPath(pathComponent: EditingForwardDataPathComponent): DataSchemaContext | undefined {
+  public contextKey(): string | undefined {
+    return this.currentSchema?.contextKey;
+  }
+
+  public digByPath(pathComponent: EditingForwardDataPathComponent): DataSchemaContext {
     if (dataPathComponentIsKey(pathComponent)) {
-      // TODO DataSchemaContextをkeyまで対応させるなら何かしら実装が必要
-      return undefined;
+      return this.pushParentKey();
     }
-    switch (this.currentSchema.t) {
+    switch (this.currentSchema?.t) {
       case DataSchemaType.Map:
       case DataSchemaType.List:
         // MapとListはキー(インデックス)に関わらず子のスキーマは一つであるため、そのまま子を返す。
-        return this.currentSchema.item && this.createFromNext(this.currentSchema.item);
+        return this.createFromNext(this.currentSchema.item);
       case DataSchemaType.FixedMap: {
         if (dataPathComponentIsPointer(pathComponent)) {
           // pointerタイプのpathはfixedMapの子を指すためのポインターとしては利用されない想定
-          return undefined;
+          return this.pushEmpty();
         }
         const key = forwardDataPathComponentToString(pathComponent);
         return this.currentSchema.items[key] && this.createFromNext(this.currentSchema.items[key]);
@@ -190,46 +200,59 @@ export class DataSchemaContext {
       case DataSchemaType.Conditional:
         // TODO ここでconditionalを下降するためには実データがないと条件が定まらないので不可能?をもそもdataPathでdigするのが間違い?
         //  現状わからないので一旦undefinedを返す
-        return undefined;
+        return this.pushEmpty();
       default:
-        return undefined;
+        return this.pushEmpty();
     }
   }
 
-  public getMapChild(): DataSchemaContext | undefined {
+  public getListChild(): DataSchemaContext {
     const {currentSchema} = this;
-    if (currentSchema.t !== DataSchemaType.Map) {
-      return;
+    if (currentSchema?.t === DataSchemaType.List) {
+      return this.createFromNext(currentSchema.item);
+    } else {
+      return this.pushEmpty();
     }
-    return currentSchema.item && this.createFromNext(currentSchema.item);
   }
 
-  public getFixedMapChild(key: string): DataSchemaContext | undefined {
-    const {currentSchema} = this;
-    if (currentSchema.t !== DataSchemaType.FixedMap) {
-      return;
-    }
-    return currentSchema.items[key] && this.createFromNext(currentSchema.items[key]);
+  private pushParentKey(): DataSchemaContext {
+    return new DataSchemaContext(this.rootSchema, undefined, this.path, this.emptyCount, true);
   }
 
-  public getListChild(): DataSchemaContext | undefined {
-    const {currentSchema} = this;
-    if (currentSchema.t !== DataSchemaType.List) {
-      return;
+  private pushEmpty(): DataSchemaContext {
+    if (this.isParentKey) {
+      throw new Error('Cannot push any more because this context have reached parentKey');
     }
-    return currentSchema.item && this.createFromNext(currentSchema.item);
+    return new DataSchemaContext(this.rootSchema, undefined, this.path, this.emptyCount + 1, false);
   }
 
-  private createFromNext(next: DataSchema): DataSchemaContext | undefined {
-    const {rootSchema, path} = this;
+  private createFromNext(next: DataSchema | undefined): DataSchemaContext {
+    if (!next) {
+      return this.pushEmpty();
+    }
+    if (this.isParentKey) {
+      throw new Error('Cannot push any more because this context have reached parentKey');
+    }
+    const {rootSchema, path, emptyCount} = this;
     if (next.t === DataSchemaType.Recursive) {
-      if (next.depth > path.length) {
+      if (next.depth > path.length + emptyCount) {
         throw new Error('Invalid recursive depth');
       }
-      return new DataSchemaContext(rootSchema, path[path.length - next.depth], path.slice(0, -next.depth + 1));
+      return this.back(next.depth - 1);
     } else {
-      return new DataSchemaContext(rootSchema, next, [...path, next]);
+      return new DataSchemaContext(rootSchema, next, [...path, next], 0, false);
     }
+  }
+
+  public back(backCount = 1): DataSchemaContext {
+    const sliceOffset = -backCount + this.emptyCount;
+    return new DataSchemaContext(
+      this.rootSchema,
+      this.path[this.path.length - 1 + sliceOffset],
+      this.path.slice(0, Math.min(sliceOffset, 0)),
+      Math.max(sliceOffset, 0),
+      false,
+    );
   }
 
   public resolveRecursive(schema: DataSchema): DataSchemaExcludeRecursive;

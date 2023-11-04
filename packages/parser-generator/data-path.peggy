@@ -1,40 +1,35 @@
 Expression
-  = JoinedPath / AbsolutePath
+  = AbsolutePath / ContextPath / RelativePath
 
 AbsolutePath
-  = "/" path: JoinedPath {
-    return [{type: 'absolute'}, ...path]
+  = "/" path: ForwardPath {
+    return {t: 'abs', ...path}
   }
 
-JoinedPath
-  = context:(ContextWord "/")? head:(ReversePath "/")? tail:ForwardPath {
-    head = Array.isArray(head) ? head[0] : [];
-    if (context) {
-      head = [context[0]].concat(head);
-    }
-    return head.concat(tail || []);
+ContextPath
+  = key:Word ":" reverse:(ReverseWord "/")* path:ForwardPath {
+  	return {t: 'ctx', r: reverse.length, key, ...path}
   }
 
-ReversePath
-  = head:(ReverseWord) tail:("/" ReversePath)? {
-    let words = [head];
-    if (Array.isArray(tail)) {
-      words = words.concat(tail[1]);
-    }
-    return words;
+RelativePath
+  = reverse:(ReverseWord "/")* path:ForwardPath {
+  	return {t: 'rel', r: reverse.length, ...path}
   }
 
 ForwardPath
-  = head:(KeyWord / WildWord / Word / PathVariable) tail:("/" ForwardPath)? {
-    let words = [head];
-    if (Array.isArray(tail)) {
-      words = words.concat(tail[1]);
-    }
-    return words;
+  = path:JoinedPath pointsKey:("/" KeyWord)? {
+    return {...path, p: !!pointsKey};
   }
 
+JoinedPath
+  = first: GeneralPathComponent components: ("/" GeneralPathComponent)* {
+    return {c: [first].concat(components.map(([_, w]) => w))}
+  }
+
+GeneralPathComponent = WildWord / Word / PathVariable
+
 PathVariable
-  = "[" variable: (AbsolutePath / JoinedPath) "]" {
+  = "[" variable: (Expression) "]" {
     return {
       type: 'variable',
       path: variable
@@ -42,7 +37,7 @@ PathVariable
   }
 
 KeyWord
-  = "$key" {
+  = "$key" / "$" {
     return { type: "key" };
   }
 
@@ -59,12 +54,7 @@ WildWord
 
 ReverseWord
   = ".." {
-    return { type: 'parent' }
-  }
-
-ContextWord
-  = ".." key:Word {
-    return { type: 'context', key }
+    return null
   }
 
 Word

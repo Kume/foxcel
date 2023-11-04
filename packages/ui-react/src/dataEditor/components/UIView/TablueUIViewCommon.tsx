@@ -9,7 +9,6 @@ import {UIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {TableUIModelMoveDirection, TableUISelection} from '@foxcel/core/dist/UIModel/TableUIModel';
 import {DataModel, EditingForwardDataPath, emptyMapModel, setToMapDataModel} from '@foxcel/core';
 import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
-import {DataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowLeft,
@@ -23,6 +22,7 @@ import {
   withShiftKey,
 } from '../../../common/Keybord';
 import {breakableTextStyle, labelTextStyle} from '../../../common/components/commonStyles';
+import {SerializedDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 
 export const TableUIViewLayoutRoot = styled.table`
   background-color: ${({theme}) => theme.color.border.table};
@@ -188,7 +188,7 @@ export function renderTableUIViewCellWithSchema(
   rowKey: string | null | undefined,
   cellKey: string,
   schema: UISchemaExcludeRecursive,
-  dataContext: DataModelContext,
+  dataContext: SerializedDataModelContext,
   isMainSelected: boolean,
   row: number,
   col: number,

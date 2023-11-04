@@ -1,5 +1,6 @@
 import {
   BooleanDataModel,
+  DataModel,
   DataModelType,
   FloatDataModel,
   IntegerDataModel,
@@ -28,7 +29,12 @@ import {configFixtures} from '../../common/testFixtures';
 import {buildDataSchema, DataSchemaContext} from '../DataSchema';
 import YamlDataFormatter from '../../Storage/YamlDataFormatter';
 import ObjectDataStorage from '../../Storage/ObjectDataStorage';
-import {DataPathComponentType} from '../DataPath';
+import {DataPathComponentType, parsePath} from '../DataPath';
+import {getDataModelByForwardPath} from '../DataModelCollector';
+
+function getByPath(model: DataModel, path: string): DataModel | undefined {
+  return getDataModelByForwardPath(model, parsePath(path, 'forward'));
+}
 
 describe('Unit tests for unknownToDataModel', () => {
   it('To IntegerDataModel', () => {
@@ -149,7 +155,8 @@ describe('Unit tests for dataModelEqualsToUnknown', () => {
 
   it('Empty key element is ignored', () => {
     let model = unknownToDataModel({a: 1, b: 3}) as MapDataModel;
-    model = pushToDataModel({components: []}, unknownToDataModel('c'), model) as MapDataModel;
+    const emptyContext = DataSchemaContext.createRootContext(undefined);
+    model = pushToDataModel({components: []}, unknownToDataModel('c'), model, emptyContext) as MapDataModel;
     const result = dataModelEqualsToUnknown(model, {a: 1, b: 3});
     expect(result).toBe(true);
   });
@@ -178,7 +185,7 @@ describe('Unit tests for setToDataModel', () => {
       before,
       undefined,
     ) as ListDataModel;
-    expect(before[1]).not.toBe(after[1]);
+    expect(getListDataAt(before, 1)).not.toEqual(getListDataAt(after, 1));
     expect(dataModelToJson(before)).toEqual(['a', {b: [null, 'c']}]); // is immutable
     expect(dataModelToJson(after)).toEqual(['a', {b: [null, 'd']}]);
   });
@@ -206,7 +213,7 @@ describe('Unit tests for setToDataModel', () => {
       before,
       undefined,
     ) as MapDataModel;
-    expect(before.v[1][1]).not.toBe(after.v[1][1]);
+    expect(getByPath(before, 'b/1')).not.toEqual(getByPath(after, 'b/1'));
     expect(dataModelToJson(before)).toEqual({a: 1, b: [null, {c: 'd'}]}); // is immutable
     expect(dataModelToJson(after)).toEqual({a: 1, b: [null, {c: 'e'}]});
   });
@@ -243,34 +250,35 @@ describe('Unit tests for setToDataModel', () => {
 });
 
 describe('Unit tests for pushToDataModel', () => {
+  const emptyContext = DataSchemaContext.createRootContext(undefined);
   it('Can push to list data model', () => {
     const before = unknownToDataModel(['a', 'b']);
-    const after = pushToDataModel({components: []}, unknownToDataModel('c'), before);
+    const after = pushToDataModel({components: []}, unknownToDataModel('c'), before, emptyContext);
     expect(dataModelToJson(after!)).toEqual(['a', 'b', 'c']);
   });
 
   it('Can push to nested list data model', () => {
     const before = unknownToDataModel(['a', 'b', {c: 1, d: ['e']}]);
-    const after = pushToDataModel({components: [2, 'd']}, unknownToDataModel('f'), before);
+    const after = pushToDataModel({components: [2, 'd']}, unknownToDataModel('f'), before, emptyContext);
     expect(dataModelToJson(after!)).toEqual(['a', 'b', {c: 1, d: ['e', 'f']}]);
   });
 
   it('Can push to map data model', () => {
     const before = unknownToDataModel({a: 3, b: 7});
-    const after = pushToDataModel({components: []}, unknownToDataModel('c'), before) as MapDataModel;
+    const after = pushToDataModel({components: []}, unknownToDataModel('c'), before, emptyContext) as MapDataModel;
     expect(mapDataSize(after)).toEqual(3);
     expect(dataModelToJson(mapDataLastElement(after)!)).toBe('c');
   });
 
   it('Can push to nested map data model', () => {
     const before = unknownToDataModel({a: 1, b: ['c', 3, {d: 7}]});
-    const after = pushToDataModel({components: ['b', 2]}, unknownToDataModel('e'), before);
+    const after = pushToDataModel({components: ['b', 2]}, unknownToDataModel('e'), before, emptyContext);
     expect(dataModelToJson(getFromDataModel(after!, {components: ['b', 2, 1]})!)).toEqual('e');
   });
 
   it('Can push to nested map data model by index', () => {
     const before = unknownToDataModel({a: 1, b: ['c', 3, {d: 7}]});
-    const after = pushToDataModel({components: [1, 2]}, unknownToDataModel('e'), before);
+    const after = pushToDataModel({components: [1, 2]}, unknownToDataModel('e'), before, emptyContext);
     expect(dataModelToJson(getFromDataModel(after!, {components: ['b', 2, 1]})!)).toEqual('e');
   });
 });

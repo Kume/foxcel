@@ -1,72 +1,7 @@
-import {
-  dataPathComponentIsPointer,
-  EditingForwardDataPathComponent,
-  emptyDataPath,
-  ForwardDataPathComponent,
-  PointerPathComponent,
-  pushDataPath,
-  toMapKeyDataPathComponent,
-} from '../DataModel/DataPath';
-import {UISchemaExcludeRecursive, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
-import {DataModel, DataPointer, MapDataModel} from '../DataModel/DataModelTypes';
+import {ForwardDataPathComponent, toMapKeyDataPathComponent} from '../DataModel/DataPath';
+import {UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
+import {DataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {getMapDataAtPathComponent} from '../DataModel/DataModel';
-import type {UIModelDataPath} from './UIModelTypes';
-
-export type UIModelDataPathContext = {readonly parentPath: UIModelDataPath} & (
-  | {readonly isKey: true; readonly selfPointer: DataPointer; key: string | null}
-  | {readonly isKey?: void; readonly self: EditingForwardDataPathComponent; key?: string | null}
-);
-
-export function buildDataPathFromUIModelDataPathContext(
-  context: UIModelDataPathContext | undefined,
-  schema: UISchemaExcludeRecursive,
-): UIModelDataPath {
-  if (!context) {
-    if (schema.key) {
-      // TODO エラーハンドリング
-      throw new Error('Root ui schema cannot have key.');
-    } else {
-      return emptyDataPath;
-    }
-  }
-
-  if (context.isKey) {
-    // TODO エラーハンドリング
-    throw new Error('Forward data path cannot contain parent key.');
-  }
-  return pushDataPath(context.parentPath, context.self);
-}
-
-export function makeKeyUIModelDataPathContext(
-  parentContext: UIModelDataPathContext | undefined,
-): UIModelDataPathContext {
-  if (!parentContext || parentContext.isKey) {
-    // TODO エラーハンドリング
-    throw new Error('invalid data path context for key child.');
-  }
-  if (parentContext.key === undefined) {
-    // TODO エラーハンドリング
-    throw new Error('key is unknown in this context.');
-  }
-  return {
-    parentPath: parentContext.parentPath,
-    isKey: true,
-    // 一見親のcontextのkeyをそのまま渡しているのが不自然に見えるが、これは意図したもの。
-    // 必要なkeyは親(contentListなど)でセットされる想定。
-    key: parentContext.key,
-    selfPointer: ensurePointerPathComponent(parentContext.self),
-  };
-}
-
-// TODO 以下のメソッドはこのファイルに置くべきではないかも
-
-export function ensurePointerPathComponent(pathComponent: EditingForwardDataPathComponent): PointerPathComponent {
-  if (dataPathComponentIsPointer(pathComponent)) {
-    return pathComponent;
-  }
-  // TODO エラーハンドリング
-  throw new Error('path component is not pointer path.');
-}
 
 export function stringUISchemaKeyToDataPathComponent(key: string | undefined): ForwardDataPathComponent {
   if (key === undefined) {

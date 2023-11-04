@@ -1,279 +1,229 @@
-import {DataModel, DataPointer, ListDataModel, MapDataModel} from './DataModelTypes';
-import {DataSchema, DataSchemaContextKeyItem, FixedMapDataSchema, ListDataSchema, MapDataSchema} from './DataSchema';
+import {DataModel, DataPointer, StringDataModel} from './DataModelTypes';
+import {DataSchemaContext, DataSchemaContextKeyItem, DataSchemaExcludeRecursive} from './DataSchema';
+import {dataModelIsMap, findMapDataIndexOfKey, getMapDataPointerAtIndex, stringToDataModel} from './DataModel';
 import {
-  dataModelIsList,
-  dataModelIsMap,
-  findMapDataIndexOfKey,
-  getListDataAt,
-  getListDataIndexForPointer,
-  getMapDataAt,
-  getMapDataAtIndex,
-  getMapDataIndexForPointer,
-  getMapKeyAtIndex,
-} from './DataModel';
-import {stringUISchemaKeyToString, UISchemaKey, uiSchemaKeyIsParentKey} from '../UIModel/UISchema';
+  AnyDataPath,
+  EditingForwardDataPath,
+  EditingForwardDataPathComponent,
+  toListIndexDataPathComponent,
+  toMapKeyDataPathComponent,
+  toPointerPathComponent,
+} from './DataPath';
+import {getDataModelByForwardPath} from './DataModelCollector';
 
 export interface DataModelContextListPathComponent {
   readonly type: 'list';
-  readonly at?: number;
+  readonly index: number;
+  readonly p?: DataPointer;
 }
 
 export interface DataModelContextMapPathComponent {
   readonly type: 'map';
-  readonly at: string;
-  readonly indexCache: number;
+  /**
+   * mapで編集中でまだkeyを入力してない時などにundefinedになり得る
+   */
+  readonly key: string | undefined;
+  readonly p?: DataPointer;
 }
 
-export interface DataModelContextMapEmptyPathComponent {
-  readonly type: 'map';
-  readonly at?: undefined;
-  readonly indexCache?: undefined;
-}
+type Keys = readonly (string | number)[];
 
-export interface DataModelContextUndefinedPathComponent {
-  readonly type: 'undefined';
-}
-
-export type DataModelContextPathComponent =
-  | DataModelContextListPathComponent
-  | DataModelContextMapPathComponent
-  | DataModelContextMapEmptyPathComponent
-  | DataModelContextUndefinedPathComponent;
-
-export interface DataModelRoot {
-  readonly model: DataModel;
-  readonly schema: DataSchema;
-}
-
-export interface DataModelContext {
-  // readonly root: DataModelRoot;
-  readonly contextKeys?: readonly DataSchemaContextKeyItem[];
+export interface SerializedDataModelContext {
   readonly path: readonly DataModelContextPathComponent[];
+  readonly keys: Keys;
   readonly isKey?: boolean;
 }
 
-export const emptyDataModelContext: DataModelContext = {path: []};
+export type DataModelContextPathComponent = DataModelContextListPathComponent | DataModelContextMapPathComponent;
 
-export const undefinedDataModelContextPathComponent: DataModelContextUndefinedPathComponent = {type: 'undefined'};
-
-export function dataModelContextDepth(context: DataModelContext): number {
-  return context.path.length;
+export interface DataModelRoot {
+  readonly model: DataModel | undefined;
+  readonly schema: DataSchemaExcludeRecursive;
 }
 
-export function dataModelContextPathComponentAt(
-  context: DataModelContext,
-  index: number,
-): DataModelContextPathComponent {
-  return context.path[index];
-}
-
-export function dataModelContextPathLastComponent(
-  context: DataModelContext,
-): DataModelContextPathComponent | undefined {
-  return context.path[context.path.length - 1];
-}
-
-export function dataModelContextNodeIsMap(
-  node: DataModelContextPathComponent,
-): node is DataModelContextMapPathComponent {
-  return node.type === 'map';
-}
-
-export function dataModelContextNodeIsList(
-  node: DataModelContextPathComponent,
-): node is DataModelContextListPathComponent {
-  return node.type === 'list';
-}
-
-export function pushDataModelContextPath(
-  context: DataModelContext,
-  component: DataModelContextPathComponent,
-): DataModelContext {
-  if (context.isKey) {
-    throw new Error('Cannot push to key context');
+function addKeysDepth(prev: Keys): Keys {
+  const last = prev[prev.length - 1];
+  switch (typeof last) {
+    case 'string':
+      return [...prev, 1];
+    case 'undefined':
+      return [1];
+    case 'number':
+      return [...prev.slice(0, -1), last + 1];
   }
-  return {
-    ...context,
-    path: [...context.path, component],
-  };
 }
 
-export function pushMapDataModelContextPath(
-  context: DataModelContext,
-  dataModel: DataModel | undefined,
-  key: string | null | undefined,
-): DataModelContext {
-  if (!dataModelIsMap(dataModel)) {
-    return pushDataModelContextPath(context, undefinedDataModelContextPathComponent);
+function popKeys(prev: Keys, popCount: number): Keys {
+  if (popCount === 0) {
+    return prev;
   }
-  return pushDataModelContextPath(context, mapDataModelContextPathForDataModel(dataModel, key));
-}
-
-export function mapDataModelContextPathForDataModel(
-  map: MapDataModel,
-  key: string | null | undefined,
-): DataModelContextPathComponent {
-  if (key === undefined || key === null) {
-    return {type: 'map'};
-  }
-  const index = findMapDataIndexOfKey(map, key);
-  if (index === undefined) {
-    return {type: 'map'};
-  }
-  return {type: 'map', at: key, indexCache: index};
-}
-
-export function pushUiSchemaKeyToDataModelContext(
-  context: DataModelContext,
-  dataModel: DataModel | undefined,
-  key: UISchemaKey | undefined,
-): DataModelContext {
-  if (!dataModelIsMap(dataModel)) {
-    return pushDataModelContextPath(context, undefinedDataModelContextPathComponent);
-  }
-  return pushDataModelContextPath(context, uiSchemaKeyToDataModelContextPathComponent(dataModel, key));
-}
-
-export function uiSchemaKeyToDataModelContextPathComponent(
-  map: MapDataModel,
-  key: UISchemaKey | undefined,
-): DataModelContextPathComponent {
-  if (uiSchemaKeyIsParentKey(key)) {
-    return undefinedDataModelContextPathComponent;
+  const last = prev[prev.length - 1];
+  if (typeof last === 'string') {
+    return popKeys(prev.slice(0, -1), popCount - 1);
   } else {
-    return mapDataModelContextPathForDataModel(map, stringUISchemaKeyToString(key));
+    if (popCount > last) {
+      return popKeys(prev.slice(0, -1), popCount - last);
+    } else if (popCount === last) {
+      return prev.slice(0, -1);
+    } else {
+      return [...prev.slice(0, -1), last - popCount];
+    }
   }
 }
 
-export function pushListDataModelContextPath(
-  context: DataModelContext,
-  dataModel: DataModel | undefined,
-  index: number | undefined,
-): DataModelContext {
-  if (!dataModelIsList(dataModel)) {
-    return pushDataModelContextPath(context, undefinedDataModelContextPathComponent);
+/**
+ *
+ * Note: DataSchemaContextは再帰で巻き戻ることがあるが、こちらは常に降下するのみなので、機能をまとめることはできない。
+ */
+export class DataModelContext {
+  public static deserialize(serialized: SerializedDataModelContext, root: DataModelRoot): DataModelContext {
+    let schemaContext = DataSchemaContext.createRootContext(root.schema);
+    for (const pathComponent of serialized.path) {
+      switch (pathComponent.type) {
+        case 'map':
+          schemaContext = schemaContext.dig(pathComponent.key);
+          break;
+        case 'list':
+          schemaContext = schemaContext.dig(pathComponent.index);
+      }
+    }
+    const modelContext = new DataModelContext(schemaContext, serialized.path, serialized.keys);
+    return serialized.isKey ? modelContext.pushIsParentKey() : modelContext;
   }
-  return pushDataModelContextPath(context, listDataModelContextPathForDataModel(dataModel, index));
-}
 
-export function listDataModelContextPathForDataModel(
-  list: ListDataModel,
-  index: number | undefined,
-): DataModelContextListPathComponent {
-  if (index === undefined) {
-    return {type: 'list'};
+  public static createRoot(root: DataModelRoot): DataModelContext {
+    return new DataModelContext(DataSchemaContext.createRootContext(root.schema), [], []);
   }
-  return {type: 'list', at: index};
-}
 
-export function pushPointerToDataModelContext(
-  context: DataModelContext,
-  model: DataModel | undefined,
-  pointer: DataPointer,
-): DataModelContext {
-  if (dataModelIsMap(model)) {
-    return pushDataModelContextPath(context, dataModelContextPathForMapModelPointer(model, pointer));
-  } else if (dataModelIsList(model)) {
-    return pushDataModelContextPath(context, dataModelContextPathForListModelPointer(model, pointer));
-  } else {
-    return pushDataModelContextPath(context, undefinedDataModelContextPathComponent);
-  }
-}
+  private constructor(
+    public readonly schemaContext: DataSchemaContext,
+    private readonly path: readonly DataModelContextPathComponent[],
+    private readonly keys: Keys,
+  ) {}
 
-function dataModelContextPathForMapModelPointer(
-  map: MapDataModel,
-  pointer: DataPointer,
-): DataModelContextPathComponent {
-  const index = getMapDataIndexForPointer(map, pointer);
-  if (index === undefined) {
-    return {type: 'map'};
-  }
-  const key = getMapKeyAtIndex(map, index);
-  if (key === undefined || key === null) {
-    return {type: 'map'};
-  }
-  return {type: 'map', at: key, indexCache: index};
-}
-
-function dataModelContextPathForListModelPointer(
-  list: ListDataModel,
-  pointer: DataPointer,
-): DataModelContextPathComponent {
-  return {type: 'list', at: getListDataIndexForPointer(list, pointer)};
-}
-
-export function pushKeyToDataModelContextPath(context: DataModelContext): DataModelContext {
-  return {...context, isKey: true};
-}
-
-export function popDataModelContextPath(context: DataModelContext, count = 1): DataModelContext {
-  if (context.isKey) {
-    return {contextKeys: context.contextKeys, path: context.path};
-  } else {
+  public serialize(): SerializedDataModelContext {
     return {
-      ...context,
-      path: context.path.slice(0, -count),
+      path: this.path,
+      keys: this.keys,
+      isKey: this.schemaContext.isParentKey,
+    };
+  }
+
+  public depth(): number {
+    return this.path.length;
+  }
+
+  public depthFromKey(key: string): number {
+    let depth = 0;
+    for (const keyItem of [...this.keys].reverse()) {
+      if (typeof keyItem === 'string') {
+        if (keyItem === key) {
+          return depth;
+        } else {
+          depth++;
+        }
+      } else {
+        depth += keyItem;
+      }
+    }
+    // このエラーが発生しないようにスキーマ構築時にバリデーションする
+    return 0;
+  }
+
+  public pathComponentAt(index: number): DataModelContextPathComponent {
+    return this.path[index];
+  }
+
+  public get lastPathComponent(): DataModelContextPathComponent | undefined {
+    return this.path[this.path.length - 1];
+  }
+
+  private push(schemaContext: DataSchemaContext, pathComponent: DataModelContextPathComponent): DataModelContext {
+    const contextKey = schemaContext.contextKey();
+    return new DataModelContext(
+      schemaContext,
+      [...this.path, pathComponent],
+      contextKey === undefined ? addKeysDepth(this.keys) : [...this.keys, contextKey],
+    );
+  }
+
+  public pushMapKey(mapKey: string): DataModelContext {
+    return this.push(this.schemaContext.dig(mapKey), {type: 'map', key: mapKey});
+  }
+
+  public pushMapPointer(mapKey: string | undefined, pointer: DataPointer): DataModelContext {
+    return this.push(this.schemaContext.dig(mapKey), {type: 'map', key: mapKey, p: pointer});
+  }
+
+  public pushMapKeyOrPointer(dataModel: DataModel | undefined, mapKey: string): DataModelContext {
+    if (dataModelIsMap(dataModel)) {
+      const mapKeyIndex = findMapDataIndexOfKey(dataModel, mapKey);
+      const mapKeyPointer = mapKeyIndex === undefined ? undefined : getMapDataPointerAtIndex(dataModel, mapKeyIndex);
+      if (mapKeyPointer) {
+        return this.pushMapPointer(mapKey, mapKeyPointer);
+      }
+    }
+    return this.pushMapKey(mapKey);
+  }
+
+  public pushListPointer(index: number, pointer: DataPointer | undefined): DataModelContext {
+    return this.push(this.schemaContext.dig(index), {type: 'list', index, p: pointer});
+  }
+
+  public pushIsParentKey(): DataModelContext {
+    return new DataModelContext(this.schemaContext.dig({t: 'key'}), this.path, this.keys);
+  }
+
+  public pop(popCount = 1): DataModelContext {
+    return new DataModelContext(
+      this.schemaContext.back(popCount),
+      this.path.slice(0, -popCount),
+      popKeys(this.keys, popCount),
+    );
+  }
+
+  public get parentKeyDataModel(): StringDataModel | undefined {
+    const lastPathComponent = this.path[this.path.length - 1];
+    switch (lastPathComponent.type) {
+      case 'list':
+        return stringToDataModel(lastPathComponent.index.toString());
+      case 'map':
+        return typeof lastPathComponent.key === 'string' ? stringToDataModel(lastPathComponent.key) : undefined;
+    }
+  }
+
+  public toDataPath(): EditingForwardDataPath {
+    // TODO 本当はisAbsoluteにしたいが、EditingForwardDataPathはそれを許容してない
+    //      UIModelにセットするDataPathは必ずrootからなのだから、DataPathとは扱いを変えるべきかもしれない
+    return {
+      components: this.path.map((i): EditingForwardDataPathComponent => {
+        switch (i.type) {
+          case 'list':
+            return i.p ? toPointerPathComponent(i.p) : toListIndexDataPathComponent(i.index);
+          case 'map':
+            return i.p ? toPointerPathComponent(i.p) : toMapKeyDataPathComponent(i.key!);
+        }
+      }),
     };
   }
 }
 
-export function getCurrentKeyOrUndefinedFromDataModelContext(context: DataModelContext): string | undefined {
-  // TODO isKeyの考慮
-  const lastComponent = dataModelContextPathLastComponent(context);
-  if (!lastComponent) {
-    return undefined;
-  }
-  if (lastComponent.type === 'map') {
-    return lastComponent.at;
-  } else if (lastComponent.type === 'list') {
-    return lastComponent.at?.toString();
-  } else {
-    return undefined;
-  }
-}
-
-export function getDataModelByDataModelContext(
+// TODO DataModelContextにDataModelまで含めればこの関数は要らなくなりそう
+export function dataModelForPathStart(
+  root: DataModelRoot,
+  current: DataModel | undefined,
+  path: AnyDataPath,
   context: DataModelContext,
-  rootDataModel: DataModel,
-): DataModel | undefined {
-  return getDataModelByDataModelContextImpl(context, rootDataModel, 0);
-}
+): [DataModel | undefined, DataModelContext] {
+  if (path.isAbsolute) {
+    return [root.model, DataModelContext.createRoot(root)];
+  }
 
-function getDataModelByDataModelContextImpl(
-  context: DataModelContext,
-  dataModel: DataModel,
-  currentDepth: number,
-): DataModel | undefined {
-  if (currentDepth >= dataModelContextDepth(context)) {
-    return dataModel;
+  let reverseCount = path.r ?? 0;
+  if (path.ctx) {
+    reverseCount += context.depthFromKey(path.ctx);
   }
-  const pathComponent = dataModelContextPathComponentAt(context, currentDepth);
-  switch (pathComponent.type) {
-    case 'undefined':
-      return undefined;
-    case 'list': {
-      if (pathComponent.at === undefined || !dataModelIsList(dataModel)) {
-        return undefined;
-      }
-      const childDataModel = getListDataAt(dataModel, pathComponent.at);
-      if (childDataModel === undefined) {
-        return undefined;
-      }
-      return getDataModelByDataModelContextImpl(context, childDataModel, currentDepth + 1);
-    }
-    case 'map': {
-      if (pathComponent.at === undefined || !dataModelIsMap(dataModel)) {
-        return undefined;
-      }
-      const cachedKey = getMapKeyAtIndex(dataModel, pathComponent.indexCache);
-      const childDataModel =
-        cachedKey === pathComponent.at
-          ? getMapDataAtIndex(dataModel, pathComponent.indexCache)
-          : getMapDataAt(dataModel, pathComponent.at);
-      if (childDataModel === undefined) {
-        return undefined;
-      }
-      return getDataModelByDataModelContextImpl(context, childDataModel, currentDepth + 1);
-    }
-  }
+  return reverseCount > 0
+    ? [getDataModelByForwardPath(root.model, context.pop(reverseCount).toDataPath()), context.pop(reverseCount)]
+    : [current, context];
 }
