@@ -24,7 +24,7 @@ const initialState: AppState = {
   uiModel: undefined,
   uiSchema: undefined,
   dataSchema: undefined,
-  // @ts-expect-error undefined許容にするとかなりの量のエラーが出る。本来はundefined許容であるべきな気がする
+  // @ts-expect-error undefined許容にするとかなりの量のエラーが出る。本来はundefined許容であるべきな気がする => そもそもclassをstateに入れてるのが間違いっぽい
   rootUISchemaContext: undefined,
   actions: [],
 };

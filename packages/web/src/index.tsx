@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 import {RootView} from '@foxcel/ui-react';
@@ -7,11 +7,13 @@ import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
 import {loadFile} from '@foxcel/core/dist/FileLoader';
 import {AppInitializeAction} from '@foxcel/core/dist/App/AppState';
 import {ThemeProvider} from 'styled-components';
-import {Theme} from '@foxcel/ui-react/dist/types';
+import {LoadedData, Theme} from '@foxcel/ui-react/dist/types';
 import {sampleConfig} from '@foxcel/ui-react/dist/sample';
-import {buildSimpleDataSchema} from '@foxcel/core/dist/DataModel/DataSchema';
-import {buildSimpleUISchema} from '@foxcel/core/dist/UIModel/UISchema';
+import {buildDataSchema} from '@foxcel/core/dist/DataModel/DataSchema';
+import {buildUISchema} from '@foxcel/core/dist/UIModel/UISchema';
 import {unknownToDataModel} from '@foxcel/core';
+import {simpleRecursiveSampleConfig} from '@foxcel/core/dist/samples';
+import ObjectDataStorage from '@foxcel/core/dist/Storage/ObjectDataStorage';
 
 async function loadFile_(): Promise<AppInitializeAction> {
   const storage = new NativeFileSystemDataStorage();
@@ -20,8 +22,6 @@ async function loadFile_(): Promise<AppInitializeAction> {
   return {type: 'init', uiSchema, dataSchema, data};
 }
 
-const dataSchema = buildSimpleDataSchema(sampleConfig);
-const uiSchema = buildSimpleUISchema(sampleConfig, dataSchema);
 const initialDataModel = unknownToDataModel({
   testA: {
     testA_value1: {
@@ -174,10 +174,93 @@ const vsCodeTheme: Theme = {
   },
 };
 
+const currentTheme = vsCodeTheme;
+
+const samples = [
+  {
+    label: '色々',
+    name: '1',
+    config: sampleConfig,
+    data: initialDataModel,
+  },
+  {
+    label: '再帰',
+    name: '2',
+    config: simpleRecursiveSampleConfig,
+    data: unknownToDataModel({
+      root: [
+        {
+          label: 'test1',
+          children: [{label: 'test1-1', children: []}],
+        },
+        {
+          label: 'test2',
+          children: [],
+        },
+      ],
+    }),
+  },
+] as const;
+
+const sampleDataConfigKey = 'sampleDataConfig';
+
+const App: React.FC = () => {
+  const [loaded, setLoaded] = useState<LoadedData>();
+  const [selectedSample, setSelectedSample] = useState<string>();
+
+  const selectSample = useCallback((selected: string) => {
+    setSelectedSample((prev) => {
+      if (prev === selected) {
+        return prev;
+      }
+
+      void (async () => {
+        const sample = samples.find(({name}) => name === selected);
+        if (!sample) {
+          return;
+        }
+
+        const storage = new ObjectDataStorage();
+        const dataSchema = await buildDataSchema(sample.config, storage, new YamlDataFormatter());
+        const uiSchema = await buildUISchema(sample.config, dataSchema, storage, new YamlDataFormatter());
+        setLoaded({uiSchema, dataSchema, data: sample.data});
+        window.localStorage.setItem(sampleDataConfigKey, selected);
+      })();
+      return selected;
+    });
+  }, []);
+
+  useEffect(() => {
+    const currentData = window.localStorage.getItem(sampleDataConfigKey);
+    selectSample(currentData ?? '');
+  }, [selectSample]);
+
+  return (
+    <div style={{backgroundColor: currentTheme.color.bg.normal, height: '100%'}}>
+      <div style={{backgroundColor: currentTheme.color.bg.label}}>
+        <label style={{color: currentTheme.font.color.label}}>
+          サンプルデータ
+          <select value={selectedSample} onChange={(e) => selectSample(e.target.value)}>
+            <option value="">未選択</option>
+            {samples.map(({label, name}) => {
+              return (
+                <option key={name} value={name}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      </div>
+      <RootView loadFile={loadFile_} loaded={loaded} />
+    </div>
+  );
+};
+
 ReactDOM.render(
   <React.StrictMode>
-    <ThemeProvider theme={vsCodeTheme}>
-      <RootView loadFile={loadFile_} loaded={{uiSchema, dataSchema, data: initialDataModel}} />
+    <ThemeProvider theme={currentTheme}>
+      <App />
     </ThemeProvider>
   </React.StrictMode>,
   document.getElementById('root'),
