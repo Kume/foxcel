@@ -712,6 +712,10 @@ export function buildUIModel(
         };
       }
     }
+
+    case 'conditional': {
+      // TODO DataModelContextにDataを追加すると実装しやすそう
+    }
   }
 }
 

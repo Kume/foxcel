@@ -1,5 +1,5 @@
 import {DataModel, DataPointer, StringDataModel} from './DataModelTypes';
-import {DataSchemaContext, DataSchemaContextKeyItem, DataSchemaExcludeRecursive} from './DataSchema';
+import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
 import {dataModelIsMap, findMapDataIndexOfKey, getMapDataPointerAtIndex, stringToDataModel} from './DataModel';
 import {
   AnyDataPath,
@@ -71,6 +71,11 @@ function popKeys(prev: Keys, popCount: number): Keys {
   }
 }
 
+function getModelByPath(
+  model: DataModel | undefined,
+  path: readonly DataModelContextPathComponent[],
+): DataModel | undefined {}
+
 /**
  *
  * Note: DataSchemaContextは再帰で巻き戻ることがあるが、こちらは常に降下するのみなので、機能をまとめることはできない。
@@ -85,20 +90,29 @@ export class DataModelContext {
           break;
         case 'list':
           schemaContext = schemaContext.dig(pathComponent.index);
+          break;
       }
     }
-    const modelContext = new DataModelContext(schemaContext, serialized.path, serialized.keys);
+    const modelContext = new DataModelContext(
+      schemaContext,
+      serialized.path,
+      serialized.keys,
+      getModelByPath(root.model, serialized.path),
+      root,
+    );
     return serialized.isKey ? modelContext.pushIsParentKey() : modelContext;
   }
 
   public static createRoot(root: DataModelRoot): DataModelContext {
-    return new DataModelContext(DataSchemaContext.createRootContext(root.schema), [], []);
+    return new DataModelContext(DataSchemaContext.createRootContext(root.schema), [], [], root.model, root);
   }
 
   private constructor(
     public readonly schemaContext: DataSchemaContext,
     private readonly path: readonly DataModelContextPathComponent[],
     private readonly keys: Keys,
+    public readonly currentModel: DataModel | undefined,
+    public readonly root: DataModelRoot,
   ) {}
 
   public serialize(): SerializedDataModelContext {
@@ -138,6 +152,8 @@ export class DataModelContext {
     return this.path[this.path.length - 1];
   }
 
+  public pushMapKeyNew(key: string): DataModelContext {}
+
   private push(schemaContext: DataSchemaContext, pathComponent: DataModelContextPathComponent): DataModelContext {
     const contextKey = schemaContext.contextKey();
     return new DataModelContext(
@@ -151,7 +167,7 @@ export class DataModelContext {
     return this.push(this.schemaContext.dig(mapKey), {type: 'map', key: mapKey});
   }
 
-  public pushMapPointer(mapKey: string | undefined, pointer: DataPointer): DataModelContext {
+  public pushMapPointer(mapKey: string, pointer: DataPointer): DataModelContext {
     return this.push(this.schemaContext.dig(mapKey), {type: 'map', key: mapKey, p: pointer});
   }
 

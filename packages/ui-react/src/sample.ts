@@ -1,6 +1,25 @@
 import {RootSchemaConfig} from '@foxcel/core';
 
 export const sampleConfig: RootSchemaConfig = {
+  namedDataSchema: {
+    testA13_type: {
+      type: 'string',
+      in: [
+        {
+          label: 'Type A',
+          value: 'a',
+        },
+        {
+          label: 'Type B',
+          value: 'b',
+        },
+        {
+          label: 'Type C',
+          value: 'c',
+        },
+      ],
+    },
+  },
   dataSchema: {
     type: 'fixed_map',
     items: {
@@ -188,6 +207,45 @@ export const sampleConfig: RootSchemaConfig = {
                 },
               },
             },
+            testA13: {
+              type: 'conditional',
+              items: {
+                testA13a: {
+                  condition: {path: 'type', match: 'a'},
+                  item: {
+                    type: 'fixed_map',
+                    items: {
+                      type: 'testA13_type',
+                      label: {
+                        type: 'string',
+                        label: 'Name',
+                      },
+                      numberValue: {
+                        type: 'number',
+                        label: '数値',
+                      },
+                    },
+                  },
+                },
+                testA13b: {
+                  condition: {path: 'type', match: 'b'},
+                  item: {
+                    type: 'fixed_map',
+                    items: {
+                      type: 'testA13_type',
+                      label: {
+                        type: 'string',
+                        label: 'Name',
+                      },
+                      booleanValue: {
+                        type: 'boolean',
+                        label: 'チェック',
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -347,6 +405,16 @@ export const sampleConfig: RootSchemaConfig = {
                   },
                 },
               ],
+            },
+            {
+              type: 'conditional',
+              key: 'testA13',
+              conditionalContents: {
+                testA13a: {
+                  type: 'form',
+                  contents: [{type: 'select', key: 'type'}],
+                },
+              },
             },
           ],
         },

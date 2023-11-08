@@ -7,7 +7,6 @@ import {
   dataPathComponentIsMapKeyLike,
   dataPathComponentIsPointer,
   dataPathComponentToListIndex,
-  dataPathComponentToListIndexOrFail,
   dataPathComponentToMapKey,
   dataPathLength,
   EditingForwardDataPath,
@@ -40,6 +39,7 @@ import {DataModelOperationError} from './errors';
 import {ConditionConfig} from '..';
 import {defaultDataModelForSchema} from './DataModelWithSchema';
 import {compact} from '../common/utils';
+import {DataModelContext} from './DataModelContext';
 
 export function dataModelTypeToLabel(type: DataModelType): string {
   return DataModelType[type];
@@ -236,6 +236,51 @@ export function dataModelToLabelString(model: DataModel | undefined): string {
   }
 }
 
+export interface SetDataParams {
+  readonly model: DataModel;
+}
+
+/**
+ * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
+ */
+export function setToDataModel2(
+  path: PathContainer,
+  context: DataModelContext,
+  params: SetDataParams,
+): DataModel | undefined {
+  let currentModel = context.currentModel;
+  if (currentModel === undefined) {
+    return undefined;
+  }
+
+  if (path.isEnd) {
+    return dataModelEquals(currentModel, params.model) ? undefined : params.model;
+  }
+
+  if (!dataModelIsMapOrList(currentModel)) {
+    currentModel =
+      context.schemaContext.currentSchema && defaultDataModelForSchema(context.schemaContext.currentSchema);
+  }
+
+  setToMapOrListDataRecursive2(
+    currentModel,
+    path,
+    context,
+    (nextPath, childData, childContext) => setToDataModel2(nextPath, childContext, params),
+    (map, key, childContext) => {
+      if (path.isLast) {
+        return forceAddToMapData(map, params.model, key);
+      }
+      if (childContext.schemaContext.currentSchema) {
+        const defaultData = defaultDataModelForSchema(childContext.schemaContext.currentSchema);
+        // TODO defaultDataは必要。DataModelContextに入っているのは既に存在しているデータのみなので、defaultDataを加味できない？できるように修正すれば良い？
+        const newModel = setToDataModel2(path.next(), childContext, params);
+        return forceAddToMapData(to, newModel, key);
+      }
+    },
+  );
+}
+
 /**
  * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
  */
@@ -289,6 +334,34 @@ export function setToDataModel(
   );
 }
 
+interface SetKeyDataParams {
+  readonly key: string | null;
+  readonly mapIndex: number;
+}
+
+export function setKeyToDataModel2(
+  path: PathContainer,
+  context: DataModelContext,
+  params: SetKeyDataParams,
+): DataModel | undefined {
+  const currentModel = context.currentModel;
+  if (path.isEnd) {
+    if (!dataModelIsMapOrList(currentModel)) {
+      return undefined;
+    }
+    if (mapOrListDataModelIsMap(currentModel)) {
+      const sourceKey = getMapKeyAtIndex(currentModel, params.mapIndex);
+      return sourceKey === params.key ? undefined : forceSetMapKeyForIndex(currentModel, params.mapIndex, params.key);
+    } else {
+      return undefined;
+    }
+  } else {
+    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childData, childContext) =>
+      setKeyToDataModel2(nextPath, childContext, params),
+    );
+  }
+}
+
 /**
  * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
  */
@@ -327,6 +400,61 @@ export function setKeyToDataModel(
     } else {
       return undefined;
     }
+  }
+}
+
+interface PathContainer {
+  readonly isEnd: boolean;
+  readonly isLast: boolean;
+  next(): PathContainer;
+  listChild(list: ListDataModel): [model: DataModel, index: number] | undefined;
+  mapChild(
+    map: MapDataModel,
+  ):
+    | [model: DataModel, key: string | null, index: number]
+    | [model: undefined, key: string, index: undefined]
+    | undefined;
+}
+
+interface InsertDataParams {
+  readonly after?: DataPointer;
+  readonly model: DataModel;
+}
+
+export function insertToDataModel2(
+  path: PathContainer,
+  context: DataModelContext,
+  params: InsertDataParams,
+): DataModel | undefined {
+  const currentModel = context.currentModel;
+
+  if (path.isEnd) {
+    if (!dataModelIsMapOrList(currentModel)) {
+      return undefined;
+    }
+    if (mapOrListDataModelIsMap(currentModel)) {
+      if (params.after === undefined) {
+        return forceInsertToMapData(currentModel, params.model, 0, null);
+      }
+      const index = getMapDataIndexForPointer(currentModel, params.after);
+      if (index === undefined) {
+        return undefined;
+      }
+      return forceInsertToMapData(currentModel, params.model, index + 1, null);
+    } else {
+      if (params.after === undefined) {
+        return forceInsertToListData(currentModel, params.model, 0);
+      }
+      const index = getListDataIndexForPointer(currentModel, params.after);
+      if (index === undefined) {
+        return undefined;
+      }
+      return forceInsertToListData(currentModel, params.model, index + 1);
+    }
+  } else {
+    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childData, childContext) =>
+      insertToDataModel2(nextPath, childContext, params),
+    );
   }
 }
 
@@ -511,6 +639,12 @@ type CreateNextChildData = (
   childSchema: DataSchemaContext,
 ) => DataModel | undefined;
 
+type CreateNextChildData2 = (
+  nextPath: PathContainer,
+  childData: DataModel,
+  context: DataModelContext,
+) => DataModel | undefined;
+
 //#region For ListDataModel
 export function getListDataAt(list: ListDataModel, at: number): DataModel | undefined {
   return list.v[at]?.[listItemDataIndex];
@@ -612,6 +746,22 @@ export function deleteFromListDataAtPathComponent(
     return index === undefined ? list : forceDeleteFromListDataAt(list, index);
   }
   return list;
+}
+
+function setToListDataRecursive2(
+  list: ListDataModel,
+  path: PathContainer,
+  context: DataModelContext,
+  createNextChildData: CreateNextChildData2,
+): ListDataModel | undefined {
+  const child = path.listChild(list);
+  if (!child) {
+    return undefined;
+  }
+
+  const [childData, childIndex] = child;
+  const nextChildData = createNextChildData(path.next(), childData, context.pushListIndex(childIndex));
+  return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, childIndex);
 }
 
 function setToListDataRecursive(
@@ -787,6 +937,13 @@ function forceSetToMapDataForIndex(
   return {t: DataModelType.Map, v, m: map.m};
 }
 
+function forceSetMapKeyForIndex(map: MapDataModel, index: number, key: string | null): MapDataModel {
+  const v = [...map.v];
+  const item = v[index];
+  v[index] = [key, item[mapItemIdIndex], item[mapItemDataIndex]];
+  return {t: DataModelType.Map, v, m: map.m};
+}
+
 export function setToMapDataModel(map: MapDataModel, key: string, value: DataModel) {
   const index = findMapDataIndexOfKey(map, key);
   if (index === undefined) {
@@ -833,6 +990,28 @@ function deleteFromMapDataAtPathComponent(
     return index === undefined ? map : forceDeleteFromMapDataAt(map, index);
   }
   return map;
+}
+
+function setToMapDataRecursive2(
+  map: MapDataModel,
+  path: PathContainer,
+  context: DataModelContext,
+  createNextChildData: CreateNextChildData2,
+  onKeyMissing?: (key: string, context: DataModelContext) => MapDataModel | undefined,
+): MapDataModel | undefined {
+  const child = path.mapChild(map);
+  if (!child) {
+    return undefined;
+  }
+  const [childData, childKey, childIndex] = child;
+  if (childData === undefined) {
+    return onKeyMissing?.(childKey, context.pushMapKey(childKey));
+  } else {
+    const nextChildData = createNextChildData(path.next(), childData, context.pushMapIndex(childIndex));
+    return nextChildData === undefined
+      ? undefined
+      : forceSetToMapDataForIndex(map, nextChildData, childIndex, childKey);
+  }
 }
 
 function setToMapDataRecursive(
@@ -948,6 +1127,25 @@ export function* eachMapDataItem(map: MapDataModel): Generator<PublicMapDataItem
 //#endregion For MapDataModel
 
 //#region For CollectionDataModel
+function setToMapOrListDataRecursive2(
+  model: DataModel | undefined,
+  path: PathContainer,
+  context: DataModelContext,
+  createNextChildData: CreateNextChildData2,
+  onKeyMissing?: (map: MapDataModel, key: string, context: DataModelContext) => MapDataModel | undefined,
+): DataModel | undefined {
+  if (dataModelIsMapOrList(model)) {
+    if (mapOrListDataModelIsMap(model)) {
+      return setToMapDataRecursive2(model, path, context, createNextChildData, (key, childContext) =>
+        onKeyMissing?.(model, key, childContext),
+      );
+    } else {
+      return setToListDataRecursive2(model, path, context, createNextChildData);
+    }
+  } else {
+    return undefined;
+  }
+}
 //#endregion For CollectionDataModel
 
 //#region For DataPointer
