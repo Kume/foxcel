@@ -16,7 +16,6 @@ import {
   headDataPathComponent,
   MultiDataPath,
   shiftDataPath,
-  tailDataPathComponent,
 } from './DataPath';
 import {
   BooleanDataModel,
@@ -263,15 +262,16 @@ export function setToDataModel(
     currentModel,
     path,
     context,
-    (nextPath, childData, childContext) => setToDataModel2(nextPath, childContext, params),
-    (map, key, childContext) => {
+    (nextPath, childData, childContext) => setToDataModel(nextPath, childContext, params),
+    (map, key) => {
       // ここが最下層であれば、paramsに指定されたモデルをkeyに対してセットすれば良い
       if (path.isLast) {
         return forceAddToMapData(map, params.model, key);
       }
 
+      const childContext = context.pushMapKey(key);
       if (childContext.schemaContext.currentSchema) {
-        const newModel = setToDataModel2(path.next(), childContext, params);
+        const newModel = setToDataModel(path.next(), childContext, params);
         return newModel === undefined ? undefined : forceAddToMapData(map, newModel, key);
       } else {
         // スキーマがないとデフォルトのデータを生成できないのでセット不可

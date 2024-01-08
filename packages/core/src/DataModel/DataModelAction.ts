@@ -3,12 +3,11 @@ import {DataModel, DataPointer} from './DataModelTypes';
 import {
   DataPathContainer,
   deleteFromDataModel,
-  insertToDataModel2,
+  insertToDataModel,
   pushToDataModel,
-  setKeyToDataModel2,
-  setToDataModel2,
+  setKeyToDataModel,
+  setToDataModel,
 } from './DataModel';
-import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
 import {DataModelContext, DataModelRoot} from './DataModelContext';
 
 export interface PushDataModelAction {
@@ -62,29 +61,30 @@ export function applyDataModelAction(root: DataModelRoot, action: DataModelActio
       if (dataPathLength(action.path) === 0) {
         return action.data;
       } else {
-        return setToDataModel2(DataPathContainer.create(action.path), context, {model: action.data});
+        return setToDataModel(DataPathContainer.create(action.path), context, {model: action.data});
       }
 
     case 'setKey': {
-      return setKeyToDataModel2(DataPathContainer.create(action.path), context, {
+      return setKeyToDataModel(DataPathContainer.create(action.path), context, {
         key: action.key,
         mapIndex: action.mapIndex,
       });
     }
 
     case 'insert':
-      return insertToDataModel2(DataPathContainer.create(action.path), context, {
+      return insertToDataModel(DataPathContainer.create(action.path), context, {
         after: action.after,
         model: action.data,
       });
 
     case 'push':
-      return model === undefined
-        ? undefined
-        : pushToDataModel(action.path, action.data, model, schemaContext, action.key ?? undefined);
+      return pushToDataModel(DataPathContainer.create(action.path), context, {
+        model: action.data,
+        key: action.key ?? undefined,
+      });
 
     case 'delete':
-      return model === undefined ? undefined : deleteFromDataModel(action.path, action.at, model, schemaContext);
+      return deleteFromDataModel(DataPathContainer.create(action.path), context, {at: action.at});
   }
 }
 
