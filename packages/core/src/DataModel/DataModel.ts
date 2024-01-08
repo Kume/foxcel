@@ -249,12 +249,9 @@ export function setToDataModel(
   params: SetDataParams,
 ): DataModel | undefined {
   let currentModel = context.currentModel;
-  if (currentModel === undefined) {
-    return undefined;
-  }
 
   if (path.isEnd) {
-    return dataModelEquals(currentModel, params.model) ? undefined : params.model;
+    return currentModel === undefined || dataModelEquals(currentModel, params.model) ? undefined : params.model;
   }
 
   if (!dataModelIsMapOrList(currentModel)) {
@@ -262,20 +259,23 @@ export function setToDataModel(
       context.schemaContext.currentSchema && defaultDataModelForSchema(context.schemaContext.currentSchema);
   }
 
-  setToMapOrListDataRecursive2(
+  return setToMapOrListDataRecursive2(
     currentModel,
     path,
     context,
     (nextPath, childData, childContext) => setToDataModel2(nextPath, childContext, params),
     (map, key, childContext) => {
+      // ここが最下層であれば、paramsに指定されたモデルをkeyに対してセットすれば良い
       if (path.isLast) {
         return forceAddToMapData(map, params.model, key);
       }
+
       if (childContext.schemaContext.currentSchema) {
-        const defaultData = defaultDataModelForSchema(childContext.schemaContext.currentSchema);
-        // TODO defaultDataは必要。DataModelContextに入っているのは既に存在しているデータのみなので、defaultDataを加味できない？できるように修正すれば良い？
         const newModel = setToDataModel2(path.next(), childContext, params);
-        return forceAddToMapData(to, newModel, key);
+        return newModel === undefined ? undefined : forceAddToMapData(map, newModel, key);
+      } else {
+        // スキーマがないとデフォルトのデータを生成できないのでセット不可
+        return undefined;
       }
     },
   );
@@ -403,17 +403,64 @@ export function setKeyToDataModelOld(
   }
 }
 
+type PathContainerMapChild =
+  // データが存在する場合
+  | [model: DataModel, key: string | null, index: number]
+  // データは存在しないが、キーは分かる場合
+  | [model: undefined, key: string, index: undefined]
+  | undefined;
+
 interface PathContainer {
   readonly isEnd: boolean;
   readonly isLast: boolean;
   next(): PathContainer;
   listChild(list: ListDataModel): [model: DataModel, index: number] | undefined;
-  mapChild(
-    map: MapDataModel,
-  ):
-    | [model: DataModel, key: string | null, index: number]
-    | [model: undefined, key: string, index: undefined]
-    | undefined;
+  mapChild(map: MapDataModel): PathContainerMapChild;
+}
+
+export class DataPathContainer implements PathContainer {
+  public static create(path: EditingForwardDataPath): DataPathContainer {
+    return new DataPathContainer(path);
+  }
+
+  private constructor(private readonly path: EditingForwardDataPath) {}
+
+  get isLast(): boolean {
+    return dataPathLength(this.path) === 1;
+  }
+  get isEnd(): boolean {
+    return dataPathLength(this.path) === 0;
+  }
+  next(): PathContainer {
+    return new DataPathContainer(shiftDataPath(this.path));
+  }
+  listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
+    const head = headDataPathComponent(this.path);
+    const index = getListDataIndexByPathComponent(list, head);
+    if (index === undefined) {
+      return undefined;
+    }
+    const childData = getListDataAt(list, index);
+    return childData === undefined ? undefined : [childData, index];
+  }
+  mapChild(map: MapDataModel): PathContainerMapChild {
+    const head = headDataPathComponent(this.path);
+    const index = getMapDataIndexByPathComponent(map, head);
+    if (index === undefined) {
+      // データが実在しなくてもキーは取得できる場合がある
+      if (dataPathComponentIsMapKeyLike(head)) {
+        return [undefined, dataPathComponentToMapKey(head), undefined];
+      } else {
+        return undefined;
+      }
+    }
+    const item = getMapItemAtIndex(map, index);
+    if (!item) {
+      return undefined;
+    }
+    const [data, , key] = item;
+    return [data, key, index];
+  }
 }
 
 interface InsertDataParams {
@@ -700,7 +747,8 @@ export function getListDataIndexByPathComponent(
   pathComponent: AnyDataPathComponent,
 ): number | undefined {
   if (dataPathComponentIsListIndexLike(pathComponent)) {
-    return dataPathComponentToListIndex(pathComponent);
+    const index = dataPathComponentToListIndex(pathComponent);
+    return index < 0 || index >= listDataSize(list) ? undefined : index;
   } else if (dataPathComponentIsPointer(pathComponent)) {
     return getListDataIndexForPointer(list, pathComponent);
   } else {
@@ -754,18 +802,8 @@ export function deleteFromListDataAtPathComponent(
   list: ListDataModel,
   pathComponent: EditingForwardDataPathComponent,
 ): ListDataModel {
-  if (dataPathComponentIsListIndexLike(pathComponent)) {
-    const index = dataPathComponentToListIndex(pathComponent);
-    if (index < 0 || index >= listDataSize(list)) {
-      return list;
-    }
-    return forceDeleteFromListDataAt(list, index);
-  }
-  if (dataPathComponentIsPointer(pathComponent)) {
-    const index = getListDataIndexForPointer(list, pathComponent);
-    return index === undefined ? list : forceDeleteFromListDataAt(list, index);
-  }
-  return list;
+  const index = getListDataIndexByPathComponent(list, pathComponent);
+  return index === undefined ? list : forceDeleteFromListDataAt(list, index);
 }
 
 function setToListDataRecursive2(
@@ -836,7 +874,7 @@ export function mapListDataModelWithPointer<T>(
 //#endregion For ListDataModel
 
 //#region For MapDataModel
-export function findMapDataIndexOfKey(map: MapDataModel, key: string): number | undefined {
+export function getMapDataIndexAt(map: MapDataModel, key: string): number | undefined {
   for (let i = 0; i < mapDataSize(map); i++) {
     if (getMapKeyAtIndex(map, i) === key) {
       return i;
@@ -846,7 +884,7 @@ export function findMapDataIndexOfKey(map: MapDataModel, key: string): number | 
 }
 
 export function getMapDataAt(map: MapDataModel, key: string): DataModel | undefined {
-  const index = findMapDataIndexOfKey(map, key);
+  const index = getMapDataIndexAt(map, key);
   return index === undefined ? undefined : getMapDataAtIndex(map, index);
 }
 
@@ -857,6 +895,11 @@ export function getMapItemAtIndex(map: MapDataModel, index: number): PublicMapDa
   }
   const [key, id, value] = rawItem;
   return [value, {d: id, i: index}, key, index];
+}
+
+export function getMapItemAt(map: MapDataModel, key: string): PublicMapDataItem | undefined {
+  const index = getMapDataIndexAt(map, key);
+  return index === undefined ? undefined : getMapItemAtIndex(map, index);
 }
 
 export function mapDataModelKeyIndexMap(map: MapDataModel): Map<string | null, number> {
@@ -894,7 +937,7 @@ export function getMapDataIndexForPointer(map: MapDataModel, pointer: DataPointe
 }
 
 export function getMapDataPointerAt(map: MapDataModel, key: string): DataPointer | undefined {
-  const index = findMapDataIndexOfKey(map, key);
+  const index = getMapDataIndexAt(map, key);
   return index === undefined ? undefined : getMapDataPointerAtIndex(map, index);
 }
 
@@ -920,8 +963,8 @@ export function getMapDataIdAtIndex(map: MapDataModel, index: number): number | 
   return map.v[index]?.[mapItemIdIndex];
 }
 
-export function getMapKeyAtIndex(map: MapDataModel, index: number): string | null | undefined {
-  return index === undefined ? undefined : map.v[index][mapItemKeyIndex];
+export function getMapKeyAtIndex(map: MapDataModel, index: number): string | null {
+  return map.v[index][mapItemKeyIndex];
 }
 
 export function getMapDataPointerByPathComponent(
@@ -937,7 +980,7 @@ export function getMapDataIndexByPathComponent(
   pathComponent: EditingForwardDataPathComponent,
 ): number | undefined {
   if (dataPathComponentIsMapKeyLike(pathComponent)) {
-    return findMapDataIndexOfKey(map, dataPathComponentToMapKey(pathComponent));
+    return getMapDataIndexAt(map, dataPathComponentToMapKey(pathComponent));
   } else if (dataPathComponentIsPointer(pathComponent)) {
     return getMapDataIndexForPointer(map, pathComponent);
   } else {
@@ -965,7 +1008,7 @@ function forceSetMapKeyForIndex(map: MapDataModel, index: number, key: string | 
 }
 
 export function setToMapDataModel(map: MapDataModel, key: string, value: DataModel) {
-  const index = findMapDataIndexOfKey(map, key);
+  const index = getMapDataIndexAt(map, key);
   if (index === undefined) {
     return pushToMapData(map, value, key);
   } else {
@@ -1002,7 +1045,7 @@ function deleteFromMapDataAtPathComponent(
   pathComponent: EditingForwardDataPathComponent,
 ): MapDataModel {
   if (dataPathComponentIsMapKeyLike(pathComponent)) {
-    const index = findMapDataIndexOfKey(map, dataPathComponentToMapKey(pathComponent));
+    const index = getMapDataIndexAt(map, dataPathComponentToMapKey(pathComponent));
     return index === undefined ? map : forceDeleteFromMapDataAt(map, index);
   }
   if (dataPathComponentIsPointer(pathComponent)) {
@@ -1027,7 +1070,7 @@ function setToMapDataRecursive2(
   if (childData === undefined) {
     return onKeyMissing?.(childKey);
   } else {
-    const nextChildData = createNextChildData(path.next(), childData, context.pushMapIndex(childIndex));
+    const nextChildData = createNextChildData(path.next(), childData, context.pushMapIndex(childIndex, childKey));
     return nextChildData === undefined
       ? undefined
       : forceSetToMapDataForIndex(map, nextChildData, childIndex, childKey);
@@ -1058,14 +1101,14 @@ function getMapKeyAndIndex(
   pathComponent: EditingForwardDataPathComponent,
 ): {index?: number; key?: string | null} {
   if (dataPathComponentIsMapKey(pathComponent)) {
-    return {index: findMapDataIndexOfKey(map, pathComponent), key: pathComponent};
+    return {index: getMapDataIndexAt(map, pathComponent), key: pathComponent};
   } else if (dataPathComponentIsListIndex(pathComponent)) {
     const listIndex = dataPathComponentToListIndex(pathComponent);
     const index = listIndex >= mapDataSize(map) ? undefined : listIndex;
     return {index, key: undefined};
   } else if (dataPathComponentIsIndexOrKey(pathComponent)) {
     const key = pathComponent.v.toString();
-    return {index: findMapDataIndexOfKey(map, key), key};
+    return {index: getMapDataIndexAt(map, key), key};
   } else if (dataPathComponentIsPointer(pathComponent)) {
     const index = getMapDataIndexForPointer(map, pathComponent);
     return {index, key: index === undefined ? undefined : getMapKeyAtIndex(map, index)};
@@ -1137,6 +1180,7 @@ export function findIndexMapDataModel(
   return model.v.findIndex(([key, id, value], index) => match(value, {i: index, d: id}, key, index));
 }
 
+// TODO mapMapDataModelと共通化
 export function* eachMapDataItem(map: MapDataModel): Generator<PublicMapDataItem, void> {
   for (let i = 0; i < mapDataSize(map); i++) {
     const [key, id, value] = map.v[i];

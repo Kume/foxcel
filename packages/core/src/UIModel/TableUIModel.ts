@@ -133,7 +133,7 @@ export function tableUIModelMakeNewRow(
       }
       case 'select': {
         if (typeof columnSchema.key === 'string') {
-          const cellContext = context.pushMapKeyOrPointer(rowData, columnSchema.key);
+          const cellContext = context.pushMapKey(columnSchema.key);
           const result = selectUIModelHandleInputForSchema(columnSchema, defaultValue.value, cellContext, root);
           if (result !== undefined) {
             rowData = setToMapDataModel(rowData, columnSchema.key, result);
