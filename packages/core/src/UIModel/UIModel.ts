@@ -18,7 +18,7 @@ import {
   dataModelIsString,
   dataPointerIdEquals,
   eachMapDataItem,
-  findMapDataIndexOfKey,
+  getMapDataIndexAt,
   getIdFromDataPointer,
   getListDataAt,
   getListDataIndexByPathComponent,
@@ -63,7 +63,7 @@ function getMapChildContextForFlattenable(
       const mapKey = stringUISchemaKeyToString(childContext.currentSchema.key);
       return [
         getChildDataModelByUISchemaKey(mapDataModelOrUndefined, childContext.currentSchema.key),
-        dataContext.pushMapKeyOrPointer(dataModel, mapKey),
+        dataContext.pushMapIndexOrKey(mapKey),
       ];
     }
   }
@@ -201,7 +201,7 @@ export function buildUIModel(
       if (dataSchemaIsMap(currentSchema.dataSchema)) {
         if (dataModelIsMap(dataModel)) {
           mapOrListDataOrUndefined = dataModel;
-          rows = mapMapDataModelWithPointer(dataModel, (rowData, pointer, key) => {
+          rows = mapMapDataModelWithPointer(dataModel, (rowData, pointer, key, index) => {
             const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
             const id = getIdFromDataPointer(pointer);
             const pointerPathComponent = toPointerPathComponent(pointer);
@@ -210,7 +210,7 @@ export function buildUIModel(
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
 
-            const rowDataContext = dataContext.pushMapPointer(key ?? undefined, pointer);
+            const rowDataContext = dataContext.pushMapIndex(index, key);
             if (
               oldRow &&
               oldRow.key === key &&
@@ -243,10 +243,7 @@ export function buildUIModel(
                       contentContext,
                       cellData,
                       oldRow?.cells[index],
-                      rowDataContext.pushMapKeyOrPointer(
-                        cellData,
-                        stringUISchemaKeyToString(contentContext.currentSchema.key),
-                      ),
+                      rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
                       dataRoot,
                       safeShiftDataPath(rowDataPathFocus),
                       rowDataFocusLog?.c[index],
@@ -271,7 +268,7 @@ export function buildUIModel(
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
-            const rowDataContext = dataContext.pushListPointer(index, pointer);
+            const rowDataContext = dataContext.pushListIndex(index);
             if (
               oldRow &&
               schemaFocusLogEquals &&
@@ -303,10 +300,7 @@ export function buildUIModel(
                       contentContext,
                       cellData,
                       oldRow?.cells[index],
-                      rowDataContext.pushMapKeyOrPointer(
-                        cellData,
-                        stringUISchemaKeyToString(contentContext.currentSchema.key),
-                      ),
+                      rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
                       dataRoot,
                       safeShiftDataPath(rowDataPathFocus),
                       rowDataFocusLog?.c[index],
@@ -349,7 +343,7 @@ export function buildUIModel(
             }
             mappedKeys.add(key);
 
-            const rowMapDataIndex = findMapDataIndexOfKey(mapOrUndefined, key);
+            const rowMapDataIndex = getMapDataIndexAt(mapOrUndefined, key);
             if (rowMapDataIndex === undefined) {
               const rowDataContext = dataContext.pushMapKey(key);
               rows.push({
@@ -375,7 +369,7 @@ export function buildUIModel(
               continue;
             }
 
-            const rowDataContext = dataContext.pushMapKeyOrPointer(mapOrUndefined, key);
+            const rowDataContext = dataContext.pushMapIndex(rowMapDataIndex, key);
             // findMapDataIndexOfKeyで手に入れたindexなのでpointerは必ず取得できる
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const pointer = getMapDataPointerAtIndex(mapOrUndefined, rowMapDataIndex)!;
@@ -410,7 +404,7 @@ export function buildUIModel(
                     contentContext,
                     cellData,
                     undefined,
-                    rowDataContext.pushMapKeyOrPointer(rowMapDataOrUndefined, contentContext.currentSchema.key),
+                    rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
                     dataRoot,
                     safeShiftDataPath(rowDataPathFocus),
                     rowDataFocusLog?.c[index],
@@ -420,7 +414,7 @@ export function buildUIModel(
               }),
             });
           }
-          for (const [rowData, pointer, key] of eachMapDataItem(mapOrUndefined)) {
+          for (const [rowData, pointer, key, index] of eachMapDataItem(mapOrUndefined)) {
             if (key === null || mappedKeys.has(key)) {
               continue;
             }
@@ -430,7 +424,7 @@ export function buildUIModel(
             const rowDataFocusLog = dataFocusLog?.c[id];
             const rowDataPath = pushDataPath(dataPath, pointerPathComponent);
             const rowDataPathFocus = safeShiftDataPath(dataPathFocus);
-            const rowDataContext = dataContext.pushMapKeyOrPointer(mapOrUndefined, key);
+            const rowDataContext = dataContext.pushMapIndex(index, key);
 
             danglingRows.push({
               pointer,
@@ -455,7 +449,7 @@ export function buildUIModel(
                     contentContext,
                     cellData,
                     undefined,
-                    rowDataContext.pushMapKeyOrPointer(rowMapDataOrUndefined, contentContext.currentSchema.key),
+                    rowDataContext.pushMapIndex(index, contentContext.currentSchema.key),
                     dataRoot,
                     safeShiftDataPath(rowDataPathFocus),
                     rowDataFocusLog?.c[index],
@@ -466,12 +460,13 @@ export function buildUIModel(
             });
           }
         } else {
+          // 対応するデータは存在しないが、データモデル上仮想的に空の列データを持たせる必要がある。
           for (const [, , key] of eachMapDataItem(referenceData)) {
             if (key === null || mappedKeys.has(key)) {
               continue;
             }
             mappedKeys.add(key);
-            const rowDataContext = dataContext.pushMapKeyOrPointer(undefined, key);
+            const rowDataContext = dataContext.pushMapKey(key);
             rows.push({
               isEmpty: true,
               key,
@@ -487,9 +482,7 @@ export function buildUIModel(
                 return {
                   schema: contentContext.currentSchema,
                   key: contentContext.currentSchema.key,
-                  dataContext: rowDataContext
-                    .pushMapKeyOrPointer(undefined, contentContext.currentSchema.key)
-                    .serialize(),
+                  dataContext: rowDataContext.pushMapKey(contentContext.currentSchema.key).serialize(),
                 };
               }),
             });
@@ -530,16 +523,11 @@ export function buildUIModel(
           currentSchema.dataSchema.item?.t === DataSchemaType.FixedMap ? currentSchema.dataSchema.item : undefined;
         const mapDataModel = dataModelIsMap(dataModel) ? dataModel : undefined;
         if (mapDataModel) {
-          indexes = mapMapDataModelWithPointer(mapDataModel, (item, pointer, key) => {
+          indexes = mapMapDataModelWithPointer(mapDataModel, (item, pointer, key, index) => {
             const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
             return {
               label: itemDataSchema?.dataLabel
-                ? fillTemplateLine(
-                    itemDataSchema.dataLabel,
-                    item,
-                    dataContext.pushMapPointer(key ?? undefined, pointer),
-                    dataRoot,
-                  )
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, dataContext.pushMapIndex(index, key), dataRoot)
                 : [key ?? undefined],
               pointer,
               dataPath: childDataPath,
@@ -565,7 +553,7 @@ export function buildUIModel(
                 oldModel?.type === 'contentList' && dataPointerIdEquals(pointer, oldModel.currentPointer)
                   ? oldModel.content
                   : undefined,
-                dataContext.pushMapPointer(key ?? undefined, pointer),
+                dataContext.pushMapIndex(currentIndex, key),
                 dataRoot,
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c[getIdFromDataPointer(pointer)],
@@ -588,12 +576,7 @@ export function buildUIModel(
             const childDataPath = pushDataPath(dataPath, toPointerPathComponent(pointer));
             return {
               label: itemDataSchema?.dataLabel
-                ? fillTemplateLine(
-                    itemDataSchema.dataLabel,
-                    item,
-                    dataContext.pushListPointer(index, pointer),
-                    dataRoot,
-                  )
+                ? fillTemplateLine(itemDataSchema.dataLabel, item, dataContext.pushListIndex(index), dataRoot)
                 : [index.toString()],
               pointer,
               dataPath: childDataPath,
@@ -618,7 +601,7 @@ export function buildUIModel(
                 oldModel?.type === 'contentList' && dataPointerIdEquals(pointer, oldModel.currentPointer)
                   ? oldModel.content
                   : undefined,
-                dataContext.pushListPointer(currentIndex, pointer),
+                dataContext.pushListIndex(currentIndex),
                 dataRoot,
                 safeShiftDataPath(dataPathFocus),
                 dataFocusLog?.c?.[getIdFromDataPointer(pointer)],

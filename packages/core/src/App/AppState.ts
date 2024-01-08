@@ -137,7 +137,8 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
       if (!state.dataSchema) {
         return state;
       }
-      const data = applyDataModelAction(state.data, state.dataSchema, action.action);
+      const prevRoot = {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema};
+      const data = applyDataModelAction(prevRoot, action.action);
       if (!data) {
         return state;
       }

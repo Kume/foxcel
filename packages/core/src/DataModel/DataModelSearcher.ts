@@ -17,7 +17,6 @@ import {
   dataModelIsMap,
   eachListDataItem,
   eachMapDataItem,
-  getListDataPointerAt,
   stringToDataModel,
 } from './DataModel';
 
@@ -110,13 +109,13 @@ function findDataModelImpl(
         case DataPathComponentType.WildCard:
           if (dataModelIsMap(data)) {
             // TODO ログ記録
-            for (const [childData, , key] of eachMapDataItem(data)) {
+            for (const [childData, , key, index] of eachMapDataItem(data)) {
               if (key !== null) {
                 const findResult = findDataModelImpl(
                   childData,
                   matcher,
                   shiftDataPath(path),
-                  currentContext.pushMapKeyOrPointer(data, key),
+                  currentContext.pushMapIndex(index, key),
                   originalContext,
                   root,
                   originalModel,
@@ -133,7 +132,7 @@ function findDataModelImpl(
                 childData,
                 matcher,
                 shiftDataPath(path),
-                currentContext.pushListPointer(index, getListDataPointerAt(data, index)),
+                currentContext.pushListIndex(index),
                 originalContext,
                 root,
                 originalModel,

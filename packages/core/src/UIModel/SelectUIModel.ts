@@ -173,7 +173,6 @@ export function selectUIModelGetCurrent(
   if (dataModel === undefined) {
     return undefined;
   }
-  console.log('xxxx selectUIModelGetCurrent');
   for (const option of schema.options) {
     if (option.label === undefined) {
       // Dynamic option

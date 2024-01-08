@@ -27,19 +27,17 @@ import {
   dataModelIsMap,
   dataModelIsMapOrList,
   dataModelIsString,
-  findMapDataIndexOfKey,
   getListDataAt,
   getListDataIndexForPointer,
   getListItemAt,
   getMapDataAtIndex,
-  getMapDataAtPointer,
+  getMapDataIndexAt,
   getMapDataIndexForPointer,
-  getMapDataPointerAt,
-  getMapDataPointerAtIndex,
-  getMapKeyAtIndex,
+  getMapItemAt,
+  getMapItemAtIndex,
   mapDataModelKeyIndexMap,
-  mapListDataModelWithPointer,
-  mapMapDataModelWithPointer,
+  mapListDataModel,
+  mapMapDataModel,
   mapOrListDataModelIsList,
   numberDataModelToNumber,
   stringDataModelToString,
@@ -71,15 +69,12 @@ export function digForPathComponent<Return, PathComponent extends AnyDataPathCom
     if (dataModelIsMap(model)) {
       const mapKey = dataPathComponentToMapKey(pathComponent);
 
-      const pointer = getMapDataPointerAt(model, mapKey);
-      if (!pointer) {
+      const item = getMapItemAt(model, mapKey);
+      if (!item) {
         return undefined;
       }
-      const childData = getMapDataAtPointer(model, pointer);
-      if (childData === undefined) {
-        return undefined;
-      }
-      return callbacks.collection(childData, (dataContext) => dataContext.pushMapPointer(mapKey, pointer));
+      const [childData, , , index] = item;
+      return callbacks.collection(childData, (dataContext) => dataContext.pushMapIndex(index, mapKey));
     } else {
       return undefined;
     }
@@ -87,12 +82,12 @@ export function digForPathComponent<Return, PathComponent extends AnyDataPathCom
     if (!dataModelIsList(model)) {
       return undefined;
     }
-    const childItem = getListItemAt(model, dataPathComponentToListIndex(pathComponent));
-    if (!childItem) {
+    const index = dataPathComponentToListIndex(pathComponent);
+    const childData = getListDataAt(model, index);
+    if (childData === undefined) {
       return undefined;
     }
-    const [childData, pointer, index] = childItem;
-    return callbacks.collection(childData, (dataContext) => dataContext.pushListPointer(index, pointer));
+    return callbacks.collection(childData, (dataContext) => dataContext.pushListIndex(index));
   } else if (dataPathComponentIsIndexOrKey(pathComponent)) {
     if (dataModelIsList(model)) {
       const listIndex = dataPathComponentToListIndex(pathComponent);
@@ -100,19 +95,16 @@ export function digForPathComponent<Return, PathComponent extends AnyDataPathCom
       if (!childItem) {
         return undefined;
       }
-      const [childData, pointer, index] = childItem;
-      return callbacks.collection(childData, (dataContext) => dataContext.pushListPointer(index, pointer));
+      const [childData, , index] = childItem;
+      return callbacks.collection(childData, (dataContext) => dataContext.pushListIndex(index));
     } else if (dataModelIsMap(model)) {
       const mapKey = dataPathComponentToMapKey(pathComponent);
-      const pointer = getMapDataPointerAt(model, mapKey);
-      if (!pointer) {
+      const item = getMapItemAt(model, mapKey);
+      if (!item) {
         return undefined;
       }
-      const childData = getMapDataAtPointer(model, pointer);
-      if (childData === undefined) {
-        return undefined;
-      }
-      return callbacks.collection(childData, (dataContext) => dataContext.pushMapPointer(mapKey, pointer));
+      const [childData, , , index] = item;
+      return callbacks.collection(childData, (dataContext) => dataContext.pushMapIndex(index, mapKey));
     } else {
       return undefined;
     }
@@ -126,21 +118,18 @@ export function digForPathComponent<Return, PathComponent extends AnyDataPathCom
       if (childData === undefined) {
         return undefined;
       }
-      return callbacks.collection(childData, (context) => context.pushListPointer(listIndex, pathComponent));
+      return callbacks.collection(childData, (context) => context.pushListIndex(listIndex));
     } else if (dataModelIsMap(model)) {
       const indexCache = getMapDataIndexForPointer(model, pathComponent);
       if (indexCache === undefined) {
         return undefined;
       }
-      const mapKey = getMapKeyAtIndex(model, indexCache);
-      if (mapKey === undefined || mapKey === null) {
+      const item = getMapItemAtIndex(model, indexCache);
+      if (!item) {
         return undefined;
       }
-      const childData = getMapDataAtIndex(model, indexCache);
-      if (childData === undefined) {
-        return undefined;
-      }
-      return callbacks.collection(childData, (context) => context.pushMapPointer(mapKey ?? undefined, pathComponent));
+      const [childData, , key] = item;
+      return callbacks.collection(childData, (context) => context.pushMapIndex(indexCache, key));
     } else {
       return undefined;
     }
@@ -188,15 +177,14 @@ function getDataModelBySinglePathImpl(
                 return undefined;
               }
               const index = numberDataModelToNumber(nested);
-              const listItem = getListItemAt(model, index);
-              if (!listItem) {
+              const childDate = getListDataAt(model, index);
+              if (childDate === undefined) {
                 return undefined;
               }
-              const [childDate, pointer] = listItem;
               return getDataModelBySinglePathImpl(
                 childDate,
                 shiftDataPath(path),
-                currentContext.pushListPointer(index, pointer),
+                currentContext.pushListIndex(index),
                 originalContext,
                 originalModel,
                 dataRoot,
@@ -206,17 +194,14 @@ function getDataModelBySinglePathImpl(
                 return undefined;
               }
               const key = stringDataModelToString(nested);
-              const index = findMapDataIndexOfKey(model, key);
+              const index = getMapDataIndexAt(model, key);
               if (index === undefined) {
                 return undefined;
               }
-              // findMapDataIndexOfKeyで取得したindexなので、必ずpointerを取得できる
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-              const pointer = getMapDataPointerAtIndex(model, index)!;
               return getDataModelBySinglePathImpl(
                 getMapDataAtIndex(model, index),
                 shiftDataPath(path),
-                currentContext.pushMapPointer(key, pointer),
+                currentContext.pushMapIndex(index, key),
                 originalContext,
                 originalModel,
                 dataRoot,
@@ -296,8 +281,7 @@ export function* withNestedDataPath(
           continue;
         }
         const index = numberDataModelToNumber(data);
-        // TODO pushListPointerの第2引数がundefinedで良いか後で確認
-        yield [getListDataAt(model, index), context.pushListPointer(index, undefined)];
+        yield [getListDataAt(model, index), context.pushListIndex(index)];
       }
     } else {
       const keyIndexMap = mapDataModelKeyIndexMap(model);
@@ -310,11 +294,7 @@ export function* withNestedDataPath(
         if (index === undefined) {
           continue;
         }
-        yield [
-          getMapDataAtIndex(model, index),
-          // TODO pushMapKeyでpointer不要かあとで確認
-          context.pushMapKey(key),
-        ];
+        yield [getMapDataAtIndex(model, index), context.pushMapIndex(index, key)];
       }
     }
   }
@@ -343,19 +323,14 @@ function collectDataModelImpl(
       switch (otherPathComponent.t) {
         case DataPathComponentType.WildCard:
           if (dataModelIsMap(model)) {
-            return mapMapDataModelWithPointer(model, (value, pointer, key) => {
+            return mapMapDataModel(model, (value, key, index) => {
               return key === null
                 ? []
-                : collectDataModelImpl(value, shiftDataPath(path), currentContext.pushMapPointer(key, pointer), origin);
+                : collectDataModelImpl(value, shiftDataPath(path), currentContext.pushMapIndex(index, key), origin);
             }).flat();
           } else if (dataModelIsList(model)) {
-            return mapListDataModelWithPointer(model, (value, pointer, index) => {
-              return collectDataModelImpl(
-                value,
-                shiftDataPath(path),
-                currentContext.pushListPointer(index, pointer),
-                origin,
-              );
+            return mapListDataModel(model, (value, index) => {
+              return collectDataModelImpl(value, shiftDataPath(path), currentContext.pushListIndex(index), origin);
             }).flat();
           } else {
             return [];
@@ -370,15 +345,14 @@ function collectDataModelImpl(
                 }
                 const index = numberDataModelToNumber(data);
 
-                const listItem = getListItemAt(model, index);
-                if (!listItem) {
+                const childDate = getListDataAt(model, index);
+                if (childDate === undefined) {
                   return [];
                 }
-                const [childDate, pointer] = listItem;
                 return collectDataModelImpl(
                   childDate,
                   shiftDataPath(path),
-                  currentContext.pushListPointer(index, pointer),
+                  currentContext.pushListIndex(index),
                   origin,
                 );
               });
@@ -388,17 +362,14 @@ function collectDataModelImpl(
                   return [];
                 }
                 const key = stringDataModelToString(data);
-                const index = findMapDataIndexOfKey(model, key);
+                const index = getMapDataIndexAt(model, key);
                 if (index === undefined) {
                   return [];
                 }
-                // findMapDataIndexOfKeyで取得したindexなので、必ずpointerを取得できる
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                const pointer = getMapDataPointerAtIndex(model, index)!;
                 return collectDataModelImpl(
                   getMapDataAtIndex(model, index),
                   shiftDataPath(path),
-                  currentContext.pushMapPointer(key, pointer),
+                  currentContext.pushMapIndex(index, key),
                   origin,
                 );
               });

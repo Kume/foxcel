@@ -1,7 +1,15 @@
 import {dataPathLength, EditingForwardDataPath} from './DataPath';
 import {DataModel, DataPointer} from './DataModelTypes';
-import {deleteFromDataModel, insertToDataModel, pushToDataModel, setKeyToDataModel, setToDataModel} from './DataModel';
+import {
+  DataPathContainer,
+  deleteFromDataModel,
+  insertToDataModel2,
+  pushToDataModel,
+  setKeyToDataModel2,
+  setToDataModel2,
+} from './DataModel';
 import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
+import {DataModelContext, DataModelRoot} from './DataModelContext';
 
 export interface PushDataModelAction {
   readonly type: 'push';
@@ -20,7 +28,7 @@ export interface SetKeyDataModelAction {
   readonly type: 'setKey';
   readonly path: EditingForwardDataPath;
   readonly key: string | null;
-  readonly sourceKeyPointer: DataPointer;
+  readonly mapIndex: number;
 }
 
 export interface InsertDataModelAction {
@@ -47,30 +55,28 @@ export type DataModelAction =
   | InsertDataModelAction
   | DeleteDataModelAction;
 
-export function applyDataModelAction(
-  model: DataModel | undefined,
-  schema: DataSchemaExcludeRecursive | undefined,
-  action: DataModelAction,
-): DataModel | undefined {
-  const schemaContext = DataSchemaContext.createRootContext(schema);
+export function applyDataModelAction(root: DataModelRoot, action: DataModelAction): DataModel | undefined {
+  const context = DataModelContext.createRoot(root);
   switch (action.type) {
     case 'set':
       if (dataPathLength(action.path) === 0) {
         return action.data;
       } else {
-        return model === undefined ? undefined : setToDataModel(action.path, action.data, model, schemaContext);
+        return setToDataModel2(DataPathContainer.create(action.path), context, {model: action.data});
       }
 
     case 'setKey': {
-      return model === undefined
-        ? undefined
-        : setKeyToDataModel(action.path, action.sourceKeyPointer, action.key, model, schemaContext);
+      return setKeyToDataModel2(DataPathContainer.create(action.path), context, {
+        key: action.key,
+        mapIndex: action.mapIndex,
+      });
     }
 
     case 'insert':
-      return model === undefined
-        ? undefined
-        : insertToDataModel(action.path, action.after, action.data, model, schemaContext);
+      return insertToDataModel2(DataPathContainer.create(action.path), context, {
+        after: action.after,
+        model: action.data,
+      });
 
     case 'push':
       return model === undefined
@@ -82,10 +88,9 @@ export function applyDataModelAction(
   }
 }
 
-export function applyDataModelActions(
-  model: DataModel | undefined,
-  schema: DataSchemaExcludeRecursive | undefined,
-  actions: DataModelAction[],
-): DataModel | undefined {
-  return actions.reduce((prevModel, action) => applyDataModelAction(model, schema, action), model);
+export function applyDataModelActions(root: DataModelRoot, actions: DataModelAction[]): DataModel | undefined {
+  return actions.reduce(
+    (prevModel, action) => applyDataModelAction({model: prevModel, schema: root.schema}, action),
+    root.model,
+  );
 }
