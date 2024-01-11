@@ -403,17 +403,19 @@ export function setKeyToDataModelOld(
   }
 }
 
-type PathContainerMapChild =
+export type PathContainerMapChild =
   // データが存在する場合
   | [model: DataModel, key: string | null, index: number]
   // データは存在しないが、キーは分かる場合
   | [model: undefined, key: string, index: undefined]
   | undefined;
 
-interface PathContainer {
-  readonly isEnd: boolean;
-  readonly isLast: boolean;
-  next(): PathContainer;
+export interface PathContainer {
+  // TODO nextがundefinedであることで判定する
+  // readonly isEnd: boolean;
+  // TODO 自身がundefinedであることで判定する
+  // readonly isLast: boolean;
+  next(): PathContainer | undefined;
   listChild(list: ListDataModel): [model: DataModel, index: number] | undefined;
   mapChild(map: MapDataModel): PathContainerMapChild;
 }
@@ -428,13 +430,14 @@ export class DataPathContainer implements PathContainer {
   get isLast(): boolean {
     return dataPathLength(this.path) === 1;
   }
+
   get isEnd(): boolean {
     return dataPathLength(this.path) === 0;
   }
-  next(): PathContainer {
-    return new DataPathContainer(shiftDataPath(this.path));
+  public next(): PathContainer | undefined {
+    return this.isLast ? undefined : new DataPathContainer(shiftDataPath(this.path));
   }
-  listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
+  public listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
     const head = headDataPathComponent(this.path);
     const index = getListDataIndexByPathComponent(list, head);
     if (index === undefined) {

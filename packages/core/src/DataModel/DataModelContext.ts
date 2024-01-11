@@ -1,13 +1,18 @@
-import {DataModel, StringDataModel} from './DataModelTypes';
+import {DataModel, ListDataModel, MapDataModel, StringDataModel} from './DataModelTypes';
 import {DataSchemaContext, DataSchemaExcludeRecursive} from './DataSchema';
 import {
   dataModelIsList,
   dataModelIsMap,
   dataModelIsMapOrList,
+  DataPathContainer,
   getListDataAt,
   getMapDataAt,
   getMapDataAtIndex,
   getMapDataIndexAt,
+  getMapItemAt,
+  getMapItemAtIndex,
+  PathContainer,
+  PathContainerMapChild,
   stringToDataModel,
 } from './DataModel';
 import {
@@ -42,10 +47,61 @@ export interface DataModelContextMapIndexPathComponent {
   readonly index: number;
 }
 
+export type DataModelContextPath = readonly DataModelContextPathComponent[];
+
+export class DataModelContextPathContainer implements PathContainer {
+  public static create(path: DataModelContextPath): DataModelContextPathContainer | undefined {
+    return new DataModelContextPathContainer(path, 0);
+  }
+
+  public constructor(private readonly path: DataModelContextPath, private readonly index: number) {}
+
+  public get isLast(): boolean {
+    return this.path.length - 1 === this.index;
+  }
+
+  public next(): DataModelContextPathContainer | undefined {
+    return this.isLast ? undefined : new DataModelContextPathContainer(this.path, this.index + 1);
+  }
+
+  public listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
+    const currentPathComponent = this.path[this.index];
+    if (currentPathComponent.type !== 'list') {
+      return undefined;
+    }
+    const model = getListDataAt(list, currentPathComponent.index);
+    return model === undefined ? undefined : [model, currentPathComponent.index];
+  }
+
+  public mapChild(map: MapDataModel): PathContainerMapChild {
+    const currentPathComponent = this.path[this.index];
+    switch (currentPathComponent.type) {
+      case 'list':
+        return undefined;
+      case 'map_k': {
+        const item = getMapItemAt(map, currentPathComponent.key);
+        if (!item) {
+          return [undefined, currentPathComponent.key, undefined];
+        }
+        const [model, , , index] = item;
+        return [model, currentPathComponent.key, index];
+      }
+      case 'map_i': {
+        const item = getMapItemAtIndex(map, currentPathComponent.index);
+        if (!item) {
+          return currentPathComponent.key === null ? undefined : [undefined, currentPathComponent.key, undefined];
+        }
+        const [model, , key, index] = item;
+        return [model, key, index];
+      }
+    }
+  }
+}
+
 type Keys = readonly (string | number)[];
 
 export interface SerializedDataModelContext {
-  readonly path: readonly DataModelContextPathComponent[];
+  readonly path: DataModelContextPath;
   readonly keys: Keys;
   readonly isKey?: boolean;
 }

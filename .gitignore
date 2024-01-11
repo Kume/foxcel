@@ -8,3 +8,5 @@ packages/*/dist
 .yarn/*
 !.yarn/releases
 !.yarn/plugins
+
+WORKING.md
