@@ -26,7 +26,6 @@ import {SerializedDataModelContext} from '../DataModel/DataModelContext';
 import {UISchemaExcludeRecursive} from './UISchema';
 
 interface UIModelCommon {
-  readonly dataPath: EditingForwardDataPath;
   readonly dataContext: SerializedDataModelContext;
   readonly dataPathFocus: EditingForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
@@ -45,7 +44,7 @@ export interface TabUIModel extends UIModelCommon {
 
 export interface TabUIModelTab {
   readonly label: string;
-  readonly dataPath: EditingForwardDataPath;
+  readonly dataContext: SerializedDataModelContext;
 }
 
 export interface FormUIModel extends UIModelCommon {
@@ -66,11 +65,7 @@ interface KeyTextUIModel {
   readonly isKey: true;
   readonly schema?: undefined;
 
-  /**
-   * 親のモデルのデータパス
-   * 本来は自身のデータパスを持ちたいが、keyへのパスは表現できないので、表現可能な親までのパスを持っておく
-   */
-  readonly parentDataPath: EditingForwardDataPath;
+  readonly dataContext: SerializedDataModelContext;
 
   /**
    * 自身のキーが指す先のポインター
@@ -115,7 +110,6 @@ export type ContentListUIModel = EmptyContentListUIModel | NonEmptyContentListUI
 export interface ContentListIndex {
   readonly label: FilledTemplate;
   readonly pointer: DataPointer;
-  readonly dataPath: EditingForwardDataPath;
 }
 
 export interface TableUIModel extends UIModelCommon {
@@ -135,7 +129,6 @@ export interface TableUIModelRow {
   readonly pointer: DataPointer;
   readonly key: string | null | undefined;
   readonly data: MapDataModel | undefined;
-  readonly dataPath: EditingForwardDataPath;
   readonly dataPathFocus: EditingForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly cells: readonly UIModel[];
@@ -179,7 +172,7 @@ export interface SingleSelectUIModel extends SelectUIModelCommon {
 export interface MultiSelectUIModel extends SelectUIModelCommon {
   readonly isMulti: true;
   readonly data: ListDataModel | undefined;
-  readonly currents: readonly (SelectUIModelCurrentValue & {readonly dataPath: EditingForwardDataPath})[];
+  readonly currents: readonly (SelectUIModelCurrentValue & {readonly dataContext: SerializedDataModelContext})[];
 }
 
 export type SelectUIModel = SingleSelectUIModel | MultiSelectUIModel;

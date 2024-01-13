@@ -16,7 +16,7 @@ import {
   unknownToDataModel,
 } from '../DataModel/DataModel';
 import {collectDataModel} from '../DataModel/DataModelCollector';
-import {DataModelContext, DataModelRoot, SerializedDataModelContext} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {dataSchemaIsString, SelectDynamicOptionSchema} from '../DataModel/DataSchema';
 import {findDataModel} from '../DataModel/DataModelSearcher';
@@ -85,7 +85,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         type: 'data',
         action: {
           type: 'push',
-          path: model.dataPath,
+          dataContext: model.dataContext,
           data: value.data,
         },
       };
@@ -95,7 +95,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         type: 'data',
         action: {
           type: 'set',
-          path: model.dataPath,
+          dataContext: model.dataContext,
           data: pushToListData(emptyListModel, value.data),
         },
       };
@@ -106,7 +106,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         type: 'data',
         action: {
           type: 'delete',
-          path: model.dataPath,
+          dataContext: model.dataContext,
         },
       };
     } else {
@@ -114,7 +114,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         type: 'data',
         action: {
           type: 'set',
-          path: model.dataPath,
+          dataContext: model.dataContext,
           data: value.data,
         },
       };
@@ -135,7 +135,7 @@ export function selectUIModelSetString(
   );
   return resultData === undefined
     ? undefined
-    : {type: 'data', action: {type: 'set', path: model.dataPath, data: resultData}};
+    : {type: 'data', action: {type: 'set', dataContext: model.dataContext, data: resultData}};
 }
 
 export function formatDynamicSelectUIOption(

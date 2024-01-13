@@ -17,7 +17,7 @@ export function checkboxUIModelValue(model: CheckboxUIModel): boolean {
 export function checkboxUIModelSetValue(value: boolean, model: CheckboxUIModel): AppAction {
   return {
     type: 'data',
-    action: {type: 'set', path: model.dataPath, data: booleanToDataModel(value)},
+    action: {type: 'set', dataContext: model.dataContext, data: booleanToDataModel(value)},
   };
 }
 
@@ -25,7 +25,7 @@ export function checkboxUIModelSetStringValue(model: CheckboxUIModel, value: str
   const dataModel = stringToDataModel(value);
   return dataModel === undefined
     ? undefined
-    : {type: 'data', action: {type: 'set', path: model.dataPath, data: dataModel}};
+    : {type: 'data', action: {type: 'set', dataContext: model.dataContext, data: dataModel}};
 }
 
 function stringToDataModel(value: string | null): DataModel | undefined {

@@ -20,11 +20,11 @@ export function textUIModelSetText(model: TextUIModel, value: string | null): Ap
     action: model.isKey
       ? {
           type: 'setKey',
-          path: model.parentDataPath,
-          sourceKeyPointer: model.selfPointer,
+          dataContext: model.dataContext,
+          mapPointer: model.selfPointer,
           key: formatInput(value) || null,
         }
-      : {type: 'set', path: model.dataPath, data: unknownToDataModel(formatInput(value))},
+      : {type: 'set', dataContext: model.dataContext, data: unknownToDataModel(formatInput(value))},
   };
 }
 

@@ -1,17 +1,56 @@
 import {StorageDataTrait} from '../Storage/StorageDataTrait';
-import {DataModel} from './DataModelTypes';
+import {DataModel, ListDataModel, MapDataModel} from './DataModelTypes';
 import {
   dataModelEquals,
   dataModelIsMap,
   dataModelToJson,
   eachMapDataItem,
+  getListDataAt,
+  getMapItemAt,
+  PathContainer,
+  PathContainerMapChild,
   setToDataModel,
   stringToDataModel,
   unknownToDataModel,
 } from './DataModel';
 import {getDataModelByForwardPath} from './DataModelCollector';
 import {stringArrayToDataPath} from './DataPath';
-import {DataSchemaContext} from './DataSchema';
+import {DataModelContext} from './DataModelContext';
+
+class StringPathContainer implements PathContainer {
+  public static createRoot(path: readonly string[]): StringPathContainer | undefined {
+    return path.length === 0 ? undefined : new StringPathContainer(path, 0);
+  }
+
+  public constructor(private readonly path: readonly string[], private readonly index: number) {}
+
+  public get isLast(): boolean {
+    return this.path.length - 1 === this.index;
+  }
+
+  next(): PathContainer | undefined {
+    return this.isLast ? undefined : new StringPathContainer(this.path, this.index + 1);
+  }
+
+  listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
+    const currentPathComponent = this.path[this.index];
+    if (/^[0-9]+$/.test(currentPathComponent)) {
+      const index = Number.parseInt(currentPathComponent);
+      const data = getListDataAt(list, index);
+      return data === undefined ? undefined : [data, index];
+    }
+    return undefined;
+  }
+  mapChild(map: MapDataModel): PathContainerMapChild {
+    const currentPathComponent = this.path[this.index];
+    const item = getMapItemAt(map, currentPathComponent);
+    if (!item) {
+      return [undefined, currentPathComponent, undefined];
+    }
+    const [data, , , index] = item;
+    return [data, currentPathComponent, index];
+  }
+}
 
 export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
   convert(source: unknown): DataModel {
@@ -28,10 +67,9 @@ export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
 
   setForPath(destination: DataModel, model: DataModel, path: readonly string[]): DataModel {
     const result = setToDataModel(
-      stringArrayToDataPath(path),
-      model,
-      destination,
-      DataSchemaContext.createRootContext(undefined),
+      StringPathContainer.createRoot(path),
+      DataModelContext.createRoot({model: destination, schema: undefined}),
+      {model},
     );
     return result ?? destination;
   },

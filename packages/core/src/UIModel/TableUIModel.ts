@@ -224,7 +224,7 @@ export function tableUIModelPaste(
         })),
         root,
       );
-      actions.push({type: 'data', action: {type: 'push', data: newRowData, path: model.dataPath, key}});
+      actions.push({type: 'data', action: {type: 'push', data: newRowData, dataContext: model.dataContext, key}});
     }
   }
 
@@ -295,10 +295,10 @@ export function tableUIModelDelete(model: TableUIModel, selection: TableCellRang
       if (cell.isKey) {
         actions.push({
           type: 'data',
-          action: {type: 'setKey', path: cell.parentDataPath, sourceKeyPointer: cell.selfPointer, key: null},
+          action: {type: 'setKey', dataContext: cell.dataContext, mapPointer: cell.selfPointer, key: null},
         });
       } else {
-        actions.push({type: 'data', action: {type: 'delete', path: cell.dataPath}});
+        actions.push({type: 'data', action: {type: 'delete', dataContext: cell.dataContext}});
       }
     }
   }
@@ -402,7 +402,7 @@ export function tableUIModelAddRowBeforeAction(model: TableUIModel, index: numbe
     type: 'data',
     action: {
       type: 'insert',
-      path: model.dataPath,
+      dataContext: model.dataContext,
       after: index === 0 ? undefined : model.rows[index - 1].pointer,
       data: initialRowData(model),
     },
@@ -414,7 +414,7 @@ export function tableUIModelAddRowAfterAction(model: TableUIModel, index: number
     type: 'data',
     action: {
       type: 'insert',
-      path: model.dataPath,
+      dataContext: model.dataContext,
       after: model.rows[index]?.pointer,
       data: initialRowData(model),
     },
@@ -428,7 +428,7 @@ export function tableUIModelDeleteRowsBySelection(model: TableUIModel, selection
       type: 'data',
       action: {
         type: 'delete',
-        path: model.dataPath,
+        dataContext: model.dataContext,
         at: model.rows[i + selection.range.row.start].pointer,
       },
     });
@@ -471,11 +471,14 @@ export function tableUIModelAddRows(
   const insertActions = [...Array(rows)].map(
     (): AppAction => ({
       type: 'data',
-      action: {type: 'insert', path: model.dataPath, after: undefined, data: initialRowData(model)},
+      action: {type: 'insert', dataContext: model.dataContext, after: undefined, data: initialRowData(model)},
     }),
   );
   if (model.data === undefined) {
-    insertActions.unshift({type: 'data', action: {type: 'set', path: model.dataPath, data: initialData(model)}});
+    insertActions.unshift({
+      type: 'data',
+      action: {type: 'set', dataContext: model.dataContext, data: initialData(model)},
+    });
   }
   return {t: 'action', action: {type: 'batch', actions: insertActions}};
 }

@@ -10,6 +10,10 @@ export function stringUISchemaKeyToDataPathComponent(key: string | undefined): F
   return toMapKeyDataPathComponent(key);
 }
 
+/**
+ * @deprecated
+ * @param key
+ */
 export function uiSchemaKeyToDataPathComponent(key: UISchemaKey | undefined): ForwardDataPathComponent {
   if (key === undefined) {
     throw new Error('content must have key.');
@@ -18,6 +22,21 @@ export function uiSchemaKeyToDataPathComponent(key: UISchemaKey | undefined): Fo
     throw new Error('cannot convert parent key to data path component.');
   }
   return toMapKeyDataPathComponent(key);
+}
+
+/**
+ * keyがstringの場合にはそのまま返し、そうでない場合には例外を投げます。
+ * 事前のバリデーションでstringのkeyが入っているはずの場面で利用します。
+ * @param key
+ */
+export function assertUISchemaKeyIsString(key: UISchemaKey | undefined): string {
+  if (key === undefined) {
+    throw new Error('content must have key.');
+  }
+  if (uiSchemaKeyIsParentKey(key)) {
+    throw new Error('cannot convert parent key to data path component.');
+  }
+  return key;
 }
 
 export function getChildDataModelByUISchemaKey(

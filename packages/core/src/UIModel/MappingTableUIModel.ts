@@ -1,15 +1,14 @@
 import {MappingTableUIModel} from './UIModelTypes';
 import {
-  tableUIModelPasteRange,
   TableCellRange,
-  TableUIModelPasteResult,
-  tableUIModelPasteCellAction,
   tableUIModelMakeNewRow,
+  tableUIModelPasteCellAction,
+  tableUIModelPasteRange,
+  TableUIModelPasteResult,
   tableUIModelStringToDataModelWithSchema,
 } from './TableUIModel';
 import {AppAction} from '../App/AppState';
 import {DataModelRoot} from '../DataModel/DataModelContext';
-import {nullDataModel} from '../DataModel/DataModel';
 
 export function mappingTableUIModelPaste(
   model: MappingTableUIModel,
@@ -44,7 +43,10 @@ export function mappingTableUIModelPaste(
           })),
           root,
         );
-        actions.push({type: 'data', action: {type: 'push', data: newRowData, path: model.dataPath, key: row.key}});
+        actions.push({
+          type: 'data',
+          action: {type: 'push', data: newRowData, dataContext: model.dataContext, key: row.key},
+        });
       } else {
         for (let columnDataIndex = 0; columnDataIndex < pasteColumnSize; columnDataIndex++) {
           const columnIndex = selection.col.start + columnDataIndex;
@@ -147,7 +149,7 @@ export function mappingTableUIModelDelete(model: MappingTableUIModel, selection:
           // TODO スキーマのバリデーションにも実装を追加
           throw new Error('mapping tableのカラムにkeyを指定するフィールドが存在してはいけない。');
         }
-        actions.push({type: 'data', action: {type: 'delete', path: cell.dataPath}});
+        actions.push({type: 'data', action: {type: 'delete', dataContext: model.dataContext}});
       }
     }
   }

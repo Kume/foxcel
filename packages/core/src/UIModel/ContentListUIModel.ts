@@ -20,7 +20,7 @@ export function contentListAddBeforeAction(model: ContentListUIModel, index: num
     type: 'data',
     action: {
       type: 'insert',
-      path: model.dataPath,
+      dataContext: model.dataContext,
       after: index === 0 ? undefined : model.indexes[index - 1].pointer,
       data: initialContentData(model),
     },
@@ -32,7 +32,7 @@ export function contentListAddAfterAction(model: ContentListUIModel, index: numb
     type: 'data',
     action: {
       type: 'insert',
-      path: model.dataPath,
+      dataContext: model.dataContext,
       after: model.indexes[index]?.pointer,
       data: initialContentData(model),
     },
@@ -45,7 +45,7 @@ export function contentListAddAfterAction(model: ContentListUIModel, index: numb
           type: 'data',
           action: {
             type: 'set',
-            path: model.dataPath,
+            dataContext: model.dataContext,
             data: initialData(model),
           },
         },
@@ -62,7 +62,7 @@ export function contentListRemoveAtAction(model: ContentListUIModel, index: numb
     type: 'data',
     action: {
       type: 'delete',
-      path: model.dataPath,
+      dataContext: model.dataContext,
       at: model.indexes[index].pointer,
     },
   };

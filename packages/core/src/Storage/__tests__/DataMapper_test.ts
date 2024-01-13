@@ -1,10 +1,11 @@
 import ObjectDataStorage from '../ObjectDataStorage';
-import DataMapper, {FileDataMapNode, fileMapNodeToDebugString, fileStatusMapNodeToDebugString} from '../DataMapper';
+import DataMapper, {FileDataMapNode} from '../DataMapper';
 import {RawStorageDataTrait} from '../StorageDataTrait';
 import {DataMapperConfig} from '../../common/ConfigTypes';
 import {dataModelToJson, unknownToDataModel} from '../../DataModel/DataModel';
 import {applyDataModelActions, DataModelAction} from '../../DataModel/DataModelAction';
 import {dataModelStorageDataTrait} from '../../DataModel/DataModelStorageDataTrait';
+import {SerializedDataModelContext} from '../../DataModel/DataModelContext';
 
 describe('Unit Test for DataMapper', () => {
   describe('Common save and load test', () => {
@@ -294,6 +295,13 @@ describe('Unit Test for DataMapper', () => {
       readonly expectedDeleteHistory?: ObjectDataStorage['deleteHistory'];
     }
 
+    function makeTestContext(...path: (string | number)[]): SerializedDataModelContext {
+      return {
+        path: path.map((i) => (typeof i === 'number' ? {type: 'list', index: i} : {type: 'map_k', key: i})),
+        keys: [],
+      };
+    }
+
     const testData: readonly TestData[] = [
       {
         label: 'Not updated',
@@ -302,15 +310,19 @@ describe('Unit Test for DataMapper', () => {
       {
         label: 'Update root content',
         mainDataActions: [
-          {type: 'set', path: {components: ['root_data']}, data: unknownToDataModel('updated_root_content')},
+          {
+            type: 'set',
+            dataContext: makeTestContext('root_data'),
+            data: unknownToDataModel('updated_root_content'),
+          },
         ],
         expectedWriteHistory: [[['index.yml'], expect.anything()]],
       },
       {
         label: 'Add simple single type',
-        initialDataActions: [{type: 'delete', path: {components: ['_single_3']}}],
+        initialDataActions: [{type: 'delete', dataContext: makeTestContext('_single_3')}],
         mainDataActions: [
-          {type: 'set', path: {components: ['_single_3']}, data: unknownToDataModel('added_single3_content')},
+          {type: 'set', dataContext: makeTestContext('_single_3'), data: unknownToDataModel('added_single3_content')},
         ],
         expectedWriteHistory: [
           [['single_3.yml'], 'added_single3_content\n'],
@@ -320,7 +332,7 @@ describe('Unit Test for DataMapper', () => {
       {
         label: 'Update simple single type',
         mainDataActions: [
-          {type: 'set', path: {components: ['_single_3']}, data: unknownToDataModel('updated_single3_content')},
+          {type: 'set', dataContext: makeTestContext('_single_3'), data: unknownToDataModel('updated_single3_content')},
         ],
         expectedWriteHistory: [
           [['single_3.yml'], 'updated_single3_content\n'],
@@ -329,7 +341,7 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'Delete simple single type',
-        mainDataActions: [{type: 'delete', path: {components: ['_single_3']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_single_3')}],
         expectedWriteHistory: [
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
@@ -337,7 +349,9 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'Add simple map type',
-        mainDataActions: [{type: 'set', path: {components: ['_map', 'x']}, data: unknownToDataModel('added_map_x')}],
+        mainDataActions: [
+          {type: 'set', dataContext: makeTestContext('_map', 'x'), data: unknownToDataModel('added_map_x')},
+        ],
         expectedWriteHistory: [
           [['__map', 'x.yml'], 'added_map_x\n'],
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
@@ -345,7 +359,9 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'Update simple map type',
-        mainDataActions: [{type: 'set', path: {components: ['_map', 'c']}, data: unknownToDataModel('updated_map_c')}],
+        mainDataActions: [
+          {type: 'set', dataContext: makeTestContext('_map', 'c'), data: unknownToDataModel('updated_map_c')},
+        ],
         expectedWriteHistory: [
           [['__map', 'c.yml'], 'updated_map_c\n'],
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
@@ -353,7 +369,7 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'Delete simple map type',
-        mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_map', 'c')}],
         expectedWriteHistory: [
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
@@ -361,7 +377,7 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: '複数の子ファイルを持つmapの要素を削除',
-        mainDataActions: [{type: 'delete', path: {components: ['_map', 'a']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_map', 'a')}],
         expectedWriteHistory: [
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
@@ -378,7 +394,7 @@ describe('Unit Test for DataMapper', () => {
         mainDataActions: [
           {
             type: 'set',
-            path: {components: ['_map', 'x']},
+            dataContext: makeTestContext('_map', 'x'),
             data: unknownToDataModel({
               single_1: 'new_single_content',
               map_a: {z: 'new_map_z_value'},
@@ -397,7 +413,7 @@ describe('Unit Test for DataMapper', () => {
         mainDataActions: [
           {
             type: 'set',
-            path: {components: ['_map', 'b', 'single_1']},
+            dataContext: makeTestContext('_map', 'b', 'single_1'),
             data: unknownToDataModel('added_single1_content'),
           },
         ],
@@ -413,7 +429,7 @@ describe('Unit Test for DataMapper', () => {
         mainDataActions: [
           {
             type: 'set',
-            path: {components: ['_map', 'a', 'single_1']},
+            dataContext: makeTestContext('_map', 'a', 'single_1'),
             data: unknownToDataModel('updated_single1_content'),
           },
         ],
@@ -426,7 +442,7 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'Delete single type under map type',
-        mainDataActions: [{type: 'delete', path: {components: ['_map', 'a', 'single_1']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_map', 'a', 'single_1')}],
         expectedWriteHistory: [
           // 現状は更新対象より親のファイルはすべて更新される仕様
           [['__map', 'a.yml'], expect.anything()],
@@ -437,7 +453,11 @@ describe('Unit Test for DataMapper', () => {
       {
         label: 'Add map type under map type',
         mainDataActions: [
-          {type: 'set', path: {components: ['_map', 'a', 'map_a', 'x']}, data: unknownToDataModel('added_map_x')},
+          {
+            type: 'set',
+            dataContext: makeTestContext('_map', 'a', 'map_a', 'x'),
+            data: unknownToDataModel('added_map_x'),
+          },
         ],
         expectedWriteHistory: [
           [['__map', 'a', 'map_a', 'x.yml'], 'added_map_x\n'],
@@ -449,7 +469,11 @@ describe('Unit Test for DataMapper', () => {
       {
         label: 'Update map type under map type',
         mainDataActions: [
-          {type: 'set', path: {components: ['_map', 'a', 'map_a', 'a']}, data: unknownToDataModel('updated_map_c')},
+          {
+            type: 'set',
+            dataContext: makeTestContext('_map', 'a', 'map_a', 'a'),
+            data: unknownToDataModel('updated_map_c'),
+          },
         ],
         expectedWriteHistory: [
           [['__map', 'a', 'map_a', 'a.yml'], 'updated_map_c\n'],
@@ -460,7 +484,7 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'Delete map type under map type',
-        mainDataActions: [{type: 'delete', path: {components: ['_map', 'a', 'map_a', 'a']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_map', 'a', 'map_a', 'a')}],
         expectedWriteHistory: [
           // 現状は更新対象より親のファイルはすべて更新される仕様
           [['__map', 'a.yml'], expect.anything()],
@@ -471,10 +495,10 @@ describe('Unit Test for DataMapper', () => {
       {
         label: 'シリアライズを挟んでmapの2つの要素を更新',
         mainDataActions: [
-          {type: 'set', path: {components: ['_map', 'c']}, data: unknownToDataModel('updated_c_content')},
+          {type: 'set', dataContext: makeTestContext('_map', 'c'), data: unknownToDataModel('updated_c_content')},
         ],
         afterDeserializeActions: [
-          {type: 'set', path: {components: ['_map', 'd']}, data: unknownToDataModel('updated_d_content')},
+          {type: 'set', dataContext: makeTestContext('_map', 'd'), data: unknownToDataModel('updated_d_content')},
         ],
         expectedWriteHistory: [
           [['__map', 'c.yml'], 'updated_c_content\n'],
@@ -484,8 +508,8 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'シリアライズを挟んでmapの2つの要素を削除',
-        mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
-        afterDeserializeActions: [{type: 'delete', path: {components: ['_map', 'd']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_map', 'c')}],
+        afterDeserializeActions: [{type: 'delete', dataContext: makeTestContext('_map', 'd')}],
         expectedWriteHistory: [
           [['index.yml'], expect.anything()], // 現状は更新対象より親のファイルはすべて更新される仕様
         ],
@@ -496,9 +520,9 @@ describe('Unit Test for DataMapper', () => {
       },
       {
         label: 'シリアライズを挟んでmapの同じ要素を削除=>作成',
-        mainDataActions: [{type: 'delete', path: {components: ['_map', 'c']}}],
+        mainDataActions: [{type: 'delete', dataContext: makeTestContext('_map', 'c')}],
         afterDeserializeActions: [
-          {type: 'set', path: {components: ['_map', 'c']}, data: unknownToDataModel('added_c_content')},
+          {type: 'set', dataContext: makeTestContext('_map', 'c'), data: unknownToDataModel('added_c_content')},
         ],
         expectedWriteHistory: [
           [['__map', 'c.yml'], 'added_c_content\n'],
@@ -518,11 +542,11 @@ describe('Unit Test for DataMapper', () => {
         expectedDeleteHistory,
       }) => {
         const initialModel = initialDataActions
-          ? applyDataModelActions(baseData, undefined, initialDataActions)
+          ? applyDataModelActions({model: baseData, schema: undefined}, initialDataActions)
           : baseData;
         const initialMap = complexMapper.makeFileDataMap(initialModel, dataModelStorageDataTrait);
         const updatedModel = mainDataActions
-          ? applyDataModelActions(initialModel, undefined, mainDataActions)
+          ? applyDataModelActions({model: initialModel, schema: undefined}, mainDataActions)
           : initialModel;
 
         if (!afterDeserializeActions) {
@@ -552,7 +576,7 @@ describe('Unit Test for DataMapper', () => {
           const restoredMap = complexMapper.remakeFileDataMap(deserializedModel, dataModelStorageDataTrait, statusNode);
           // console.log(`---- ${label}`, fileMapNodeToDebugString(restoredMap));
           const updatedModel2 = afterDeserializeActions
-            ? applyDataModelActions(deserializedModel, undefined, afterDeserializeActions)
+            ? applyDataModelActions({model: deserializedModel, schema: undefined}, afterDeserializeActions)
             : deserializedModel;
           const storage = new ObjectDataStorage();
           await complexMapper.saveAsync(restoredMap, updatedModel2, storage, dataModelStorageDataTrait);
@@ -574,7 +598,7 @@ describe('Unit Test for DataMapper', () => {
 
           // 中間のデータ操作
           const updatedModel2 = afterDeserializeActions
-            ? applyDataModelActions(deserializedModel, undefined, afterDeserializeActions)
+            ? applyDataModelActions({model: deserializedModel, schema: undefined}, afterDeserializeActions)
             : deserializedModel;
 
           // 2回目のシリアライズ

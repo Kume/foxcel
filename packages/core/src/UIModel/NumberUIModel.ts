@@ -7,7 +7,7 @@ import {DataModel} from '../DataModel/DataModelTypes';
 export function numberUIModelSetText(model: NumberUIModel, textValue: string): AppAction | undefined {
   const dataModel = stringToDataModel(textValue);
   return dataModel !== undefined
-    ? {type: 'data', action: {type: 'set', path: model.dataPath, data: dataModel}}
+    ? {type: 'data', action: {type: 'set', dataContext: model.dataContext, data: dataModel}}
     : undefined;
 }
 

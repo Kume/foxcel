@@ -243,13 +243,13 @@ export interface SetDataParams {
  * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
  */
 export function setToDataModel(
-  path: PathContainer,
+  path: PathContainer | undefined,
   context: DataModelContext,
   params: SetDataParams,
 ): DataModel | undefined {
   let currentModel = context.currentModel;
 
-  if (path.isEnd) {
+  if (!path) {
     return currentModel === undefined || dataModelEquals(currentModel, params.model) ? undefined : params.model;
   }
 
@@ -264,14 +264,15 @@ export function setToDataModel(
     context,
     (nextPath, childData, childContext) => setToDataModel(nextPath, childContext, params),
     (map, key) => {
+      const childPath = path.next();
       // ここが最下層であれば、paramsに指定されたモデルをkeyに対してセットすれば良い
-      if (path.isLast) {
+      if (!childPath) {
         return forceAddToMapData(map, params.model, key);
       }
 
       const childContext = context.pushMapKey(key);
       if (childContext.schemaContext.currentSchema) {
-        const newModel = setToDataModel(path.next(), childContext, params);
+        const newModel = setToDataModel(childPath, childContext, params);
         return newModel === undefined ? undefined : forceAddToMapData(map, newModel, key);
       } else {
         // スキーマがないとデフォルトのデータを生成できないのでセット不可
@@ -336,22 +337,25 @@ export function setToDataModelOld(
 
 interface SetKeyDataParams {
   readonly key: string | null;
-  readonly mapIndex: number;
+  readonly mapPointer: DataPointer;
 }
 
 export function setKeyToDataModel(
-  path: PathContainer,
+  path: PathContainer | undefined,
   context: DataModelContext,
   params: SetKeyDataParams,
 ): DataModel | undefined {
   const currentModel = context.currentModel;
-  if (path.isEnd) {
+  if (!path) {
     if (!dataModelIsMapOrList(currentModel)) {
       return undefined;
     }
     if (mapOrListDataModelIsMap(currentModel)) {
-      const sourceKey = getMapKeyAtIndex(currentModel, params.mapIndex);
-      return sourceKey === params.key ? undefined : forceSetMapKeyForIndex(currentModel, params.mapIndex, params.key);
+      const index = getMapDataIndexForPointer(currentModel, params.mapPointer);
+      const prevKey = index !== undefined ? getMapKeyAtIndex(currentModel, index) : undefined;
+      return index !== undefined && prevKey !== params.key
+        ? forceSetMapKeyForIndex(currentModel, index, params.key)
+        : undefined;
     } else {
       return undefined;
     }
@@ -472,13 +476,13 @@ interface InsertDataParams {
 }
 
 export function insertToDataModel(
-  path: PathContainer,
+  path: PathContainer | undefined,
   context: DataModelContext,
   params: InsertDataParams,
 ): DataModel | undefined {
   const currentModel = context.currentModel;
 
-  if (path.isEnd) {
+  if (!path) {
     if (!dataModelIsMapOrList(currentModel)) {
       return undefined;
     }
@@ -561,12 +565,12 @@ export interface PushDataParams {
 }
 
 export function pushToDataModel(
-  path: PathContainer,
+  path: PathContainer | undefined,
   context: DataModelContext,
   params: PushDataParams,
 ): DataModel | undefined {
   const currentModel = context.currentModel;
-  if (path.isEnd) {
+  if (!path) {
     if (!dataModelIsMapOrList(currentModel)) {
       throw new DataModelOperationError(
         `Cannot push data to ${
@@ -633,12 +637,12 @@ interface DeleteDataParams {
  * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
  */
 export function deleteFromDataModel(
-  path: PathContainer,
+  path: PathContainer | undefined,
   context: DataModelContext,
   params: DeleteDataParams,
 ): DataModel | undefined {
   const currentModel = context.currentModel;
-  if (path.isEnd) {
+  if (!path) {
     if (params.at === undefined) {
       return undefined;
     }
@@ -654,7 +658,7 @@ export function deleteFromDataModel(
     }
   }
 
-  if (params.at === undefined && path.isLast) {
+  if (params.at === undefined && !path.next()) {
     if (!dataModelIsMapOrList(currentModel)) {
       return undefined;
     }
@@ -710,7 +714,7 @@ type CreateNextChildData = (
 ) => DataModel | undefined;
 
 type CreateNextChildData2 = (
-  nextPath: PathContainer,
+  nextPath: PathContainer | undefined,
   childData: DataModel,
   context: DataModelContext,
 ) => DataModel | undefined;
@@ -908,8 +912,7 @@ export function getMapItemAt(map: MapDataModel, key: string): PublicMapDataItem 
 export function mapDataModelKeyIndexMap(map: MapDataModel): Map<string | null, number> {
   const keyIndexMap = new Map<string | null, number>();
   for (let i = mapDataSize(map) - 1; i >= 0; i--) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    keyIndexMap.set(getMapKeyAtIndex(map, i)!, i);
+    keyIndexMap.set(getMapKeyAtIndex(map, i), i);
   }
   return keyIndexMap;
 }

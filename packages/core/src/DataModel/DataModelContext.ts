@@ -4,7 +4,6 @@ import {
   dataModelIsList,
   dataModelIsMap,
   dataModelIsMapOrList,
-  DataPathContainer,
   getListDataAt,
   getMapDataAt,
   getMapDataAtIndex,
@@ -15,15 +14,7 @@ import {
   PathContainerMapChild,
   stringToDataModel,
 } from './DataModel';
-import {
-  AnyDataPath,
-  EditingForwardDataPath,
-  EditingForwardDataPathComponent,
-  toListIndexDataPathComponent,
-  toMapKeyDataPathComponent,
-  toPointerPathComponent,
-} from './DataPath';
-import {getDataModelByForwardPath} from './DataModelCollector';
+import {AnyDataPath} from './DataPath';
 
 export interface DataModelContextListPathComponent {
   readonly type: 'list';
@@ -49,9 +40,10 @@ export interface DataModelContextMapIndexPathComponent {
 
 export type DataModelContextPath = readonly DataModelContextPathComponent[];
 
+// TODO DataPathContainerをなくせたら、PathContainerの設計をisKeyを考慮したものにする
 export class DataModelContextPathContainer implements PathContainer {
-  public static create(path: DataModelContextPath): DataModelContextPathContainer | undefined {
-    return new DataModelContextPathContainer(path, 0);
+  public static create({path, isKey}: SerializedDataModelContext): DataModelContextPathContainer | undefined {
+    return path.length === 0 ? undefined : new DataModelContextPathContainer(path, 0);
   }
 
   public constructor(private readonly path: DataModelContextPath, private readonly index: number) {}
@@ -113,7 +105,7 @@ export type DataModelContextPathComponent =
 
 export interface DataModelRoot {
   readonly model: DataModel | undefined;
-  readonly schema: DataSchemaExcludeRecursive;
+  readonly schema: DataSchemaExcludeRecursive | undefined;
 }
 
 function addKeysDepth(prev: Keys): Keys {
@@ -197,6 +189,7 @@ export class DataModelContext {
           schemaContext = schemaContext.dig(pathComponent.key);
           break;
         case 'map_i':
+          // スキーマはkeyを優先して利用する
           schemaContext = schemaContext.dig(pathComponent.key ?? pathComponent.index);
           break;
         case 'list':
@@ -323,22 +316,8 @@ export class DataModelContext {
     }
   }
 
-  public toDataPath(): EditingForwardDataPath {
-    // TODO 本当はisAbsoluteにしたいが、EditingForwardDataPathはそれを許容してない
-    //      UIModelにセットするDataPathは必ずrootからなのだから、DataPathとは扱いを変えるべきかもしれない
-    return {
-      components: this.path.map((i): EditingForwardDataPathComponent => {
-        switch (i.type) {
-          case 'list':
-            return toListIndexDataPathComponent(i.index);
-          case 'map_i':
-            // TODO
-            return i.p ? toPointerPathComponent(i.p) : toMapKeyDataPathComponent(i.key!);
-          case 'map_k':
-            return toMapKeyDataPathComponent(i.key);
-        }
-      }),
-    };
+  public getModelFromRoot(rootModel: DataModel | undefined): DataModel | undefined {
+    return getModelByPath(rootModel, this.path);
   }
 }
 
@@ -358,6 +337,6 @@ export function dataModelForPathStart(
     reverseCount += context.depthFromKey(path.ctx);
   }
   return reverseCount > 0
-    ? [getDataModelByForwardPath(root.model, context.pop(reverseCount).toDataPath()), context.pop(reverseCount)]
+    ? [context.pop(reverseCount).getModelFromRoot(root.model), context.pop(reverseCount)]
     : [current, context];
 }
