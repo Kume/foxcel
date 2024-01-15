@@ -304,25 +304,26 @@ export function dataPathLength(path: AnyDataPath): number {
 }
 
 function parsedPathToDataPath(parsed: ParsedPath, pathType: 'forward' | 'single' | undefined): MultiDataPath {
-  const components = parsed.c.map((c): MultiDataPathComponent => {
-    if (typeof c === 'string') {
-      return /^[1-9][0-9]*$/.test(c) ? {t: DataPathComponentType.IndexOrKey, v: Number(c)} : c;
-    } else {
-      switch (c.type) {
-        case 'wildcard':
-          if (pathType) {
-            throw new Error(`${pathType} path cannot contain wildcard.`);
-          }
-          return {t: DataPathComponentType.WildCard};
+  const components =
+    parsed.c?.map((c): MultiDataPathComponent => {
+      if (typeof c === 'string') {
+        return /^[1-9][0-9]*$/.test(c) ? {t: DataPathComponentType.IndexOrKey, v: Number(c)} : c;
+      } else {
+        switch (c.type) {
+          case 'wildcard':
+            if (pathType) {
+              throw new Error(`${pathType} path cannot contain wildcard.`);
+            }
+            return {t: DataPathComponentType.WildCard};
 
-        case 'variable':
-          if (pathType === 'forward') {
-            throw new Error(`${pathType} path cannot contain variable.`);
-          }
-          return {t: DataPathComponentType.Nested, v: parsedPathToDataPath(c.path, pathType)};
+          case 'variable':
+            if (pathType === 'forward') {
+              throw new Error(`${pathType} path cannot contain variable.`);
+            }
+            return {t: DataPathComponentType.Nested, v: parsedPathToDataPath(c.path, pathType)};
+        }
       }
-    }
-  });
+    }) ?? [];
 
   if (parsed.p) {
     components.push(keyDataPathComponent);

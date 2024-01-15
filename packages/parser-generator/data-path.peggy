@@ -2,23 +2,25 @@ Expression
   = AbsolutePath / ContextPath / RelativePath
 
 AbsolutePath
-  = "/" path: ForwardPath {
+  = "/" path: (ForwardPath / KeyWord) {
     return {t: 'abs', ...path}
   }
 
 ContextPath
-  = key:Word ":" reverse:(ReverseWord "/")* path:ForwardPath {
+  = key:Word ":" reverse:(ReverseWord "/")* path:(ForwardPath / KeyWord) {
   	return {t: 'ctx', r: reverse.length, key, ...path}
   }
 
 RelativePath
-  = reverse:(ReverseWord "/")* path:ForwardPath {
+  = reverse:(ReverseWord "/")* path:(ForwardPath / KeyWord) {
   	return {t: 'rel', r: reverse.length, ...path}
   }
 
+
+
 ForwardPath
   = path:JoinedPath pointsKey:("/" KeyWord)? {
-    return {...path, p: !!pointsKey};
+    return {...path, p: !!pointsKey || undefined};
   }
 
 JoinedPath
@@ -38,7 +40,7 @@ PathVariable
 
 KeyWord
   = "$key" / "$" {
-    return { type: "key" };
+    return { p: true };
   }
 
 WildWord

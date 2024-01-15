@@ -200,7 +200,7 @@ function peg$parse(input, options) {
     	return {t: 'rel', r: reverse.length, ...path}
     };
   var peg$f3 = function(path, pointsKey) {
-      return {...path, p: !!pointsKey};
+      return {...path, p: !!pointsKey || undefined};
     };
   var peg$f4 = function(first, components) {
       return {c: [first].concat(components.map(([_, w]) => w))}
@@ -212,7 +212,7 @@ function peg$parse(input, options) {
       }
     };
   var peg$f6 = function() {
-      return { type: "key" };
+      return { p: true };
     };
   var peg$f7 = function(head, tail) {
       const words = [];
@@ -410,6 +410,9 @@ function peg$parse(input, options) {
     }
     if (s1 !== peg$FAILED) {
       s2 = peg$parseForwardPath();
+      if (s2 === peg$FAILED) {
+        s2 = peg$parseKeyWord();
+      }
       if (s2 !== peg$FAILED) {
         peg$savedPos = s0;
         s0 = peg$f0(s2);
@@ -486,6 +489,9 @@ function peg$parse(input, options) {
           }
         }
         s4 = peg$parseForwardPath();
+        if (s4 === peg$FAILED) {
+          s4 = peg$parseKeyWord();
+        }
         if (s4 !== peg$FAILED) {
           peg$savedPos = s0;
           s0 = peg$f1(s1, s3, s4);
@@ -556,6 +562,9 @@ function peg$parse(input, options) {
       }
     }
     s2 = peg$parseForwardPath();
+    if (s2 === peg$FAILED) {
+      s2 = peg$parseKeyWord();
+    }
     if (s2 !== peg$FAILED) {
       peg$savedPos = s0;
       s0 = peg$f2(s1, s2);
