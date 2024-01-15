@@ -3,13 +3,14 @@ import {
   DataPath,
   DataPathComponentType,
   dataPathLength,
+  dataPathReverseCount,
   headDataPathComponent,
   MultiDataPath,
   MultiDataPathComponent,
   shiftDataPath,
   unshiftDataPath,
 } from './DataPath';
-import {DataModelContext, dataModelForPathStart, DataModelRoot} from './DataModelContext';
+import {DataModelContextWithoutSchema} from './DataModelContext';
 import {digForPathComponent, getDataModelBySinglePath, withNestedDataPath} from './DataModelCollector';
 import {
   dataModelEquals,
@@ -31,12 +32,11 @@ export type DataModelMatcher = DataModelEqualMatcher;
 export function dataModelIsMatch(
   matcher: DataModelMatcher,
   data: DataModel | undefined,
-  context: DataModelContext,
-  root: DataModelRoot,
+  context: DataModelContextWithoutSchema,
 ): boolean {
   switch (matcher.type) {
     case 'equal': {
-      const operand1 = matcher.operand1 ? getDataModelBySinglePath(data, matcher.operand1, context, root) : data;
+      const operand1 = matcher.operand1 ? getDataModelBySinglePath(matcher.operand1, context) : data;
       if (operand1 === undefined) {
         return false;
       }
@@ -57,7 +57,7 @@ function keyIsMatch(key: string, matcher: DataModelMatcher): boolean {
 
 export interface DataModelSearchSingleResult {
   readonly data: DataModel;
-  readonly context: DataModelContext;
+  readonly context: DataModelContextWithoutSchema;
 }
 
 export interface DataModelSearchParams {
@@ -66,20 +66,18 @@ export interface DataModelSearchParams {
 }
 
 function findDataModelImpl(
-  data: DataModel | undefined,
   matcher: DataModelMatcher,
   path: MultiDataPath,
-  currentContext: DataModelContext,
-  originalContext: DataModelContext,
-  root: DataModelRoot,
-  originalModel: DataModel | undefined,
+  currentContext: DataModelContextWithoutSchema,
+  originalContext: DataModelContextWithoutSchema,
 ): DataModelSearchSingleResult | undefined {
+  const data = currentContext.currentModel;
   if (!data) {
     // TODO ログ記録?
     return undefined;
   }
   if (dataPathLength(path) === 0) {
-    if (dataModelIsMatch(matcher, data, currentContext, root)) {
+    if (dataModelIsMatch(matcher, data, currentContext)) {
       return {data, context: currentContext};
     } else {
       return undefined;
@@ -95,30 +93,19 @@ function findDataModelImpl(
         : undefined;
     },
     collection: (childData, pushContext) =>
-      findDataModelImpl(
-        childData,
-        matcher,
-        shiftDataPath(path),
-        pushContext(currentContext),
-        originalContext,
-        root,
-        originalModel,
-      ),
+      findDataModelImpl(matcher, shiftDataPath(path), pushContext(currentContext), originalContext),
     other: (otherPathComponent): DataModelSearchSingleResult | undefined => {
       switch (otherPathComponent.t) {
         case DataPathComponentType.WildCard:
           if (dataModelIsMap(data)) {
             // TODO ログ記録
-            for (const [childData, , key, index] of eachMapDataItem(data)) {
+            for (const [, , key, index] of eachMapDataItem(data)) {
               if (key !== null) {
                 const findResult = findDataModelImpl(
-                  childData,
                   matcher,
                   shiftDataPath(path),
                   currentContext.pushMapIndex(index, key),
                   originalContext,
-                  root,
-                  originalModel,
                 );
                 if (findResult) {
                   return findResult;
@@ -127,15 +114,12 @@ function findDataModelImpl(
             }
           } else if (dataModelIsList(data)) {
             // TODO ログ記録
-            for (const [childData, , index] of eachListDataItem(data)) {
+            for (const [, , index] of eachListDataItem(data)) {
               const findResult = findDataModelImpl(
-                childData,
                 matcher,
                 shiftDataPath(path),
                 currentContext.pushListIndex(index),
                 originalContext,
-                root,
-                originalModel,
               );
               if (findResult) {
                 return findResult;
@@ -148,21 +132,8 @@ function findDataModelImpl(
         case DataPathComponentType.Nested: {
           // TODO withNestedDataPathでログ記録
           const childPath = shiftDataPath(path);
-          for (const [childData, childContext] of withNestedDataPath(
-            data,
-            otherPathComponent.v,
-            originalContext,
-            root,
-          )) {
-            const findResult = findDataModelImpl(
-              childData,
-              matcher,
-              childPath,
-              childContext,
-              originalContext,
-              root,
-              originalModel,
-            );
+          for (const [, childContext] of withNestedDataPath(data, otherPathComponent.v, originalContext)) {
+            const findResult = findDataModelImpl(matcher, childPath, childContext, originalContext);
             if (findResult) {
               return findResult;
             }
@@ -172,13 +143,10 @@ function findDataModelImpl(
         case DataPathComponentType.Union:
           for (const pathComponent of otherPathComponent.v) {
             const findResult = findDataModelImpl(
-              data,
               matcher,
               unshiftDataPath(shiftDataPath(path), pathComponent),
               currentContext,
               originalContext,
-              root,
-              originalModel,
             );
             if (findResult) {
               return findResult;
@@ -191,11 +159,9 @@ function findDataModelImpl(
 }
 
 export function findDataModel(
-  data: DataModel | undefined,
   params: DataModelSearchParams,
-  context: DataModelContext,
-  root: DataModelRoot,
+  context: DataModelContextWithoutSchema,
 ): DataModelSearchSingleResult | undefined {
-  const [startModel, startContext] = dataModelForPathStart(root, data, params.path, context);
-  return findDataModelImpl(startModel, params.matcher, params.path, startContext, context, root, data);
+  const startContext = context.pop(dataPathReverseCount(params.path));
+  return findDataModelImpl(params.matcher, params.path, startContext, context);
 }

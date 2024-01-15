@@ -134,7 +134,7 @@ export function tableUIModelMakeNewRow(
       case 'select': {
         if (typeof columnSchema.key === 'string') {
           const cellContext = context.pushMapKey(columnSchema.key);
-          const result = selectUIModelHandleInputForSchema(columnSchema, defaultValue.value, cellContext, root);
+          const result = selectUIModelHandleInputForSchema(columnSchema, defaultValue.value, cellContext);
           if (result !== undefined) {
             rowData = setToMapDataModel(rowData, columnSchema.key, result);
           }
@@ -441,7 +441,6 @@ export function tableUIModelContextMenus(
   rowIndex: number,
   selection: TableUISelection | undefined,
 ): UIModelContextMenuItem[] {
-  // console.log('xxxx tableUIModelContextMenus', model, rowIndex);
   const items: UIModelContextMenuItem[] = [];
 
   items.push({label: 'Insert above', action: tableUIModelAddRowBeforeAction(model, rowIndex)});

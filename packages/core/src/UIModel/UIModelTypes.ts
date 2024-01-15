@@ -27,7 +27,6 @@ import {UISchemaExcludeRecursive} from './UISchema';
 
 interface UIModelCommon {
   readonly dataContext: SerializedDataModelContext;
-  readonly dataPathFocus: EditingForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly schemaFocusLog: UISchemaFocusLogNode | undefined;
 }
@@ -110,6 +109,7 @@ export type ContentListUIModel = EmptyContentListUIModel | NonEmptyContentListUI
 export interface ContentListIndex {
   readonly label: FilledTemplate;
   readonly pointer: DataPointer;
+  readonly dataContext: SerializedDataModelContext;
 }
 
 export interface TableUIModel extends UIModelCommon {
@@ -129,8 +129,8 @@ export interface TableUIModelRow {
   readonly pointer: DataPointer;
   readonly key: string | null | undefined;
   readonly data: MapDataModel | undefined;
-  readonly dataPathFocus: EditingForwardDataPath | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
+  readonly dataContext: SerializedDataModelContext;
   readonly cells: readonly UIModel[];
 }
 

@@ -7,7 +7,7 @@ import {NumberUIViewForTableCell} from './NumberUIView';
 import React from 'react';
 import {UIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {TableUIModelMoveDirection, TableUISelection} from '@foxcel/core/dist/UIModel/TableUIModel';
-import {DataModel, EditingForwardDataPath, emptyMapModel, setToMapDataModel} from '@foxcel/core';
+import {DataModel, emptyMapModel, setToMapDataModel} from '@foxcel/core';
 import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
 import {
   KeyValue_ArrowDown,
@@ -184,7 +184,6 @@ export function renderTableUIViewCell(
 }
 
 export function renderTableUIViewCellWithSchema(
-  dataPath: EditingForwardDataPath,
   rowKey: string | null | undefined,
   cellKey: string,
   schema: UISchemaExcludeRecursive,
@@ -196,7 +195,7 @@ export function renderTableUIViewCellWithSchema(
 ): React.ReactNode {
   const onEdit = (model: DataModel) => {
     const newRow = setToMapDataModel(emptyMapModel, cellKey, model);
-    callbacks.onAction({type: 'data', action: {type: 'push', data: newRow, path: dataPath, key: rowKey}});
+    callbacks.onAction({type: 'data', action: {type: 'push', data: newRow, dataContext, key: rowKey}});
   };
   switch (schema.type) {
     case 'text':

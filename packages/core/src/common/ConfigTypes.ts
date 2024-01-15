@@ -88,6 +88,7 @@ export interface ListDataSchemaConfig extends DataSchemaConfigBase {
 
 export interface ConditionalDataSchemaConfig extends DataSchemaConfigBase {
   type: 'conditional';
+  defaultItem: DataSchemaConfig | string;
   items: {[key: string]: ConditionalDataSchemaItemConfig};
 }
 
@@ -217,6 +218,7 @@ export interface CheckBoxUISchemaConfig extends UISchemaConfigBase {
 
 export interface ConditionalUISchemaConfig extends UISchemaConfigBase {
   readonly type: 'conditional';
+  readonly defaultContent: UISchemaConfigOrReference;
   readonly conditions?: {readonly [key: string]: ConditionConfig};
   readonly conditionalContents: {readonly [key: string]: UISchemaConfigOrReference};
 }

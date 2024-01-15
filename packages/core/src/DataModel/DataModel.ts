@@ -1,5 +1,6 @@
 import {
   AnyDataPathComponent,
+  DataPath,
   dataPathComponentIsIndexOrKey,
   dataPathComponentIsListIndex,
   dataPathComponentIsListIndexLike,
@@ -14,12 +15,10 @@ import {
   ForwardDataPath,
   ForwardDataPathComponent,
   headDataPathComponent,
-  MultiDataPath,
   shiftDataPath,
 } from './DataPath';
 import {
   BooleanDataModel,
-  DataCollectionItem,
   DataModel,
   DataModelType,
   DataPointer,
@@ -247,6 +246,7 @@ export function setToDataModel(
   context: DataModelContext,
   params: SetDataParams,
 ): DataModel | undefined {
+  context.assertAutoResolveConditional(true);
   let currentModel = context.currentModel;
 
   if (!path) {
@@ -262,7 +262,7 @@ export function setToDataModel(
     currentModel,
     path,
     context,
-    (nextPath, childData, childContext) => setToDataModel(nextPath, childContext, params),
+    (nextPath, childContext) => setToDataModel(nextPath, childContext, params),
     (map, key) => {
       const childPath = path.next();
       // ここが最下層であれば、paramsに指定されたモデルをkeyに対してセットすれば良い
@@ -345,6 +345,7 @@ export function setKeyToDataModel(
   context: DataModelContext,
   params: SetKeyDataParams,
 ): DataModel | undefined {
+  context.assertAutoResolveConditional(true);
   const currentModel = context.currentModel;
   if (!path) {
     if (!dataModelIsMapOrList(currentModel)) {
@@ -360,7 +361,7 @@ export function setKeyToDataModel(
       return undefined;
     }
   } else {
-    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childData, childContext) =>
+    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
       setKeyToDataModel(nextPath, childContext, params),
     );
   }
@@ -415,59 +416,9 @@ export type PathContainerMapChild =
   | undefined;
 
 export interface PathContainer {
-  // TODO nextがundefinedであることで判定する
-  // readonly isEnd: boolean;
-  // TODO 自身がundefinedであることで判定する
-  // readonly isLast: boolean;
   next(): PathContainer | undefined;
   listChild(list: ListDataModel): [model: DataModel, index: number] | undefined;
   mapChild(map: MapDataModel): PathContainerMapChild;
-}
-
-export class DataPathContainer implements PathContainer {
-  public static create(path: EditingForwardDataPath): DataPathContainer {
-    return new DataPathContainer(path);
-  }
-
-  private constructor(private readonly path: EditingForwardDataPath) {}
-
-  get isLast(): boolean {
-    return dataPathLength(this.path) === 1;
-  }
-
-  get isEnd(): boolean {
-    return dataPathLength(this.path) === 0;
-  }
-  public next(): PathContainer | undefined {
-    return this.isLast ? undefined : new DataPathContainer(shiftDataPath(this.path));
-  }
-  public listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
-    const head = headDataPathComponent(this.path);
-    const index = getListDataIndexByPathComponent(list, head);
-    if (index === undefined) {
-      return undefined;
-    }
-    const childData = getListDataAt(list, index);
-    return childData === undefined ? undefined : [childData, index];
-  }
-  mapChild(map: MapDataModel): PathContainerMapChild {
-    const head = headDataPathComponent(this.path);
-    const index = getMapDataIndexByPathComponent(map, head);
-    if (index === undefined) {
-      // データが実在しなくてもキーは取得できる場合がある
-      if (dataPathComponentIsMapKeyLike(head)) {
-        return [undefined, dataPathComponentToMapKey(head), undefined];
-      } else {
-        return undefined;
-      }
-    }
-    const item = getMapItemAtIndex(map, index);
-    if (!item) {
-      return undefined;
-    }
-    const [data, , key] = item;
-    return [data, key, index];
-  }
 }
 
 interface InsertDataParams {
@@ -480,6 +431,7 @@ export function insertToDataModel(
   context: DataModelContext,
   params: InsertDataParams,
 ): DataModel | undefined {
+  context.assertAutoResolveConditional(true);
   const currentModel = context.currentModel;
 
   if (!path) {
@@ -506,7 +458,7 @@ export function insertToDataModel(
       return forceInsertToListData(currentModel, params.model, index + 1);
     }
   } else {
-    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childData, childContext) =>
+    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
       insertToDataModel(nextPath, childContext, params),
     );
   }
@@ -569,6 +521,7 @@ export function pushToDataModel(
   context: DataModelContext,
   params: PushDataParams,
 ): DataModel | undefined {
+  context.assertAutoResolveConditional(true);
   const currentModel = context.currentModel;
   if (!path) {
     if (!dataModelIsMapOrList(currentModel)) {
@@ -584,7 +537,7 @@ export function pushToDataModel(
       return pushToListData(currentModel, params.model);
     }
   } else {
-    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childData, childContext) =>
+    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
       pushToDataModel(nextPath, childContext, params),
     );
   }
@@ -641,6 +594,7 @@ export function deleteFromDataModel(
   context: DataModelContext,
   params: DeleteDataParams,
 ): DataModel | undefined {
+  context.assertAutoResolveConditional(true);
   const currentModel = context.currentModel;
   if (!path) {
     if (params.at === undefined) {
@@ -671,7 +625,7 @@ export function deleteFromDataModel(
     }
   }
 
-  return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childData, childContext) =>
+  return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
     deleteFromDataModel(nextPath, childContext, params),
   );
 }
@@ -713,11 +667,7 @@ type CreateNextChildData = (
   childSchema: DataSchemaContext,
 ) => DataModel | undefined;
 
-type CreateNextChildData2 = (
-  nextPath: PathContainer | undefined,
-  childData: DataModel,
-  context: DataModelContext,
-) => DataModel | undefined;
+type CreateNextChildData2 = (nextPath: PathContainer | undefined, context: DataModelContext) => DataModel | undefined;
 
 //#region For ListDataModel
 export function getListDataAt(list: ListDataModel, at: number): DataModel | undefined {
@@ -824,8 +774,8 @@ function setToListDataRecursive2(
     return undefined;
   }
 
-  const [childData, childIndex] = child;
-  const nextChildData = createNextChildData(path.next(), childData, context.pushListIndex(childIndex));
+  const [, childIndex] = child;
+  const nextChildData = createNextChildData(path.next(), context.pushListIndex(childIndex));
   return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, childIndex);
 }
 
@@ -1076,7 +1026,7 @@ function setToMapDataRecursive2(
   if (childData === undefined) {
     return onKeyMissing?.(childKey);
   } else {
-    const nextChildData = createNextChildData(path.next(), childData, context.pushMapIndex(childIndex, childKey));
+    const nextChildData = createNextChildData(path.next(), context.pushMapIndex(childIndex, childKey));
     return nextChildData === undefined
       ? undefined
       : forceSetToMapDataForIndex(map, nextChildData, childIndex, childKey);
@@ -1289,16 +1239,16 @@ export function booleanDataModelToBoolean(model: BooleanDataModel): boolean {
 }
 
 export function conditionIsMatch(
-  condition: ConditionConfig<MultiDataPath>,
-  collectDataForPath: undefined | ((path: MultiDataPath) => DataCollectionItem[]),
+  condition: ConditionConfig<DataPath>,
+  getDataForPath: undefined | ((path: DataPath) => DataModel | undefined),
 ): boolean {
   if ('or' in condition) {
-    return condition.or.some((i) => conditionIsMatch(i, collectDataForPath));
+    return condition.or.some((i) => conditionIsMatch(i, getDataForPath));
   } else if ('and' in condition) {
-    return condition.and.some((i) => conditionIsMatch(i, collectDataForPath));
+    return condition.and.every((i) => conditionIsMatch(i, getDataForPath));
   } else if ('match' in condition) {
-    const targetModels = collectDataForPath?.(condition.path) || [];
-    return targetModels.some(({data}) => dataModelEqualsToUnknown(data, condition.match));
+    const operandData = getDataForPath?.(condition.path);
+    return operandData !== undefined && dataModelEqualsToUnknown(operandData, condition.match);
   } else {
     throw new Error('Invalid condition');
   }

@@ -136,11 +136,25 @@ export class UISchemaContext {
     switch (this.currentSchema.type) {
       case 'contentList': {
         const content = this.resolve(this.currentSchema.content);
-        return new UISchemaContext(this.rootSchema, content, [...this.path, this.currentSchema]);
+        return (this._content = new UISchemaContext(this.rootSchema, content, [...this.path, this.currentSchema]));
       }
 
       default:
         throw new Error(`cannot get content from ${this.currentSchema.type} ui schema`);
+    }
+  }
+
+  public conditionalContentForKey(key: string | undefined): UISchemaContext {
+    switch (this.currentSchema.type) {
+      case 'conditional': {
+        const content = this.resolve(
+          key === undefined ? this.currentSchema.defaultContent : this.currentSchema.contents[key],
+        );
+        return (this._content = new UISchemaContext(this.rootSchema, content, [...this.path, this.currentSchema]));
+      }
+
+      default:
+        throw new Error(`current schema is not conditional. (${this.currentSchema.type})`);
     }
   }
 

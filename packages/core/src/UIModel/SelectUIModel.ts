@@ -16,7 +16,7 @@ import {
   unknownToDataModel,
 } from '../DataModel/DataModel';
 import {collectDataModel} from '../DataModel/DataModelCollector';
-import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelContextWithoutSchema, DataModelRoot} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {dataSchemaIsString, SelectDynamicOptionSchema} from '../DataModel/DataSchema';
 import {findDataModel} from '../DataModel/DataModelSearcher';
@@ -29,14 +29,13 @@ export interface SelectUIOption {
 }
 
 export function getSelectUIOptions(model: SelectUIModel, root: DataModelRoot): SelectUIOption[] {
-  return getSelectUIOptionsImpl(model.schema, model.data, DataModelContext.deserialize(model.dataContext, root), root);
+  return getSelectUIOptionsImpl(model.schema, model.data, DataModelContext.deserialize(model.dataContext, root));
 }
 
 function getSelectUIOptionsImpl(
   schema: SelectUISchema,
   data: DataModel | undefined,
   dataContext: DataModelContext,
-  root: DataModelRoot,
 ): SelectUIOption[] {
   const options: SelectUIOption[] = [];
   const excludeOptions: DataModel[] =
@@ -45,10 +44,10 @@ function getSelectUIOptionsImpl(
   for (const optionSchema of schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
-      const collectResults = collectDataModel(optionSchema.path, data, dataContext, root);
+      const collectResults = collectDataModel(optionSchema.path, dataContext.toWithoutSchema());
       for (const {data, context} of collectResults) {
         if (excludeOptions.every((excludeOption) => !dataModelEquals(excludeOption, data))) {
-          options.push(formatDynamicSelectUIOption(optionSchema, data, context, root));
+          options.push(formatDynamicSelectUIOption(optionSchema, data, context));
         }
       }
     } else {
@@ -67,12 +66,8 @@ function getSelectUIOptionsImpl(
   return options;
 }
 
-export function getSelectUIOptionsWithSchema(
-  schema: SelectUISchema,
-  dataContext: DataModelContext,
-  root: DataModelRoot,
-): SelectUIOption[] {
-  return getSelectUIOptionsImpl(schema, undefined, dataContext, root);
+export function getSelectUIOptionsWithSchema(schema: SelectUISchema, dataContext: DataModelContext): SelectUIOption[] {
+  return getSelectUIOptionsImpl(schema, undefined, dataContext);
 }
 
 export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOption | null): AppAction {
@@ -131,7 +126,6 @@ export function selectUIModelSetString(
     model.schema,
     value,
     DataModelContext.deserialize(model.dataContext, root),
-    root,
   );
   return resultData === undefined
     ? undefined
@@ -141,12 +135,11 @@ export function selectUIModelSetString(
 export function formatDynamicSelectUIOption(
   option: SelectDynamicOptionSchema,
   data: DataModel,
-  context: DataModelContext,
-  root: DataModelRoot,
+  context: DataModelContextWithoutSchema,
 ): SelectUIOption {
   const stringValue = dataModelToString(data);
   return {
-    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, data, context, root) : stringValue,
+    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, context) : stringValue,
     value: stringValue,
     data: data,
   };
@@ -156,19 +149,16 @@ export function selectUIModelGetCurrent(
   schema: SelectUISchema,
   dataModel: DataModel,
   context: DataModelContext,
-  dataRoot: DataModelRoot,
 ): SelectUIModelCurrentValue;
 export function selectUIModelGetCurrent(
   schema: SelectUISchema,
   dataModel: DataModel | undefined,
   context: DataModelContext,
-  dataRoot: DataModelRoot,
 ): SelectUIModelCurrentValue | undefined;
 export function selectUIModelGetCurrent(
   schema: SelectUISchema,
   dataModel: DataModel | undefined,
   context: DataModelContext,
-  dataRoot: DataModelRoot,
 ): SelectUIModelCurrentValue | undefined {
   if (dataModel === undefined) {
     return undefined;
@@ -177,14 +167,12 @@ export function selectUIModelGetCurrent(
     if (option.label === undefined) {
       // Dynamic option
       const findResult = findDataModel(
-        dataModel,
         // TODO matcherは暫定対応なので、後でちゃんと実装する
         {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
-        context,
-        dataRoot,
+        context.toWithoutSchema(),
       );
       if (findResult) {
-        return formatDynamicSelectUIOption(option, findResult.data, findResult.context, dataRoot);
+        return formatDynamicSelectUIOption(option, findResult.data, findResult.context);
       }
     } else {
       // Static option
@@ -208,7 +196,6 @@ export function selectUIModelHandleInputForSchema(
   schema: SelectUISchema,
   input: string | null,
   dataContext: DataModelContext,
-  root: DataModelRoot,
 ): DataModel | undefined {
   if (input === null) {
     return nullDataModel;
@@ -223,11 +210,9 @@ export function selectUIModelHandleInputForSchema(
     if (option.label === undefined) {
       // Dynamic option
       const findResult = findDataModel(
-        undefined,
         // TODO matcherは暫定対応なので、後でちゃんと実装する
         {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: valueDataModel}},
-        dataContext,
-        root,
+        dataContext.toWithoutSchema(),
       );
       if (findResult) {
         return valueDataModel;

@@ -121,6 +121,7 @@ export interface ConditionalUISchema extends UISchemaBase {
   readonly key?: string;
   readonly keyFlatten?: undefined;
   readonly dataSchema: ConditionalDataSchema;
+  readonly defaultContent: UISchemaOrRecursive;
   readonly contents: {readonly [key: string]: UISchemaOrRecursive};
 }
 

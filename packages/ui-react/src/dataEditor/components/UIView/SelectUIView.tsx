@@ -62,7 +62,7 @@ function getOptions(
     return getSelectUIOptions(model, getRoot());
   } else if (schema) {
     const root = getRoot();
-    return getSelectUIOptionsWithSchema(schema.schema, DataModelContext.deserialize(schema.dataContext, root), root);
+    return getSelectUIOptionsWithSchema(schema.schema, DataModelContext.deserialize(schema.dataContext, root));
   }
   return [];
 }
@@ -429,7 +429,6 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         schema.schema,
         value?.value ?? null,
         DataModelContext.deserialize(schema.dataContext, root),
-        root,
       );
       if (result !== undefined) {
         schema.onEdit(result);
@@ -549,7 +548,7 @@ const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) =>
       {model.currents.map((current, index) => {
         const click = (e: React.MouseEvent) => {
           e.stopPropagation();
-          onAction({type: 'data', action: {type: 'delete', path: current.dataPath}});
+          onAction({type: 'data', action: {type: 'delete', dataContext: current.dataContext}});
         };
         if (current.isInvalid) {
           return (

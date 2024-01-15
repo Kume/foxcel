@@ -44,12 +44,11 @@ export const TabUIView: React.FC<TabUIViewProps> = ({model, ...otherProps}) => {
   return (
     <LayoutRoot>
       <TabArea>
-        {model.tabs.map(({label, dataPath}, index) => (
+        {model.tabs.map(({label, dataContext}, index) => (
           <Tab
             selected={model.currentTabIndex === index}
             key={index}
-            onClick={() => otherProps.onAction({type: 'focus', path: dataPath})}
-          >
+            onClick={() => otherProps.onAction({type: 'focus', dataContext})}>
             {label}
           </Tab>
         ))}

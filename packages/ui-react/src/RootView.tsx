@@ -61,10 +61,8 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeS
         case 'z':
           if (e.target === document.body && (e.metaKey || e.ctrlKey)) {
             if (e.shiftKey) {
-              console.log('xxxx redo');
               dispatch({type: 'redo'});
             } else {
-              console.log('xxxx undo');
               dispatch({type: 'undo'});
             }
           }

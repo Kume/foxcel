@@ -209,6 +209,12 @@ export const sampleConfig: RootSchemaConfig = {
             },
             testA13: {
               type: 'conditional',
+              defaultItem: {
+                type: 'fixed_map',
+                items: {
+                  type: 'testA13_type',
+                },
+              },
               items: {
                 testA13a: {
                   condition: {path: 'type', match: 'a'},
@@ -409,10 +415,24 @@ export const sampleConfig: RootSchemaConfig = {
             {
               type: 'conditional',
               key: 'testA13',
+              defaultContent: {
+                type: 'form',
+                contents: [{type: 'select', key: 'type'}],
+              },
               conditionalContents: {
                 testA13a: {
                   type: 'form',
-                  contents: [{type: 'select', key: 'type'}],
+                  contents: [
+                    {type: 'select', key: 'type'},
+                    {type: 'number', key: 'numberValue'},
+                  ],
+                },
+                testA13b: {
+                  type: 'form',
+                  contents: [
+                    {type: 'select', key: 'type'},
+                    {type: 'checkbox', key: 'booleanValue'},
+                  ],
                 },
               },
             },

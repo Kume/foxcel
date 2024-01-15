@@ -548,13 +548,22 @@ export function parseUISchemaConfig(
         const nextContext = pushToContext(
           context,
           {key, type: 'conditional'},
+          // TODO FixedMapをデフォルト指定して大丈夫か確認
           {key, type: schema?.t || DataSchemaType.FixedMap},
         );
         return parseConfigOrReference(childConfig, pathConfigMap, nextContext, schema);
       });
+      const defaultDataSchema = context.dataSchemaContext?.resolveRecursive(resolvedDataSchema?.defaultItem);
+      const defaultContext = pushToContext(
+        context,
+        {type: 'conditional'},
+        // TODO この引数が問題ないか確認
+        {key: null, type: defaultDataSchema?.t || DataSchemaType.FixedMap},
+      );
       return {
         ...pick(config, 'type', 'label'),
         key: parseKey(config.key),
+        defaultContent: parseConfigOrReference(config.defaultContent, pathConfigMap, defaultContext, defaultDataSchema),
         contents,
         dataSchema: resolvedDataSchema!,
       };

@@ -12,6 +12,7 @@ import {
   dataPathComponentToMapKey,
   DataPathComponentType,
   dataPathLength,
+  dataPathReverseCount,
   EditingForwardDataPath,
   EditingForwardDataPathComponent,
   headDataPathComponent,
@@ -44,7 +45,7 @@ import {
   stringToDataModel,
 } from './DataModel';
 import {DataSchema, DataSchemaContextKeyItem} from './DataSchema';
-import {DataModelContext, dataModelForPathStart, DataModelRoot} from './DataModelContext';
+import {DataModelContextWithoutSchema} from './DataModelContext';
 
 export interface CollectDataModelGlobal {
   readonly rootModel: DataModel;
@@ -54,7 +55,10 @@ export interface CollectDataModelGlobal {
 
 interface DigCallbacks<Return, PathComponent extends AnyDataPathComponent> {
   key: () => Return;
-  collection: (model: DataModel, pushContext: (parentContext: DataModelContext) => DataModelContext) => Return;
+  collection: (
+    model: DataModel,
+    pushContext: (parentContext: DataModelContextWithoutSchema) => DataModelContextWithoutSchema,
+  ) => Return;
   other: (pathComponent: Exclude<PathComponent, EditingForwardDataPathComponent | KeyPathComponent>) => Return;
 }
 
@@ -140,71 +144,54 @@ export function digForPathComponent<Return, PathComponent extends AnyDataPathCom
 }
 
 function getDataModelBySinglePathImpl(
-  model: DataModel | undefined,
   // TODO componentsにすべきなきがする
   path: DataPath,
-  currentContext: DataModelContext,
-  originalContext: DataModelContext,
-  originalModel: DataModel | undefined,
-  dataRoot: DataModelRoot,
+  currentContext: DataModelContextWithoutSchema,
+  originalContext: DataModelContextWithoutSchema,
 ): DataModel | undefined {
   if (dataPathLength(path) === 0) {
-    return model;
+    return currentContext.currentModel;
   }
 
   const head = headDataPathComponent(path);
-  return digForPathComponent<DataModel | undefined, DataPathComponent>(model, head, {
+  return digForPathComponent<DataModel | undefined, DataPathComponent>(currentContext.currentModel, head, {
     key: () => {
       return currentContext.parentKeyDataModel;
     },
     collection: (childData: DataModel, pushContext): DataModel | undefined => {
-      return getDataModelBySinglePathImpl(
-        childData,
-        shiftDataPath(path),
-        pushContext(currentContext),
-        originalContext,
-        originalModel,
-        dataRoot,
-      );
+      return getDataModelBySinglePathImpl(shiftDataPath(path), pushContext(currentContext), originalContext);
     },
     other: (otherPathComponent): DataModel | undefined => {
       switch (otherPathComponent.t) {
         case DataPathComponentType.Nested: {
-          if (dataModelIsMapOrList(model)) {
-            const nested = getDataModelBySinglePath(originalModel, otherPathComponent.v, originalContext, dataRoot);
-            if (mapOrListDataModelIsList(model)) {
+          if (dataModelIsMapOrList(currentContext.currentModel)) {
+            const nested = getDataModelBySinglePath(otherPathComponent.v, originalContext);
+            if (mapOrListDataModelIsList(currentContext.currentModel)) {
               if (!dataModelIsInteger(nested)) {
                 return undefined;
               }
               const index = numberDataModelToNumber(nested);
-              const childDate = getListDataAt(model, index);
-              if (childDate === undefined) {
+              if (!getListItemAt(currentContext.currentModel, index)) {
                 return undefined;
               }
               return getDataModelBySinglePathImpl(
-                childDate,
                 shiftDataPath(path),
                 currentContext.pushListIndex(index),
                 originalContext,
-                originalModel,
-                dataRoot,
               );
             } else {
               if (!dataModelIsString(nested)) {
                 return undefined;
               }
               const key = stringDataModelToString(nested);
-              const index = getMapDataIndexAt(model, key);
+              const index = getMapDataIndexAt(currentContext.currentModel, key);
               if (index === undefined) {
                 return undefined;
               }
               return getDataModelBySinglePathImpl(
-                getMapDataAtIndex(model, index),
                 shiftDataPath(path),
                 currentContext.pushMapIndex(index, key),
                 originalContext,
-                originalModel,
-                dataRoot,
               );
             }
           } else {
@@ -217,13 +204,11 @@ function getDataModelBySinglePathImpl(
 }
 
 export function getDataModelBySinglePath(
-  model: DataModel | undefined,
   path: DataPath,
-  context: DataModelContext,
-  dataRoot: DataModelRoot,
+  context: DataModelContextWithoutSchema,
 ): DataModel | undefined {
-  const [start] = dataModelForPathStart(dataRoot, model, path, context);
-  return getDataModelBySinglePathImpl(start, path, context, context, model, dataRoot);
+  const startContext = context.popToDataPathStart(path);
+  return getDataModelBySinglePathImpl(path, startContext, context);
 }
 
 export function getDataModelByForwardPath(
@@ -264,17 +249,16 @@ export function getDataModelByEditingForwardPath(
 
 export interface DataModelCollectionItem {
   readonly data: DataModel;
-  readonly context: DataModelContext;
+  readonly context: DataModelContextWithoutSchema;
 }
 
 export function* withNestedDataPath(
   model: DataModel | undefined,
   path: MultiDataPath,
-  context: DataModelContext,
-  root: DataModelRoot,
-): Generator<[DataModel | undefined, DataModelContext], void> {
+  context: DataModelContextWithoutSchema,
+): Generator<[DataModel | undefined, DataModelContextWithoutSchema], void> {
   if (dataModelIsMapOrList(model)) {
-    const nestedValues = collectDataModel(path, model, context, root);
+    const nestedValues = collectDataModel(path, context);
     if (mapOrListDataModelIsList(model)) {
       for (const {data} of nestedValues) {
         if (!dataModelIsInteger(data)) {
@@ -300,14 +284,12 @@ export function* withNestedDataPath(
   }
 }
 
-type CollectDataModelOrigin = readonly [model: DataModel | undefined, context: DataModelContext, root: DataModelRoot];
-
 function collectDataModelImpl(
-  model: DataModel | undefined,
   path: MultiDataPath,
-  currentContext: DataModelContext,
-  origin: CollectDataModelOrigin,
+  currentContext: DataModelContextWithoutSchema,
+  origin: DataModelContextWithoutSchema,
 ): DataModelCollectionItem[] {
+  const model = currentContext.currentModel;
   if (dataPathLength(path) === 0) {
     return model === undefined ? [] : [{data: model, context: currentContext}];
   }
@@ -318,7 +300,7 @@ function collectDataModelImpl(
       return key === undefined ? [] : [{data: stringToDataModel(key), context: currentContext.pushIsParentKey()}];
     },
     collection: (childData, pushContext) =>
-      collectDataModelImpl(childData, shiftDataPath(path), pushContext(currentContext), origin),
+      collectDataModelImpl(shiftDataPath(path), pushContext(currentContext), origin),
     other: (otherPathComponent): DataModelCollectionItem[] => {
       switch (otherPathComponent.t) {
         case DataPathComponentType.WildCard:
@@ -326,18 +308,18 @@ function collectDataModelImpl(
             return mapMapDataModel(model, (value, key, index) => {
               return key === null
                 ? []
-                : collectDataModelImpl(value, shiftDataPath(path), currentContext.pushMapIndex(index, key), origin);
+                : collectDataModelImpl(shiftDataPath(path), currentContext.pushMapIndex(index, key), origin);
             }).flat();
           } else if (dataModelIsList(model)) {
             return mapListDataModel(model, (value, index) => {
-              return collectDataModelImpl(value, shiftDataPath(path), currentContext.pushListIndex(index), origin);
+              return collectDataModelImpl(shiftDataPath(path), currentContext.pushListIndex(index), origin);
             }).flat();
           } else {
             return [];
           }
         case DataPathComponentType.Nested:
           if (dataModelIsMapOrList(model)) {
-            const nestedValues = collectDataModel(otherPathComponent.v, ...origin);
+            const nestedValues = collectDataModel(otherPathComponent.v, origin);
             if (mapOrListDataModelIsList(model)) {
               return nestedValues.flatMap(({data}) => {
                 if (!dataModelIsInteger(data)) {
@@ -349,12 +331,7 @@ function collectDataModelImpl(
                 if (childDate === undefined) {
                   return [];
                 }
-                return collectDataModelImpl(
-                  childDate,
-                  shiftDataPath(path),
-                  currentContext.pushListIndex(index),
-                  origin,
-                );
+                return collectDataModelImpl(shiftDataPath(path), currentContext.pushListIndex(index), origin);
               });
             } else {
               return nestedValues.flatMap(({data}) => {
@@ -366,12 +343,7 @@ function collectDataModelImpl(
                 if (index === undefined) {
                   return [];
                 }
-                return collectDataModelImpl(
-                  getMapDataAtIndex(model, index),
-                  shiftDataPath(path),
-                  currentContext.pushMapIndex(index, key),
-                  origin,
-                );
+                return collectDataModelImpl(shiftDataPath(path), currentContext.pushMapIndex(index, key), origin);
               });
             }
           } else {
@@ -379,12 +351,7 @@ function collectDataModelImpl(
           }
         case DataPathComponentType.Union:
           return otherPathComponent.v.flatMap((pathComponent) => {
-            return collectDataModelImpl(
-              model,
-              unshiftDataPath(shiftDataPath(path), pathComponent),
-              currentContext,
-              origin,
-            );
+            return collectDataModelImpl(unshiftDataPath(shiftDataPath(path), pathComponent), currentContext, origin);
           });
       }
     },
@@ -394,10 +361,8 @@ function collectDataModelImpl(
 
 export function collectDataModel(
   path: MultiDataPath,
-  model: DataModel | undefined,
-  context: DataModelContext,
-  root: DataModelRoot,
+  context: DataModelContextWithoutSchema,
 ): DataModelCollectionItem[] {
-  const [start] = dataModelForPathStart(root, model, path, context);
-  return collectDataModelImpl(start, path, context, [model, context, root]);
+  const startContext = context.pop(dataPathReverseCount(path));
+  return collectDataModelImpl(path, startContext, context);
 }

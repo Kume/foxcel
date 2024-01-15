@@ -84,12 +84,12 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
     <LayoutRoot>
       <ListArea>
         <List>
-          {model.indexes.map(({label, pointer, dataPath}, index) => (
+          {model.indexes.map(({label, pointer, dataContext}, index) => (
             <ListItem
               key={getIdFromDataPointer(pointer)}
               title={label.join('')}
               selected={model.currentIndex === index}
-              onClick={() => onAction({type: 'focus', path: dataPath})}
+              onClick={() => onAction({type: 'focus', dataContext})}
               onContextMenu={(e: React.MouseEvent<HTMLElement>) => openContextMenu(index, e)}>
               {/* TODO labelはテンプレートなので、適切なコンポーネントを定義する必要がある */}
               {label}

@@ -2,7 +2,7 @@ import {DataPath, MultiDataPath, parsePath} from './DataPath';
 import {DataModel} from './DataModelTypes';
 import {dataModelIsInteger, dataModelIsString, numberDataModelToNumber, stringDataModelToString} from './DataModel';
 import {getDataModelBySinglePath} from './DataModelCollector';
-import {DataModelContext, DataModelRoot} from './DataModelContext';
+import {DataModelContextWithoutSchema} from './DataModelContext';
 
 export interface TemplateToken {
   key: string;
@@ -75,18 +75,13 @@ export function dataPathToTemplateLine(path: DataPath): TemplateLine {
   return {nodes: [{type: 'var', path}]};
 }
 
-export function fillTemplateLine(
-  template: TemplateLine,
-  data: DataModel | undefined,
-  context: DataModelContext,
-  root: DataModelRoot,
-): FilledTemplateNode[] {
+export function fillTemplateLine(template: TemplateLine, context: DataModelContextWithoutSchema): FilledTemplateNode[] {
   return template.nodes.map((node) => {
     switch (node.type) {
       case 'text':
         return node.text;
       case 'var': {
-        const value = getDataModelBySinglePath(data, node.path, context, root);
+        const value = getDataModelBySinglePath(node.path, context);
         if (value === undefined) {
           return undefined;
         } else if (dataModelIsString(value)) {
@@ -101,13 +96,8 @@ export function fillTemplateLine(
   });
 }
 
-export function fillTemplateLineAndToString(
-  template: TemplateLine,
-  data: DataModel | undefined,
-  context: DataModelContext,
-  root: DataModelRoot,
-): string {
-  return fillTemplateLine(template, data, context, root)
+export function fillTemplateLineAndToString(template: TemplateLine, context: DataModelContextWithoutSchema): string {
+  return fillTemplateLine(template, context)
     .map((node) => {
       if (typeof node === 'string') {
         return node;

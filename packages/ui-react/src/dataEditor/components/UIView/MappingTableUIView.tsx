@@ -40,7 +40,7 @@ import {
   TableUISelection,
 } from '@foxcel/core/dist/UIModel/TableUIModel';
 import styled from 'styled-components';
-import {EditingForwardDataPath} from '@foxcel/core';
+import {SerializedDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;
@@ -237,7 +237,7 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
             callbacks,
           } as const;
           return row.isEmpty ? (
-            <MappingTableEmptyRowView {...props} row={row} tableDataPath={model.dataPath} />
+            <MappingTableEmptyRowView {...props} row={row} tableDataContext={model.dataContext} />
           ) : (
             <MappingTableRowView {...props} row={row} />
           );
@@ -315,7 +315,7 @@ MappingTableRowView.displayName = 'MappingTableRowView';
 interface MappingTableEmptyRowViewProps {
   readonly row: MappingTableUIModelEmptyRow;
   readonly rowNumber: number;
-  readonly tableDataPath: EditingForwardDataPath;
+  readonly tableDataContext: SerializedDataModelContext;
   readonly selectionRange: TableRange | undefined;
   readonly isSelectionStart: boolean;
   readonly isSelectionEnd: boolean;
@@ -325,7 +325,7 @@ interface MappingTableEmptyRowViewProps {
 
 const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
   ({
-    tableDataPath,
+    tableDataContext,
     row,
     rowNumber,
     selectionRange,
@@ -358,7 +358,6 @@ const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
           return (
             <TableUIViewCellLayout key={index} selected={isSelected} border={border}>
               {renderTableUIViewCellWithSchema(
-                tableDataPath,
                 row.key,
                 cell.key,
                 cell.schema,
@@ -402,7 +401,7 @@ const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>
       }),
       [callbacks, rowNumber],
     );
-    const removeRow = () => callbacks.onAction({type: 'data', action: {type: 'delete', path: row.dataPath}});
+    const removeRow = () => callbacks.onAction({type: 'data', action: {type: 'delete', dataContext: row.dataContext}});
     return (
       <TableUIViewRow>
         <DanglingIndexCell>

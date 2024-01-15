@@ -36,18 +36,22 @@ export enum DataSchemaType {
   Key,
 }
 
-export type DataSchema =
+export type ConcreteDataSchema =
   | NumberDataSchema
   | BooleanDataSchema
   | StringDataSchema
   | MapDataSchema
   | FixedMapDataSchema
   | ListDataSchema
-  | ConditionalDataSchema
-  | RecursiveDataSchema
   | KeyDataSchema;
 
+export type DataSchema = ConcreteDataSchema | ConditionalDataSchema | RecursiveDataSchema;
+
 export type DataSchemaExcludeRecursive<T = DataSchema> = T extends RecursiveDataSchema ? never : T;
+
+export type DataSchemaExclude<ExcludeType extends DataSchemaType, T = DataSchema> = T extends {t: ExcludeType}
+  ? never
+  : T;
 
 type TypeForType<T, Type> = T extends {t: Type} ? T : never;
 
@@ -124,8 +128,9 @@ export interface ConditionalDataSchema {
   readonly t: DataSchemaType.Conditional;
   readonly contextKey?: never;
   readonly label: string | undefined;
+  readonly defaultItem: DataSchemaExclude<DataSchemaType.Conditional>;
   readonly items: {
-    readonly [key: string]: ConditionalSchemaItem<DataSchema, DataPath>;
+    readonly [key: string]: ConditionalSchemaItem<DataSchemaExclude<DataSchemaType.Conditional>, DataPath>;
   };
   readonly filePath?: readonly string[];
 }
@@ -169,7 +174,7 @@ export class DataSchemaContext {
         if (typeof key === 'string') {
           return this.createFromNext(this.currentSchema.items[key].item);
         } else {
-          return this.pushEmpty();
+          return this.createFromNext(this.currentSchema.defaultItem);
         }
       default:
         return this.pushEmpty();
@@ -255,9 +260,13 @@ export class DataSchemaContext {
     );
   }
 
-  public resolveRecursive(schema: DataSchema): DataSchemaExcludeRecursive;
-  public resolveRecursive(schema: DataSchema | undefined): DataSchemaExcludeRecursive | undefined;
-  public resolveRecursive(schema: DataSchema | undefined): DataSchemaExcludeRecursive | undefined {
+  public resolveRecursive<T extends DataSchema>(schema: T): DataSchemaExclude<DataSchemaType.Recursive, T>;
+  public resolveRecursive<T extends DataSchema>(
+    schema: T | undefined,
+  ): DataSchemaExclude<DataSchemaType.Recursive, T> | undefined;
+  public resolveRecursive<T extends DataSchema>(
+    schema: T | undefined,
+  ): DataSchemaExclude<DataSchemaType.Recursive, T> | undefined {
     if (!schema) {
       return undefined;
     }
@@ -265,9 +274,9 @@ export class DataSchemaContext {
       if (schema.depth > this.path.length) {
         throw new Error('Invalid recursive depth');
       }
-      return this.path[this.path.length - schema.depth];
+      return this.path[this.path.length - schema.depth] as DataSchemaExclude<DataSchemaType.Recursive, T>;
     } else {
-      return schema;
+      return schema as DataSchemaExclude<DataSchemaType.Recursive, T>;
     }
   }
 }
@@ -388,10 +397,18 @@ function parseDataSchemaConfig(
       return {...baseSchema(config, DataSchemaType.String), in: option};
     }
     case 'conditional': {
-      const items = parseConditions(config.items, (key, item) =>
-        parseChildDataSchemaConfig(item, pathConfigMap, filePath, loadedPath),
-      );
-      return {...baseSchema(config, DataSchemaType.Conditional), items};
+      const items = parseConditions(config.items, (key, item) => {
+        const parsed = parseChildDataSchemaConfig(item, pathConfigMap, filePath, loadedPath);
+        if (dataSchemaIsConditional(parsed)) {
+          throw new Error('Conditional内にConditionalのスキーマは定義できない');
+        }
+        return parsed;
+      });
+      const defaultItem = parseChildDataSchemaConfig(config.defaultItem, pathConfigMap, filePath, loadedPath);
+      if (dataSchemaIsConditional(defaultItem)) {
+        throw new Error('Conditional内にConditionalのスキーマは定義できない');
+      }
+      return {...baseSchema(config, DataSchemaType.Conditional), defaultItem, items};
     }
   }
 }
@@ -472,6 +489,10 @@ export function dataSchemaIsNumber(schema: DataSchema | undefined): schema is Nu
 
 export function dataSchemaIsBoolean(schema: DataSchema | undefined): schema is BooleanDataSchema {
   return schema?.t === DataSchemaType.Boolean;
+}
+
+export function dataSchemaIsConditional(schema: DataSchema | undefined): schema is ConditionalDataSchema {
+  return schema?.t === DataSchemaType.Conditional;
 }
 
 function dataSchemaConfigIsReference(configOrReference: DataSchemaConfig | string): configOrReference is string {

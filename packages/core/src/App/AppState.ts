@@ -1,6 +1,5 @@
 import {UIModel} from '../UIModel/UIModelTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {EditingForwardDataPath} from '../DataModel/DataPath';
 import {logDataFocus, logSchemaFocus, UIDataFocusLogNode, UISchemaFocusLogNode} from '../UIModel/UIModelFocus';
 import {applyDataModelAction, DataModelAction} from '../DataModel/DataModelAction';
 import {buildUIModel} from '../UIModel/UIModel';
@@ -9,7 +8,12 @@ import {UISchemaOrRecursive} from '../UIModel/UISchemaTypes';
 import {DataSchemaExcludeRecursive} from '../DataModel/DataSchema';
 import {nullDataModel} from '../DataModel/DataModel';
 import {UISchemaExcludeRecursive} from '../UIModel/UISchema';
-import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
+import {
+  DataModelContext,
+  DataModelContextPathContainer,
+  DataModelRoot,
+  SerializedDataModelContext,
+} from '../DataModel/DataModelContext';
 
 export interface AppState {
   readonly data: DataModel | undefined;
@@ -17,7 +21,7 @@ export interface AppState {
   readonly uiSchema: UISchemaOrRecursive | undefined;
   readonly dataSchema: DataSchemaExcludeRecursive | undefined;
   readonly rootUISchemaContext: UISchemaContext;
-  readonly focus?: EditingForwardDataPath;
+  readonly focus?: SerializedDataModelContext;
   readonly schemaFocusLog?: UISchemaFocusLogNode;
   readonly dataFocusLog?: UIDataFocusLogNode;
   readonly actionHistories: AppActionHistory[];
@@ -30,14 +34,14 @@ export interface AppActionHistory {
   // TODO UIModelをキャッシュしないなら、全量履歴で保存するとデータ量が多くなる。
   //      逆にキャッシュしないなら保存しておく必要がないはずなので、キャッシュ機能を消す場合はこの項目も消す
   readonly uiModel: UIModel | undefined;
-  readonly focus?: EditingForwardDataPath;
+  readonly focus?: SerializedDataModelContext;
   readonly schemaFocusLog?: UISchemaFocusLogNode;
   readonly dataFocusLog?: UIDataFocusLogNode;
 }
 
 export interface AppFocusAction {
   readonly type: 'focus';
-  readonly path: EditingForwardDataPath;
+  readonly dataContext: SerializedDataModelContext;
 }
 
 export interface AppInitializeAction {
@@ -82,10 +86,8 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
       const rootSchemaContext = UISchemaContext.createRootContext(action.uiSchema);
       const uiModel = buildUIModel(
         rootSchemaContext,
-        data,
         undefined,
-        DataModelContext.createRoot({model: data, schema: action.uiSchema.dataSchema}),
-        {model: data, schema: action.dataSchema},
+        DataModelContext.createRoot({model: data, schema: action.uiSchema.dataSchema}, false),
         undefined,
         undefined,
         undefined,
@@ -112,17 +114,15 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
       const root: DataModelRoot = {model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema};
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
-        state.data,
         state.uiModel,
-        DataModelContext.createRoot(root),
-        root,
-        action.path,
+        DataModelContext.createRoot(root, false),
+        DataModelContextPathContainer.create(action.dataContext),
         state.dataFocusLog,
         state.schemaFocusLog,
       );
       return {
         ...state,
-        focus: action.path,
+        focus: action.dataContext,
         uiModel,
         schemaFocusLog: logSchemaFocus(uiModel, state.rootUISchemaContext, state.schemaFocusLog),
         dataFocusLog: logDataFocus(uiModel, state.rootUISchemaContext, state.dataFocusLog),
@@ -146,10 +146,8 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
       const root = {model: data, schema: state.rootUISchemaContext.rootSchema.dataSchema};
       const uiModel = buildUIModel(
         state.rootUISchemaContext,
-        data,
         state.uiModel,
-        DataModelContext.createRoot(root),
-        root,
+        DataModelContext.createRoot(root, false),
         focus,
         state.dataFocusLog,
         state.schemaFocusLog,
