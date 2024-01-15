@@ -9,7 +9,7 @@ import {
   ForwardDataPathComponent,
 } from '../DataModel/DataPath';
 import {DataModel} from '../DataModel/DataModelTypes';
-import {dataModelIsMap, getMapDataIndexForPointer, getMapKeyAtIndex} from '../DataModel/DataModel';
+import {dataModelIsMap, getMapDataIndexForPointer, getMapKeyAtIndex, PathContainer} from '../DataModel/DataModel';
 import {validIndexOrUndefined} from '../common/utils';
 
 export class UISchemaContext {
@@ -60,51 +60,8 @@ export class UISchemaContext {
     }
   }
 
-  public contentIndexForDataPathComponent(
-    dataPathComponent: EditingForwardDataPathComponent | undefined,
-    currentData: DataModel | undefined,
-  ): number | undefined {
-    if (dataPathComponent === undefined) {
-      return undefined;
-    }
-    // TODO keyFlattenの考慮
-    let contents: readonly UISchemaContext[];
-    switch (this.currentSchema.type) {
-      case 'tab':
-      case 'form':
-        contents = this.contents();
-        break;
-
-      default:
-        return undefined;
-    }
-    if (dataPathComponentIsKey(dataPathComponent)) {
-      return validIndexOrUndefined(
-        contents.findIndex(({currentSchema: {key}}) => key !== undefined && uiSchemaKeyIsParentKey(key)),
-      );
-    }
-
-    let key: string;
-    if (dataPathComponentIsPointer(dataPathComponent)) {
-      if (currentData && dataModelIsMap(currentData)) {
-        const index = getMapDataIndexForPointer(currentData, dataPathComponent);
-        if (index === undefined) {
-          return undefined;
-        }
-        const key_ = getMapKeyAtIndex(currentData, index);
-        if (typeof key_ !== 'string') {
-          return undefined;
-        }
-        key = key_;
-      } else {
-        return undefined;
-      }
-    } else if (dataPathComponentIsMapKeyLike(dataPathComponent)) {
-      key = dataPathComponentToMapKey(dataPathComponent);
-    } else {
-      return undefined;
-    }
-    return validIndexOrUndefined(contents.findIndex(({currentSchema: {key: contentKey}}) => contentKey === key));
+  public contentsIndexForKey(key: string | null | undefined): number | undefined {
+    return validIndexOrUndefined(this.contents().findIndex(({currentSchema: {key: contentKey}}) => contentKey === key));
   }
 
   private _contents?: readonly UISchemaContext[];

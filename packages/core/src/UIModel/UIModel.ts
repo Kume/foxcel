@@ -103,8 +103,8 @@ export function buildUIModel(
   switch (currentSchema.type) {
     case 'tab': {
       const dataModel = dataContext.currentModel;
-      const currentContentIndex =
-        (dataModelIsList(dataModel) ? dataPathFocus?.listChild(dataModel)?.[1] : undefined) ?? schemaFocusLog?.a ?? 0;
+      const focusedKey = dataModelIsMap(dataModel) ? dataPathFocus?.mapChild(dataModel)?.[1] : undefined;
+      const currentContentIndex = uiSchemaContext.contentsIndexForKey(focusedKey) ?? schemaFocusLog?.a ?? 0;
       const childContext = uiSchemaContext.digForIndex(currentContentIndex);
       const mapDataModelOrUndefined = dataModelIsMap(dataModel) ? dataModel : undefined;
       const nextDataModelContext = getMapChildContextForFlattenable(childContext, dataContext);
@@ -441,24 +441,31 @@ export function buildUIModel(
             };
           });
 
-          let currentIndex =
+          let currentDataIndex =
             dataPathFocus?.mapChild(mapDataModel)?.[2] ??
             (dataFocusLog?.a && getMapDataIndexForPointer(mapDataModel, dataFocusLog.a)) ??
             0;
-          const pointer = getMapDataPointerAtIndex(mapDataModel, currentIndex);
-          const key = getMapKeyAtIndex(mapDataModel, currentIndex);
+          const pointer = getMapDataPointerAtIndex(mapDataModel, currentDataIndex);
+          const key = getMapKeyAtIndex(mapDataModel, currentDataIndex);
           if (pointer) {
             const content = buildUIModel(
               contentContext,
               oldModel?.type === 'contentList' && dataPointerIdEquals(pointer, oldModel.currentPointer)
                 ? oldModel.content
                 : undefined,
-              dataContext.pushMapIndex(currentIndex, key),
+              dataContext.pushMapIndex(currentDataIndex, key),
               dataPathFocus?.next(),
               dataFocusLog?.c[getIdFromDataPointer(pointer)],
               schemaFocusLog,
             );
-            return {...modelBase, data: mapDataModel, indexes, currentIndex, currentPointer: pointer, content};
+            return {
+              ...modelBase,
+              data: mapDataModel,
+              indexes,
+              currentIndex: currentDataIndex,
+              currentPointer: pointer,
+              content,
+            };
           }
         } else {
           indexes = [];
@@ -481,23 +488,30 @@ export function buildUIModel(
             };
           });
 
-          let currentIndex =
+          let currentDataIndex =
             dataPathFocus?.listChild(listDataModel)?.[1] ??
             (dataFocusLog?.a && getListDataIndexForPointer(listDataModel, dataFocusLog.a)) ??
             0;
-          const pointer = getListDataPointerAt(listDataModel, currentIndex);
+          const pointer = getListDataPointerAt(listDataModel, currentDataIndex);
           if (pointer) {
             const content = buildUIModel(
               contentContext,
               oldModel?.type === 'contentList' && dataPointerIdEquals(pointer, oldModel.currentPointer)
                 ? oldModel.content
                 : undefined,
-              dataContext.pushListIndex(currentIndex),
+              dataContext.pushListIndex(currentDataIndex),
               dataPathFocus?.next(),
               dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
               schemaFocusLog,
             );
-            return {...modelBase, data: listDataModel, indexes, currentIndex, currentPointer: pointer, content};
+            return {
+              ...modelBase,
+              data: listDataModel,
+              indexes,
+              currentIndex: currentDataIndex,
+              currentPointer: pointer,
+              content,
+            };
           }
         } else {
           indexes = [];
