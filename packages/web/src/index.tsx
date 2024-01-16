@@ -15,10 +15,14 @@ import {unknownToDataModel} from '@foxcel/core';
 import {simpleRecursiveSampleConfig} from '@foxcel/core/dist/samples';
 import ObjectDataStorage from '@foxcel/core/dist/Storage/ObjectDataStorage';
 
+const loadedItemKey = 'DEBUG_loadedItem';
+
 async function loadFile_(): Promise<AppInitializeAction> {
   const storage = new NativeFileSystemDataStorage();
   await storage.init();
-  const {uiSchema, dataSchema, data} = await loadFile(storage, [storage.rootSchemaFiles[0]], new YamlDataFormatter());
+  const loaded = await loadFile(storage, [storage.rootSchemaFiles[0]], new YamlDataFormatter());
+  window.localStorage.setItem(loadedItemKey, JSON.stringify(loaded));
+  const {uiSchema, dataSchema, data} = loaded;
   return {type: 'init', uiSchema, dataSchema, data};
 }
 
@@ -207,6 +211,7 @@ const sampleDataConfigKey = 'sampleDataConfig';
 const App: React.FC = () => {
   const [loaded, setLoaded] = useState<LoadedData>();
   const [selectedSample, setSelectedSample] = useState<string>();
+  const [lastLoaded, setLastLoaded] = useState<LoadedData>();
 
   const selectSample = useCallback((selected: string) => {
     setSelectedSample((prev) => {
@@ -233,6 +238,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const currentData = window.localStorage.getItem(sampleDataConfigKey);
     selectSample(currentData ?? '');
+
+    const lastLoaded = window.localStorage.getItem(loadedItemKey);
+    if (lastLoaded) {
+      setLastLoaded(JSON.parse(lastLoaded));
+    }
   }, [selectSample]);
 
   return (
@@ -250,6 +260,7 @@ const App: React.FC = () => {
               );
             })}
           </select>
+          {lastLoaded && <button onClick={() => setLoaded(lastLoaded)}>リロード</button>}
         </label>
       </div>
       <RootView loadFile={loadFile_} loaded={loaded} />
