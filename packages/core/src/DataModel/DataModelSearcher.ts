@@ -3,7 +3,6 @@ import {
   DataPath,
   DataPathComponentType,
   dataPathLength,
-  dataPathReverseCount,
   headDataPathComponent,
   MultiDataPath,
   MultiDataPathComponent,
@@ -162,6 +161,6 @@ export function findDataModel(
   params: DataModelSearchParams,
   context: DataModelContextWithoutSchema,
 ): DataModelSearchSingleResult | undefined {
-  const startContext = context.pop(dataPathReverseCount(params.path));
+  const startContext = context.popToDataPathStart(params.path);
   return findDataModelImpl(params.matcher, params.path, startContext, context);
 }

@@ -409,7 +409,3 @@ export function forwardDataPathEquals(
   }
   return true;
 }
-
-export function dataPathReverseCount(path: AnyDataPath): number {
-  return path.r ?? 0;
-}

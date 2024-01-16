@@ -12,7 +12,6 @@ import {
   dataPathComponentToMapKey,
   DataPathComponentType,
   dataPathLength,
-  dataPathReverseCount,
   EditingForwardDataPath,
   EditingForwardDataPathComponent,
   headDataPathComponent,
@@ -363,6 +362,6 @@ export function collectDataModel(
   path: MultiDataPath,
   context: DataModelContextWithoutSchema,
 ): DataModelCollectionItem[] {
-  const startContext = context.pop(dataPathReverseCount(path));
+  const startContext = context.popToDataPathStart(path);
   return collectDataModelImpl(path, startContext, context);
 }
