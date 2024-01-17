@@ -63,14 +63,7 @@ interface KeyTextUIModel {
   readonly type: 'text';
   readonly isKey: true;
   readonly schema?: undefined;
-
   readonly dataContext: SerializedDataModelContext;
-
-  /**
-   * 自身のキーが指す先のポインター
-   * キーを編集するためのアクションの発行に必要な情報
-   */
-  readonly selfPointer: DataPointer;
   readonly value: string | null;
 }
 

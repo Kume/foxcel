@@ -18,12 +18,7 @@ export function textUIModelSetText(model: TextUIModel, value: string | null): Ap
   return {
     type: 'data',
     action: model.isKey
-      ? {
-          type: 'setKey',
-          dataContext: model.dataContext,
-          mapPointer: model.selfPointer,
-          key: formatInput(value) || null,
-        }
+      ? {type: 'setKey', dataContext: model.dataContext, key: formatInput(value) || null}
       : {type: 'set', dataContext: model.dataContext, data: unknownToDataModel(formatInput(value))},
   };
 }

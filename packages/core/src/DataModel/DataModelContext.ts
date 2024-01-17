@@ -21,7 +21,7 @@ import {
   stringToDataModel,
 } from './DataModel';
 import {AnyDataPath} from './DataPath';
-import {collectDataModel, getDataModelBySinglePath} from './DataModelCollector';
+import {getDataModelBySinglePath} from './DataModelCollector';
 
 export interface DataModelContextListPathComponent {
   readonly type: 'list';
@@ -385,7 +385,7 @@ export class DataModelContext {
       this.schemaContext.dig({t: 'key'}),
       this.path,
       this.keys,
-      undefined,
+      this.parentKeyDataModel,
       this.root,
       this.autoResolveConditional,
     );

@@ -7,7 +7,7 @@ import {
   UIModel,
 } from './UIModelTypes';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
-import {DataPointer, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
+import {ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {UISchemaContext} from './UISchemaContext';
 import {
   dataModelIsBoolean,
@@ -39,7 +39,6 @@ import {fillTemplateLine} from '../DataModel/TemplateEngine';
 import {DataModelContext} from '../DataModel/DataModelContext';
 import {selectUIModelGetCurrent} from './SelectUIModel';
 import {getDataModelBySinglePath} from '../DataModel/DataModelCollector';
-import {UISchema} from './UISchemaTypes';
 
 function getMapChildContextForFlattenable(
   childContext: UISchemaContext,
@@ -186,21 +185,19 @@ export function buildUIModel(
               data: rowMapDataOrUndefined,
               dataFocusLog: rowDataFocusLog,
               cells: uiSchemaContext.contents().map((contentContext, index) => {
-                if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
-                  return buildUIModelForParentKey(contentContext.currentSchema, dataContext, pointer, key);
-                } else {
-                  if (contentContext.currentSchema.key === undefined) {
-                    throw new Error(`Current schema must have key`);
-                  }
-                  return buildUIModel(
-                    contentContext,
-                    oldRow?.cells[index],
-                    rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
-                    rowDataPathFocus?.next(),
-                    rowDataFocusLog?.c[index],
-                    schemaFocusLog?.c[index],
-                  );
+                if (contentContext.currentSchema.key === undefined) {
+                  throw new Error(`Current schema must have key`);
                 }
+                return buildUIModel(
+                  contentContext,
+                  oldRow?.cells[index],
+                  uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                    ? rowDataContext.pushIsParentKey()
+                    : rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
+                  rowDataPathFocus?.next(),
+                  rowDataFocusLog?.c[index],
+                  schemaFocusLog?.c[index],
+                );
               }),
             };
           });
@@ -224,21 +221,19 @@ export function buildUIModel(
               data: rowMapDataOrUndefined,
               dataFocusLog: rowDataFocusLog,
               cells: uiSchemaContext.contents().map((contentContext, index) => {
-                if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
-                  return buildUIModelForParentKey(contentContext.currentSchema, dataContext, pointer, index.toString());
-                } else {
-                  if (contentContext.currentSchema.key === undefined) {
-                    throw new Error(`Current schema must have key`);
-                  }
-                  return buildUIModel(
-                    contentContext,
-                    oldRow?.cells[index],
-                    rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
-                    rowDataPathFocus?.next(),
-                    rowDataFocusLog?.c[index],
-                    schemaFocusLog?.c[index],
-                  );
+                if (contentContext.currentSchema.key === undefined) {
+                  throw new Error(`Current schema must have key`);
                 }
+                return buildUIModel(
+                  contentContext,
+                  oldRow?.cells[index],
+                  uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
+                    ? rowDataContext.pushIsParentKey()
+                    : rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
+                  rowDataPathFocus?.next(),
+                  rowDataFocusLog?.c[index],
+                  schemaFocusLog?.c[index],
+                );
               }),
             };
           });
@@ -315,22 +310,21 @@ export function buildUIModel(
               data: rowMapDataOrUndefined,
               dataFocusLog: rowDataFocusLog,
               cells: uiSchemaContext.contents().map((contentContext, index) => {
-                if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
-                  return buildUIModelForParentKey(contentContext.currentSchema, dataContext, pointer, key);
-                } else {
-                  if (contentContext.currentSchema.key === undefined) {
-                    // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
-                    throw new Error('mapping tableの要素はkey指定を省略不可');
-                  }
-                  return buildUIModel(
-                    contentContext,
-                    undefined,
-                    rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
-                    rowDataPathFocus?.next(),
-                    rowDataFocusLog?.c[index],
-                    schemaFocusLog?.c[index],
-                  );
+                if (contentContext.currentSchema.key === undefined) {
+                  // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
+                  throw new Error('mapping tableの要素はkey指定を省略不可');
+                } else if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
+                  // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
+                  throw new Error('mapping tableでkeyを編集することは不可');
                 }
+                return buildUIModel(
+                  contentContext,
+                  undefined,
+                  rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
+                  rowDataPathFocus?.next(),
+                  rowDataFocusLog?.c[index],
+                  schemaFocusLog?.c[index],
+                );
               }),
             });
           }
@@ -351,22 +345,21 @@ export function buildUIModel(
               data: rowMapDataOrUndefined,
               dataFocusLog: rowDataFocusLog,
               cells: uiSchemaContext.contents().map((contentContext, index) => {
-                if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
-                  return buildUIModelForParentKey(contentContext.currentSchema, dataContext, pointer, key);
-                } else {
-                  if (contentContext.currentSchema.key === undefined) {
-                    // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
-                    throw new Error('mapping tableの要素はkey指定を省略不可');
-                  }
-                  return buildUIModel(
-                    contentContext,
-                    undefined,
-                    rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
-                    rowDataPathFocus?.next(),
-                    rowDataFocusLog?.c[index],
-                    schemaFocusLog?.c[index],
-                  );
+                if (contentContext.currentSchema.key === undefined) {
+                  // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
+                  throw new Error('mapping tableの要素はkey指定を省略不可');
+                } else if (uiSchemaKeyIsParentKey(contentContext.currentSchema.key)) {
+                  // TODO エラーハンドリング (schema生成時のバリデーションが十分であればこれは不要かも)
+                  throw new Error('mapping tableでkeyを編集することは不可');
                 }
+                return buildUIModel(
+                  contentContext,
+                  undefined,
+                  rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
+                  rowDataPathFocus?.next(),
+                  rowDataFocusLog?.c[index],
+                  schemaFocusLog?.c[index],
+                );
               }),
             });
           }
@@ -521,18 +514,27 @@ export function buildUIModel(
     }
 
     case 'text': {
-      const stringDataModel = dataModelIsString(dataContext.currentModel) ? dataContext.currentModel : undefined;
-      const value = stringDataModel !== undefined ? stringDataModelToString(stringDataModel) : undefined;
-      return {
-        type: 'text',
-        schema: currentSchema,
-        data: stringDataModel,
-        dataContext: dataContext.serialize(),
-        dataFocusLog,
-        schemaFocusLog,
-        // TODO dataModelをプロパティとして持つなら、value不要っぽい
-        value: value || '',
-      };
+      if (uiSchemaKeyIsParentKey(currentSchema.key)) {
+        return {
+          type: 'text',
+          isKey: true,
+          dataContext: dataContext.pushIsParentKey().serialize(),
+          value: dataContext.parentKeyDataModel ?? null,
+        };
+      } else {
+        const stringDataModel = dataModelIsString(dataContext.currentModel) ? dataContext.currentModel : undefined;
+        const value = stringDataModel !== undefined ? stringDataModelToString(stringDataModel) : undefined;
+        return {
+          type: 'text',
+          schema: currentSchema,
+          data: stringDataModel,
+          dataContext: dataContext.serialize(),
+          dataFocusLog,
+          schemaFocusLog,
+          // TODO dataModelをプロパティとして持つなら、value不要っぽい
+          value: value || '',
+        };
+      }
     }
 
     case 'number': {
@@ -599,25 +601,5 @@ export function buildUIModel(
         schemaFocusLog,
       );
     }
-  }
-}
-
-export function buildUIModelForParentKey(
-  schema: UISchema,
-  parentDataContext: DataModelContext,
-  selfPointer: DataPointer,
-  value: string | null,
-): UIModel {
-  switch (schema.type) {
-    case 'text':
-      return {
-        type: 'text',
-        isKey: true,
-        dataContext: parentDataContext.pushIsParentKey().serialize(),
-        selfPointer,
-        value,
-      };
-    default:
-      throw new Error(`Invalid schema for parent key ui. ${schema.type}`);
   }
 }

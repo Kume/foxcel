@@ -284,7 +284,6 @@ export function setToDataModel(
 
 interface SetKeyDataParams {
   readonly key: string | null;
-  readonly mapPointer: DataPointer;
 }
 
 export function setKeyToDataModel(
@@ -295,18 +294,21 @@ export function setKeyToDataModel(
   context.assertAutoResolveConditional(true);
   const currentModel = context.currentModel;
   if (!path) {
-    if (!dataModelIsMapOrList(currentModel)) {
+    return undefined;
+  }
+  if (!path.next()) {
+    if (!dataModelIsMap(currentModel)) {
       return undefined;
     }
-    if (mapOrListDataModelIsMap(currentModel)) {
-      const index = getMapDataIndexForPointer(currentModel, params.mapPointer);
-      const prevKey = index !== undefined ? getMapKeyAtIndex(currentModel, index) : undefined;
-      return index !== undefined && prevKey !== params.key
-        ? forceSetMapKeyForIndex(currentModel, index, params.key)
-        : undefined;
-    } else {
+    const child = path.mapChild(currentModel);
+    if (!child) {
       return undefined;
     }
+    const [, , index] = child;
+    const prevKey = index !== undefined ? getMapKeyAtIndex(currentModel, index) : undefined;
+    return index !== undefined && prevKey !== params.key
+      ? forceSetMapKeyForIndex(currentModel, index, params.key)
+      : undefined;
   } else {
     return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
       setKeyToDataModel(nextPath, childContext, params),

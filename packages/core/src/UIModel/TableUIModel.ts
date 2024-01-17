@@ -295,7 +295,7 @@ export function tableUIModelDelete(model: TableUIModel, selection: TableCellRang
       if (cell.isKey) {
         actions.push({
           type: 'data',
-          action: {type: 'setKey', dataContext: cell.dataContext, mapPointer: cell.selfPointer, key: null},
+          action: {type: 'setKey', dataContext: cell.dataContext, key: null},
         });
       } else {
         actions.push({type: 'data', action: {type: 'delete', dataContext: cell.dataContext}});

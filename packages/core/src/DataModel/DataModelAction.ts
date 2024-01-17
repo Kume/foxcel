@@ -24,7 +24,6 @@ export interface SetKeyDataModelAction {
   readonly type: 'setKey';
   readonly dataContext: SerializedDataModelContext;
   readonly key: string | null;
-  readonly mapPointer: DataPointer;
 }
 
 export interface InsertDataModelAction {
@@ -58,10 +57,7 @@ export function applyDataModelAction(root: DataModelRoot, action: DataModelActio
       return setToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {model: action.data});
 
     case 'setKey':
-      return setKeyToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
-        key: action.key,
-        mapPointer: action.mapPointer,
-      });
+      return setKeyToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {key: action.key});
 
     case 'insert':
       return insertToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
