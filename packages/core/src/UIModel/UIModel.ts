@@ -20,10 +20,9 @@ import {
   getIdFromDataPointer,
   getListDataIndexForPointer,
   getListDataPointerAt,
-  getMapDataAtPointer,
-  getMapDataIndexAt,
   getMapDataIndexForPointer,
   getMapDataPointerAtIndex,
+  getMapItemAt,
   getMapKeyAtIndex,
   listDataSize,
   mapDataSize,
@@ -34,28 +33,44 @@ import {
 } from '../DataModel/DataModel';
 import {dataSchemaIsMap, DataSchemaType} from '../DataModel/DataSchema';
 import {assertUISchemaKeyIsString} from './DataPathContext';
-import {stringUISchemaKeyToString, uiSchemaKeyIsParentKey} from './UISchema';
+import {stringUISchemaKeyToString, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
 import {fillTemplateLine} from '../DataModel/TemplateEngine';
 import {DataModelContext} from '../DataModel/DataModelContext';
 import {selectUIModelGetCurrent} from './SelectUIModel';
 import {getDataModelBySinglePath} from '../DataModel/DataModelCollector';
 
-function getMapChildContextForFlattenable(
+function getMapChildForFlattenable(
+  map: MapDataModel | undefined,
   childContext: UISchemaContext,
   dataContext: DataModelContext,
-): DataModelContext {
+  focus: PathContainer | undefined,
+): [context: DataModelContext, focus: PathContainer | undefined] {
   if (uiSchemaKeyIsParentKey(childContext.currentSchema.key)) {
-    return dataContext.pushIsParentKey();
+    return [dataContext.pushIsParentKey(), undefined]; // TODO keyに対してフォーカスがあたっていることを表現する方法を用意する
   } else {
     if (childContext.currentSchema.keyFlatten) {
-      return dataContext;
+      return [dataContext, focus];
     } else {
       if (childContext.currentSchema.key === undefined) {
         throw new Error(`Current schema must have key`);
       }
-      return dataContext.pushMapIndexOrKey(stringUISchemaKeyToString(childContext.currentSchema.key));
+      return [
+        dataContext.pushMapIndexOrKey(stringUISchemaKeyToString(childContext.currentSchema.key)),
+        map !== undefined ? focus?.nextForMapKey(map, childContext.currentSchema.key) : undefined,
+      ];
     }
   }
+}
+
+function nextFocusForMapKey(
+  focus: PathContainer | undefined,
+  map: MapDataModel | undefined,
+  key: UISchemaKey,
+): PathContainer | undefined {
+  if (uiSchemaKeyIsParentKey(key) || map === undefined) {
+    return undefined;
+  }
+  return focus?.nextForMapKey(map, key);
 }
 
 export function buildUIModel(
@@ -102,11 +117,16 @@ export function buildUIModel(
   switch (currentSchema.type) {
     case 'tab': {
       const dataModel = dataContext.currentModel;
-      const focusedKey = dataModelIsMap(dataModel) ? dataPathFocus?.mapChild(dataModel)?.[1] : undefined;
+      const focusedKey = dataPathFocus?.mapChild(dataModel)?.[1];
       const currentContentIndex = uiSchemaContext.contentsIndexForKey(focusedKey) ?? schemaFocusLog?.a ?? 0;
       const childContext = uiSchemaContext.digForIndex(currentContentIndex);
       const mapDataModelOrUndefined = dataModelIsMap(dataModel) ? dataModel : undefined;
-      const nextDataModelContext = getMapChildContextForFlattenable(childContext, dataContext);
+      const [nextDataModelContext, nextFocus] = getMapChildForFlattenable(
+        mapDataModelOrUndefined,
+        childContext,
+        dataContext,
+        dataPathFocus,
+      );
       return {
         type: 'tab',
         schema: currentSchema,
@@ -125,7 +145,7 @@ export function buildUIModel(
             ? oldModel.currentChild
             : undefined,
           nextDataModelContext,
-          childContext.currentSchema.keyFlatten ? dataPathFocus : dataPathFocus?.next(),
+          nextFocus,
           dataFocusLog?.c[currentContentIndex],
           schemaFocusLog?.c[currentContentIndex],
         ),
@@ -142,16 +162,19 @@ export function buildUIModel(
         data: mapDataModelOrUndefined,
         dataFocusLog,
         schemaFocusLog,
-        // contentsにはDataModelを渡してコールバックの引数にdataPointerを渡せる様にすべきか？
-        // => selfをDataPointerにすべきかと思って上記を書いたけど、そんなことはないか。
         contents: uiSchemaContext.contents().map((contentContext, index) => {
-          const nextDataModelContext = getMapChildContextForFlattenable(contentContext, dataContext);
+          const [nextDataModelContext, nextFocus] = getMapChildForFlattenable(
+            mapDataModelOrUndefined,
+            contentContext,
+            dataContext,
+            dataPathFocus,
+          );
           return {
             model: buildUIModel(
               contentContext,
               oldModel?.type === 'form' ? oldModel.contents[index].model : undefined,
               nextDataModelContext,
-              contentContext.currentSchema.keyFlatten ? dataPathFocus : dataPathFocus?.next(),
+              nextFocus,
               dataFocusLog?.c[index],
               schemaFocusLog?.c[index],
             ),
@@ -175,7 +198,7 @@ export function buildUIModel(
             const id = getIdFromDataPointer(pointer);
             const oldRow = oldRowsById.get(id);
             const rowDataFocusLog = dataFocusLog?.c[id];
-            const rowDataPathFocus = dataPathFocus?.next();
+            const rowDataPathFocus = key === null ? undefined : dataPathFocus?.nextForMapKey(dataModel, key);
 
             const rowDataContext = dataContext.pushMapIndex(index, key);
             return {
@@ -194,7 +217,7 @@ export function buildUIModel(
                   uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
                     ? rowDataContext.pushIsParentKey()
                     : rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
-                  rowDataPathFocus?.next(),
+                  nextFocusForMapKey(rowDataPathFocus, rowMapDataOrUndefined, contentContext.currentSchema.key),
                   rowDataFocusLog?.c[index],
                   schemaFocusLog?.c[index],
                 );
@@ -212,7 +235,7 @@ export function buildUIModel(
             const id = getIdFromDataPointer(pointer);
             const oldRow = oldRowsById.get(id);
             const rowDataFocusLog = dataFocusLog?.c[id];
-            const rowDataPathFocus = dataPathFocus?.next();
+            const rowDataPathFocus = dataPathFocus?.nextForListIndex(index);
             const rowDataContext = dataContext.pushListIndex(index);
             return {
               pointer,
@@ -230,7 +253,7 @@ export function buildUIModel(
                   uiSchemaKeyIsParentKey(contentContext.currentSchema.key)
                     ? rowDataContext.pushIsParentKey()
                     : rowDataContext.pushMapIndexOrKey(stringUISchemaKeyToString(contentContext.currentSchema.key)),
-                  rowDataPathFocus?.next(),
+                  nextFocusForMapKey(rowDataPathFocus, rowMapDataOrUndefined, contentContext.currentSchema.key),
                   rowDataFocusLog?.c[index],
                   schemaFocusLog?.c[index],
                 );
@@ -268,8 +291,8 @@ export function buildUIModel(
             }
             mappedKeys.add(key);
 
-            const rowMapDataIndex = getMapDataIndexAt(mapOrUndefined, key);
-            if (rowMapDataIndex === undefined) {
+            const rowMapItem = getMapItemAt(mapOrUndefined, key);
+            if (!rowMapItem) {
               const rowDataContext = dataContext.pushMapKey(key);
               rows.push({
                 isEmpty: true,
@@ -294,14 +317,11 @@ export function buildUIModel(
               continue;
             }
 
+            const [rowData, pointer, , rowMapDataIndex] = rowMapItem;
             const rowDataContext = dataContext.pushMapIndex(rowMapDataIndex, key);
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- findMapDataIndexOfKeyで手に入れたindexなのでpointerは必ず取得できる
-            const pointer = getMapDataPointerAtIndex(mapOrUndefined, rowMapDataIndex)!;
-            const rowData = getMapDataAtPointer(mapOrUndefined, pointer);
             const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
-            const id = getIdFromDataPointer(pointer);
-            const rowDataFocusLog = dataFocusLog?.c[id];
-            const rowDataPathFocus = dataPathFocus?.next();
+            const rowDataFocusLog = dataFocusLog?.c[getIdFromDataPointer(pointer)];
+            const rowDataPathFocus = dataPathFocus?.nextForMapKey(mapOrUndefined, key);
 
             rows.push({
               pointer,
@@ -321,7 +341,7 @@ export function buildUIModel(
                   contentContext,
                   undefined,
                   rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
-                  rowDataPathFocus?.next(),
+                  nextFocusForMapKey(rowDataPathFocus, rowMapDataOrUndefined, contentContext.currentSchema.key),
                   rowDataFocusLog?.c[index],
                   schemaFocusLog?.c[index],
                 );
@@ -335,7 +355,7 @@ export function buildUIModel(
             const rowMapDataOrUndefined = dataModelIsMap(rowData) ? rowData : undefined;
             const id = getIdFromDataPointer(pointer);
             const rowDataFocusLog = dataFocusLog?.c[id];
-            const rowDataPathFocus = dataPathFocus?.next();
+            const rowDataPathFocus = dataPathFocus?.nextForMapKey(mapOrUndefined, key);
             const rowDataContext = dataContext.pushMapIndex(index, key);
 
             danglingRows.push({
@@ -356,7 +376,7 @@ export function buildUIModel(
                   contentContext,
                   undefined,
                   rowDataContext.pushMapIndexOrKey(contentContext.currentSchema.key),
-                  rowDataPathFocus?.next(),
+                  nextFocusForMapKey(rowDataPathFocus, rowMapDataOrUndefined, contentContext.currentSchema.key),
                   rowDataFocusLog?.c[index],
                   schemaFocusLog?.c[index],
                 );
@@ -434,7 +454,7 @@ export function buildUIModel(
             };
           });
 
-          let currentDataIndex =
+          const currentDataIndex =
             dataPathFocus?.mapChild(mapDataModel)?.[2] ??
             (dataFocusLog?.a && getMapDataIndexForPointer(mapDataModel, dataFocusLog.a)) ??
             0;
@@ -447,7 +467,7 @@ export function buildUIModel(
                 ? oldModel.content
                 : undefined,
               dataContext.pushMapIndex(currentDataIndex, key),
-              dataPathFocus?.next(),
+              key === null ? undefined : dataPathFocus?.nextForMapKey(mapDataModel, key),
               dataFocusLog?.c[getIdFromDataPointer(pointer)],
               schemaFocusLog,
             );
@@ -481,7 +501,7 @@ export function buildUIModel(
             };
           });
 
-          let currentDataIndex =
+          const currentDataIndex =
             dataPathFocus?.listChild(listDataModel)?.[1] ??
             (dataFocusLog?.a && getListDataIndexForPointer(listDataModel, dataFocusLog.a)) ??
             0;
@@ -493,7 +513,7 @@ export function buildUIModel(
                 ? oldModel.content
                 : undefined,
               dataContext.pushListIndex(currentDataIndex),
-              dataPathFocus?.next(),
+              dataPathFocus?.nextForListIndex(currentDataIndex),
               dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
               schemaFocusLog,
             );

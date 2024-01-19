@@ -325,8 +325,10 @@ export type PathContainerMapChild =
 
 export interface PathContainer {
   next(): PathContainer | undefined;
-  listChild(list: ListDataModel): [model: DataModel, index: number] | undefined;
-  mapChild(map: MapDataModel): PathContainerMapChild;
+  nextForListIndex(index: number): PathContainer | undefined;
+  nextForMapKey(map: MapDataModel, key: string): PathContainer | undefined;
+  listChild(list: DataModel | undefined): [model: DataModel, index: number] | undefined;
+  mapChild(map: DataModel | undefined): PathContainerMapChild;
 }
 
 interface InsertDataParams {

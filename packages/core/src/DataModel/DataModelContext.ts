@@ -81,7 +81,29 @@ export class DataModelContextPathContainer implements PathContainer {
     return this.isLast ? undefined : new DataModelContextPathContainer(this.path, this.index + 1);
   }
 
-  public listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
+  public nextForMapKey(map: MapDataModel, key: string): DataModelContextPathContainer | undefined {
+    const currentPathComponent = this.path[this.index];
+    switch (currentPathComponent.type) {
+      case 'map_k':
+        return currentPathComponent.key === key ? this.next() : undefined;
+      case 'map_i': {
+        const item = getMapItemAt(map, key);
+        return item && item[2] === key ? this.next() : undefined;
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  public nextForListIndex(index: number): DataModelContextPathContainer | undefined {
+    const currentPathComponent = this.path[this.index];
+    return currentPathComponent?.type === 'list' && currentPathComponent.index === index ? this.next() : undefined;
+  }
+
+  public listChild(list: DataModel): [model: DataModel, index: number] | undefined {
+    if (!dataModelIsList(list)) {
+      return undefined;
+    }
     const currentPathComponent = this.path[this.index];
     if (currentPathComponent?.type !== 'list') {
       return undefined;
@@ -90,13 +112,13 @@ export class DataModelContextPathContainer implements PathContainer {
     return model === undefined ? undefined : [model, currentPathComponent.index];
   }
 
-  public mapChild(map: MapDataModel): PathContainerMapChild {
+  public mapChild(map: DataModel): PathContainerMapChild {
     const currentPathComponent = this.path[this.index];
     switch (currentPathComponent?.type) {
       case 'list':
         return undefined;
       case 'map_k': {
-        const item = getMapItemAt(map, currentPathComponent.key);
+        const item = dataModelIsMap(map) && getMapItemAt(map, currentPathComponent.key);
         if (!item) {
           return [undefined, currentPathComponent.key, undefined];
         }
@@ -104,15 +126,13 @@ export class DataModelContextPathContainer implements PathContainer {
         return [model, currentPathComponent.key, index];
       }
       case 'map_i': {
-        const item = getMapItemAtIndex(map, currentPathComponent.index);
+        const item = dataModelIsMap(map) && getMapItemAtIndex(map, currentPathComponent.index);
         if (!item) {
           return currentPathComponent.key === null ? undefined : [undefined, currentPathComponent.key, undefined];
         }
         const [model, , key, index] = item;
         return [model, key, index];
       }
-      default:
-        return undefined;
     }
   }
 }
