@@ -17,10 +17,8 @@ describe('Unit tests for buildUIModel', () => {
     const root = {model: fixture.data, schema: dataSchema};
     const uiModel = buildUIModel(
       UISchemaContext.createRootContext(uiSchema),
-      fixture.data,
       undefined,
-      DataModelContext.createRoot(root),
-      root,
+      DataModelContext.createRoot(root, false),
       undefined,
       undefined,
       undefined,

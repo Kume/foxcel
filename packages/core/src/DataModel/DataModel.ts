@@ -331,6 +331,54 @@ export interface PathContainer {
   mapChild(map: DataModel | undefined): PathContainerMapChild;
 }
 
+export class SimplePathContainer implements PathContainer {
+  public static create(path: readonly (number | string)[]): SimplePathContainer | undefined {
+    return path.length === 0 ? undefined : new SimplePathContainer(path, 0);
+  }
+  public static listChildForIndex(
+    list: DataModel | undefined,
+    index: number,
+  ): [model: DataModel, index: number] | undefined {
+    if (!dataModelIsList(list)) return undefined;
+    const childModel = getListDataAt(list, index);
+    return childModel === undefined ? undefined : [childModel, index];
+  }
+
+  public static mapChildForItemAndKey(item: PublicMapDataItem | undefined | false, key: string): PathContainerMapChild {
+    if (!item) {
+      return [undefined, key, undefined];
+    }
+    const [model, , , index] = item;
+    return [model, key, index];
+  }
+
+  private constructor(private readonly path: readonly (number | string)[], private readonly index: number) {}
+
+  public get isLast(): boolean {
+    return this.path.length - 1 === this.index;
+  }
+  next(): PathContainer | undefined {
+    return this.isLast ? undefined : new SimplePathContainer(this.path, this.index + 1);
+  }
+  nextForListIndex(index: number): PathContainer | undefined {
+    return this.path[this.index] === index ? this.next() : undefined;
+  }
+  nextForMapKey(map: MapDataModel, key: string): PathContainer | undefined {
+    return this.path[this.index] === key ? this.next() : undefined;
+  }
+  listChild(list: DataModel | undefined): [model: DataModel, index: number] | undefined {
+    const current = this.path[this.index];
+    if (typeof current !== 'number') return undefined;
+    return SimplePathContainer.listChildForIndex(list, current);
+  }
+  mapChild(map: DataModel | undefined): PathContainerMapChild {
+    const current = this.path[this.index];
+    if (typeof current !== 'string') return undefined;
+    const item = dataModelIsMap(map) && getMapItemAt(map, current);
+    return SimplePathContainer.mapChildForItemAndKey(item, current);
+  }
+}
+
 interface InsertDataParams {
   readonly after?: DataPointer;
   readonly model: DataModel;

@@ -18,6 +18,7 @@ import {
   getMapItemAtIndex,
   PathContainer,
   PathContainerMapChild,
+  SimplePathContainer,
   stringToDataModel,
 } from './DataModel';
 import {AnyDataPath} from './DataPath';
@@ -101,15 +102,9 @@ export class DataModelContextPathContainer implements PathContainer {
   }
 
   public listChild(list: DataModel): [model: DataModel, index: number] | undefined {
-    if (!dataModelIsList(list)) {
-      return undefined;
-    }
     const currentPathComponent = this.path[this.index];
-    if (currentPathComponent?.type !== 'list') {
-      return undefined;
-    }
-    const model = getListDataAt(list, currentPathComponent.index);
-    return model === undefined ? undefined : [model, currentPathComponent.index];
+    if (currentPathComponent?.type !== 'list') return undefined;
+    return SimplePathContainer.listChildForIndex(list, currentPathComponent.index);
   }
 
   public mapChild(map: DataModel): PathContainerMapChild {
@@ -119,19 +114,12 @@ export class DataModelContextPathContainer implements PathContainer {
         return undefined;
       case 'map_k': {
         const item = dataModelIsMap(map) && getMapItemAt(map, currentPathComponent.key);
-        if (!item) {
-          return [undefined, currentPathComponent.key, undefined];
-        }
-        const [model, , , index] = item;
-        return [model, currentPathComponent.key, index];
+        return SimplePathContainer.mapChildForItemAndKey(item, currentPathComponent.key);
       }
       case 'map_i': {
+        if (currentPathComponent.key === null) return undefined;
         const item = dataModelIsMap(map) && getMapItemAtIndex(map, currentPathComponent.index);
-        if (!item) {
-          return currentPathComponent.key === null ? undefined : [undefined, currentPathComponent.key, undefined];
-        }
-        const [model, , key, index] = item;
-        return [model, key, index];
+        return SimplePathContainer.mapChildForItemAndKey(item, currentPathComponent.key);
       }
     }
   }

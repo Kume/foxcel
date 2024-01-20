@@ -2,6 +2,7 @@ import {StorageDataTrait} from '../Storage/StorageDataTrait';
 import {DataModel, ListDataModel, MapDataModel} from './DataModelTypes';
 import {
   dataModelEquals,
+  dataModelIsList,
   dataModelIsMap,
   dataModelToJson,
   eachMapDataItem,
@@ -10,6 +11,7 @@ import {
   PathContainer,
   PathContainerMapChild,
   setToDataModel,
+  SimplePathContainer,
   stringToDataModel,
   unknownToDataModel,
 } from './DataModel';
@@ -32,23 +34,29 @@ class StringPathContainer implements PathContainer {
     return this.isLast ? undefined : new StringPathContainer(this.path, this.index + 1);
   }
 
-  listChild(list: ListDataModel): [model: DataModel, index: number] | undefined {
-    const currentPathComponent = this.path[this.index];
-    if (/^[0-9]+$/.test(currentPathComponent)) {
-      const index = Number.parseInt(currentPathComponent);
-      const data = getListDataAt(list, index);
-      return data === undefined ? undefined : [data, index];
-    }
-    return undefined;
+  public nextForListIndex(index: number): PathContainer | undefined {
+    return this.currentListIndex() === index ? this.next() : this;
   }
-  mapChild(map: MapDataModel): PathContainerMapChild {
+
+  public nextForMapKey(map: MapDataModel, key: string): PathContainer | undefined {
+    const child = this.mapChild(map);
+    return key === child?.[1] ? this.next() : this;
+  }
+
+  private currentListIndex(): number | undefined {
     const currentPathComponent = this.path[this.index];
-    const item = getMapItemAt(map, currentPathComponent);
-    if (!item) {
-      return [undefined, currentPathComponent, undefined];
-    }
-    const [data, , , index] = item;
-    return [data, currentPathComponent, index];
+    return /^[0-9]+$/.test(currentPathComponent) ? Number.parseInt(currentPathComponent) : undefined;
+  }
+
+  listChild(list: DataModel | undefined): [model: DataModel, index: number] | undefined {
+    const index = this.currentListIndex();
+    return index === undefined ? undefined : SimplePathContainer.listChildForIndex(list, index);
+  }
+
+  mapChild(map: DataModel | undefined): PathContainerMapChild {
+    const currentPathComponent = this.path[this.index];
+    const item = dataModelIsMap(map) && getMapItemAt(map, currentPathComponent);
+    return SimplePathContainer.mapChildForItemAndKey(item, currentPathComponent);
   }
 }
 
