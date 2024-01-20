@@ -3,8 +3,8 @@ export function mapObjectToObject<V, R>(
   mapper: (value: V, key: string) => R,
 ): {readonly [key: string]: R} {
   const ret: {[key: string]: R} = {};
-  for (const key of Object.keys(obj)) {
-    ret[key] = mapper(obj[key], key);
+  for (const [key, value] of Object.entries(obj)) {
+    ret[key] = mapper(value, key);
   }
   return ret;
 }
