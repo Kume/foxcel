@@ -734,3 +734,18 @@ function uiSchemaConfigIsReference(
 ): configOrReference is UISchemaReference {
   return configOrReference.type === 'ref';
 }
+
+/**
+ * keyがstringの場合にはそのまま返し、そうでない場合には例外を投げます。
+ * 事前のバリデーションでstringのkeyが入っているはずの場面で利用します。
+ * @param key
+ */
+export function assertUISchemaKeyIsString(key: UISchemaKey | undefined): string {
+  if (key === undefined) {
+    throw new Error('content must have key.');
+  }
+  if (uiSchemaKeyIsParentKey(key)) {
+    throw new Error('cannot convert parent key to data path component.');
+  }
+  return key;
+}

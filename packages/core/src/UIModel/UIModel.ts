@@ -32,8 +32,7 @@ import {
   stringDataModelToString,
 } from '../DataModel/DataModel';
 import {dataSchemaIsMap, DataSchemaType} from '../DataModel/DataSchema';
-import {assertUISchemaKeyIsString} from './DataPathContext';
-import {stringUISchemaKeyToString, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
+import {assertUISchemaKeyIsString, stringUISchemaKeyToString, UISchemaKey, uiSchemaKeyIsParentKey} from './UISchema';
 import {fillTemplateLine} from '../DataModel/TemplateEngine';
 import {DataModelContext} from '../DataModel/DataModelContext';
 import {selectUIModelGetCurrent} from './SelectUIModel';
