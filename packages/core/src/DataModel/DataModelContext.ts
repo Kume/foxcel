@@ -113,13 +113,11 @@ export class DataModelContextPathContainer implements PathContainer {
       case 'list':
         return undefined;
       case 'map_k': {
-        const item = dataModelIsMap(map) && getMapItemAt(map, currentPathComponent.key);
-        return SimplePathContainer.mapChildForItemAndKey(item, currentPathComponent.key);
+        return SimplePathContainer.mapChildForKey(map, currentPathComponent.key);
       }
       case 'map_i': {
-        if (currentPathComponent.key === null) return undefined;
         const item = dataModelIsMap(map) && getMapItemAtIndex(map, currentPathComponent.index);
-        return SimplePathContainer.mapChildForItemAndKey(item, currentPathComponent.key);
+        return (item && SimplePathContainer.mapItemToChild(item)) || undefined;
       }
     }
   }

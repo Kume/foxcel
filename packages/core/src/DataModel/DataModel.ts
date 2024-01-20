@@ -344,11 +344,20 @@ export class SimplePathContainer implements PathContainer {
     return childModel === undefined ? undefined : [childModel, index];
   }
 
-  public static mapChildForItemAndKey(item: PublicMapDataItem | undefined | false, key: string): PathContainerMapChild {
+  public static mapChildForKey(map: DataModel | undefined, key: string): PathContainerMapChild {
+    if (!dataModelIsMap(map)) {
+      return [undefined, key, undefined];
+    }
+    const item = getMapItemAt(map, key);
     if (!item) {
       return [undefined, key, undefined];
     }
     const [model, , , index] = item;
+    return [model, key, index];
+  }
+
+  public static mapItemToChild(item: PublicMapDataItem): PathContainerMapChild {
+    const [model, , key, index] = item;
     return [model, key, index];
   }
 
@@ -373,9 +382,7 @@ export class SimplePathContainer implements PathContainer {
   }
   mapChild(map: DataModel | undefined): PathContainerMapChild {
     const current = this.path[this.index];
-    if (typeof current !== 'string') return undefined;
-    const item = dataModelIsMap(map) && getMapItemAt(map, current);
-    return SimplePathContainer.mapChildForItemAndKey(item, current);
+    return typeof current !== 'string' ? undefined : SimplePathContainer.mapChildForKey(map, current);
   }
 }
 

@@ -1,13 +1,10 @@
 import {StorageDataTrait} from '../Storage/StorageDataTrait';
-import {DataModel, ListDataModel, MapDataModel} from './DataModelTypes';
+import {DataModel, MapDataModel} from './DataModelTypes';
 import {
   dataModelEquals,
-  dataModelIsList,
   dataModelIsMap,
   dataModelToJson,
   eachMapDataItem,
-  getListDataAt,
-  getMapItemAt,
   PathContainer,
   PathContainerMapChild,
   setToDataModel,
@@ -54,9 +51,7 @@ class StringPathContainer implements PathContainer {
   }
 
   mapChild(map: DataModel | undefined): PathContainerMapChild {
-    const currentPathComponent = this.path[this.index];
-    const item = dataModelIsMap(map) && getMapItemAt(map, currentPathComponent);
-    return SimplePathContainer.mapChildForItemAndKey(item, currentPathComponent);
+    return SimplePathContainer.mapChildForKey(map, this.path[this.index]);
   }
 }
 
