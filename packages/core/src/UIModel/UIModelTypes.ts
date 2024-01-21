@@ -1,4 +1,3 @@
-import {ForwardDataPath, EditingForwardDataPath} from '../DataModel/DataPath';
 import {
   BooleanDataModel,
   DataModel,
@@ -138,6 +137,11 @@ export interface MappingTableUIModel extends UIModelCommon {
 }
 
 export type MappingTableUIModelNotEmptyRow = TableUIModelRow & {isEmpty?: false};
+
+/**
+ * 対応するDataModelが存在しないRow
+ * TODO これが必要だったのが、パスをDataPathで表現していたためだった気もするので、無くせるかも？
+ */
 export interface MappingTableUIModelEmptyRow {
   readonly isEmpty: true;
   readonly key: string | null | undefined;
@@ -208,3 +212,5 @@ export type UIModel =
   | SelectUIModel
   | CheckboxUIModel
   | NumberUIModel;
+
+export type UIModelForType<Type extends UIModel['type'], Model = UIModel> = Model extends {type: Type} ? Model : never;

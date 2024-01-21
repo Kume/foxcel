@@ -17,7 +17,7 @@ export const CheckboxUIView: React.FC<Props> = ({model, onAction}) => {
     <input
       type="checkbox"
       checked={checkboxUIModelValue(model)}
-      onChange={(e) => onAction(checkboxUIModelSetValue(e.target.checked, model))}
+      onChange={(e) => onAction(checkboxUIModelSetValue(model, e.target.checked))}
     />
   );
 };
@@ -62,7 +62,7 @@ export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({
             if (!callbacks.onKeyDown(e, false)) {
               if (e.key === 'Space' && withoutModifierKey(e)) {
                 if (model) {
-                  callbacks.onAction(checkboxUIModelSetValue(!checkboxRef.current?.checked, model));
+                  callbacks.onAction(checkboxUIModelSetValue(model, !checkboxRef.current?.checked));
                 } else if (schema) {
                   schema.onEdit(trueDataModel);
                 }
@@ -71,7 +71,7 @@ export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({
           }}
           onChange={(e) => {
             if (model) {
-              callbacks.onAction(checkboxUIModelSetValue(e.target.checked, model));
+              callbacks.onAction(checkboxUIModelSetValue(model, e.target.checked));
             } else if (schema) {
               schema.onEdit(trueDataModel);
             }

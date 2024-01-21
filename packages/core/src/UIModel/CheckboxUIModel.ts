@@ -14,7 +14,7 @@ export function checkboxUIModelValue(model: CheckboxUIModel): boolean {
   return model.data === undefined ? false : booleanDataModelToBoolean(model.data);
 }
 
-export function checkboxUIModelSetValue(value: boolean, model: CheckboxUIModel): AppAction {
+export function checkboxUIModelSetValue(model: CheckboxUIModel, value: boolean): AppAction {
   return {
     type: 'data',
     action: {type: 'set', dataContext: model.dataContext, data: booleanToDataModel(value)},

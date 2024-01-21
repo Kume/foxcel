@@ -1,4 +1,4 @@
-import {AppAction} from '../App/AppState';
+import {AppAction, AppDataModelAction} from '../App/AppState';
 import {TextUIModel} from './UIModelTypes';
 import {nullDataModel, stringToDataModel, unknownToDataModel} from '../DataModel/DataModel';
 import {TextUISchema} from './UISchemaTypes';
@@ -11,10 +11,10 @@ function formatInput(input: string | null): string | null {
   if (input === null) {
     return null;
   }
-  return input.replace(/\r\n/g, '\n').trimRight();
+  return input.replace(/\r\n/g, '\n').trimEnd();
 }
 
-export function textUIModelSetText(model: TextUIModel, value: string | null): AppAction {
+export function textUIModelSetText(model: TextUIModel, value: string | null): AppDataModelAction {
   return {
     type: 'data',
     action: model.isKey

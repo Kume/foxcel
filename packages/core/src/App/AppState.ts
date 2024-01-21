@@ -79,6 +79,16 @@ export type AppAction =
   | AppUndoAction
   | AppRedoAction;
 
+export const initialAppState: AppState = {
+  data: undefined,
+  uiModel: undefined,
+  uiSchema: undefined,
+  dataSchema: undefined,
+  // @ts-expect-error undefined許容にするとかなりの量のエラーが出る。本来はundefined許容であるべきな気がする => そもそもclassをstateに入れてるのが間違いっぽい
+  rootUISchemaContext: undefined,
+  actions: [],
+};
+
 export function applyAppActionToState(state: AppState, action: AppAction, disableHistory = false): AppState {
   switch (action.type) {
     case 'init': {
