@@ -8,8 +8,8 @@ import {UISchemaConfig} from '../..';
 import {buildDataSchema, DataSchema, DataSchemaType} from '../../DataModel/DataSchema';
 import {mapToObject} from '../../common/utils';
 import {TabUISchema, UISchemaOrRecursive} from '../UISchemaTypes';
-import ObjectDataStorage from '../../Storage/ObjectDataStorage';
-import YamlDataFormatter from '../../Storage/YamlDataFormatter';
+import {ObjectDataStorage} from '../../Storage/ObjectDataStorage';
+import {YamlDataFormatter} from '../../Storage/YamlDataFormatter';
 import {configFixtures} from '../../common/testFixtures';
 
 const emptyRootContext = createRootUiSchemaParsingContext(undefined);

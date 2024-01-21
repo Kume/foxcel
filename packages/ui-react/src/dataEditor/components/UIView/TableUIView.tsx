@@ -1,14 +1,16 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
-import {TableUIModel, TableUIModelRow} from '@foxcel/core/dist/UIModel/UIModelTypes';
-import {getIdFromDataPointer} from '@foxcel/core';
 import {
+  getIdFromDataPointer,
   isEndOfTableRange,
   isStartOfTableRange,
+  parseTsv,
   selectingTableCellRange,
+  stringifyTsv,
   TableCellRange,
   TableRange,
   tableRangeContains,
+  TableUIModel,
   tableUIModelAddRows,
   tableUIModelContextMenus,
   tableUIModelCopy,
@@ -16,11 +18,11 @@ import {
   tableUIModelDelete,
   tableUIModelMoveSelection,
   tableUIModelPaste,
+  TableUIModelRow,
   TableUISelection,
-} from '@foxcel/core/dist/UIModel/TableUIModel';
+} from '@foxcel/core';
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
-import {parseTsv, stringifyTsv} from '@foxcel/core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
 import {
   handleTableUIViewKeyboardInput,

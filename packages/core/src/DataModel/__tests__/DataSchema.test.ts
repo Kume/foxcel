@@ -1,7 +1,7 @@
 import {buildDataSchema, DataSchemaType} from '../DataSchema';
-import ObjectDataStorage from '../../Storage/ObjectDataStorage';
+import {ObjectDataStorage} from '../../Storage/ObjectDataStorage';
 import {RootSchemaConfig} from '../../common/ConfigTypes';
-import YamlDataFormatter from '../../Storage/YamlDataFormatter';
+import {YamlDataFormatter} from '../../Storage/YamlDataFormatter';
 
 describe('Unit tests for buildDataSchema', () => {
   it('Build recursive data schema', async () => {

@@ -1,10 +1,8 @@
 import React, {useCallback, useEffect, useReducer, useRef} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {applyAppActionToState, AppState, AppInitializeAction} from '@foxcel/core/dist/App/AppState';
+import {AppInitializeAction, applyAppActionToState, AppState, DataModel, DataModelRoot} from '@foxcel/core';
 import styled from 'styled-components';
-import {DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {LoadedData} from './types';
-import {DataModel} from '@foxcel/core';
 
 const LayoutRoot = styled.div`
   --basic-font-size: 16px;

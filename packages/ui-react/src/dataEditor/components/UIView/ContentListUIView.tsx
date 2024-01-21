@@ -1,16 +1,16 @@
 import React, {useCallback, useState} from 'react';
 import {UIView, UIViewProps} from './UIView';
-import {ContentListUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
-import styled from 'styled-components';
-import {ContextMenu, ContextMenuProps} from './ContextMenu';
-import {getIdFromDataPointer} from '@foxcel/core';
 import {
+  AppAction,
   contentListAddAfterAction,
   contentListAddBeforeAction,
   contentListRemoveAtAction,
-} from '@foxcel/core/dist/UIModel/ContentListUIModel';
+  ContentListUIModel,
+  getIdFromDataPointer,
+} from '@foxcel/core';
+import styled from 'styled-components';
+import {ContextMenu, ContextMenuProps} from './ContextMenu';
 import {labelTextStyle} from '../../../common/components/commonStyles';
-import {AppAction} from '@foxcel/core/dist/App/AppState';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 
 const LayoutRoot = styled.div`

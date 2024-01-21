@@ -18,11 +18,12 @@ import {
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
 import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
-import DataStorage from '../Storage/DataStorage';
+import {DataStorage} from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
 import {LoadedSchemaPath, parseSchemaReferenceConfig, resolveConfigOrRecursive} from '../common/schemaCommon';
 import {dataPathToTemplateLine, parseTemplateLine, TemplateLine} from './TemplateEngine';
+import {isReadonlyArray} from '../common/utils';
 
 export enum DataSchemaType {
   Number,
@@ -294,7 +295,7 @@ export function parseOptionConfig(
 export function parseOptionConfig(
   config: SelectOptionConfig<string | number>,
 ): readonly SelectOptionSchema<string | number>[] {
-  if (Array.isArray(config)) {
+  if (isReadonlyArray(config)) {
     return config.map(parseOptionConfigItem);
   } else {
     return [parseDynamicOptionConfigItem(config)];

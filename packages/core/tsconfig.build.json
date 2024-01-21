@@ -1,7 +1,10 @@
 {
   "extends": "../../configs/tsconfig.lib.json",
   "compilerOptions": {
-    "noEmit": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "allowJs": true
   },
   "include": ["src/**/*.ts", "src/**/*.js"],
+  "exclude": ["src/**/__tests__/*.test.ts"]
 }

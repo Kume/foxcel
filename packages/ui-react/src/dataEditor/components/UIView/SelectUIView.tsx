@@ -1,22 +1,25 @@
 import React, {useEffect, useMemo, useReducer, useRef} from 'react';
 import {UIViewProps} from './UIView';
-import {MultiSelectUIModel, SelectUIModel, SingleSelectUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {
+  AppAction,
+  DataModelContext,
+  DataModelRoot,
   filterSelectUIOptionsByText,
   getSelectUIOptions,
   getSelectUIOptionsWithSchema,
+  MultiSelectUIModel,
+  SelectUIModel,
   selectUIModelCurrentLabel,
   selectUIModelHandleInputForSchema,
   selectUIModelSetValue,
   SelectUIOption,
-} from '@foxcel/core/dist/UIModel/SelectUIModel';
+  SelectUISchema,
+  SingleSelectUIModel,
+} from '@foxcel/core';
 import {ModelOrSchemaHolder, TableUIViewCellProps, TableUIViewCellSchemaInfo} from './TableUIViewCell';
 import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
-import {SelectUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {VscClose} from 'react-icons/vsc';
-import {AppAction} from '@foxcel/core/dist/App/AppState';
-import {DataModelContext, DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowUp,

@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import {SaveFileMessage} from '@foxcel/core/dist/messages';
+import {SaveFileMessage, YamlDataFormatter} from '@foxcel/core';
 import {dirUri} from './VSCodeStorage';
-import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
 
 function isValidPath(path: readonly string[]): boolean {
   if (!Array.isArray(path)) {

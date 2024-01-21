@@ -2,16 +2,26 @@
   "name": "@foxcel/core",
   "version": "0.0.1",
   "description": "Core module for foxcel",
-  "types": "dist/index.d.ts",
-  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
   "author": "makoto.kume",
   "license": "MIT",
   "private": true,
   "scripts": {
     "test": "jest",
-    "build": "tsc",
-    "dev": "tsc -w",
-    "typecheck": "tsc --noEmit",
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "tsc --project tsconfig.build.json -w",
+    "typecheck": "tsc",
     "lint": "eslint --ext .jsx,.js,.tsx,.ts ./src"
   },
   "dependencies": {

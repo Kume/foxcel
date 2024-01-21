@@ -1,7 +1,4 @@
-import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
-import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema';
-import {DataModel} from '@foxcel/core';
-import {AppAction} from '@foxcel/core/dist/App/AppState';
+import {AppAction, DataModel, DataSchemaExcludeRecursive, UISchemaExcludeRecursive} from '@foxcel/core';
 
 export interface LoadedData {
   readonly uiSchema: UISchemaExcludeRecursive;

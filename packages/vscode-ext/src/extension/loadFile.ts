@@ -1,12 +1,14 @@
-import {RootSchemaConfig} from '@foxcel/core';
-import {buildDataSchema} from '@foxcel/core/dist/DataModel/DataSchema';
-import {buildUISchema} from '@foxcel/core/dist/UIModel/UISchema';
-import DataMapper from '@foxcel/core/dist/Storage/DataMapper';
+import {
+  buildDataSchema,
+  buildUISchema,
+  DataMapper,
+  InitialLoadMessage,
+  RawStorageDataTrait,
+  RootSchemaConfig,
+  YamlDataFormatter,
+} from '@foxcel/core';
 import * as vscode from 'vscode';
 import {dirUri, fileNameOfUri, VSCodeStorage} from './VSCodeStorage';
-import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
-import {RawStorageDataTrait} from '@foxcel/core/dist/Storage/StorageDataTrait';
-import {InitialLoadMessage} from '@foxcel/core/dist/messages';
 
 export async function loadFile(schemaFileUri: vscode.Uri): Promise<InitialLoadMessage> {
   const storage = new VSCodeStorage(dirUri(schemaFileUri));

@@ -1,6 +1,6 @@
-import React, {ComponentType, CSSProperties, forwardRef, useCallback} from 'react';
+import React, {CSSProperties, useCallback} from 'react';
 import styled from 'styled-components';
-import {VirtualElement} from '@floating-ui/dom/src/types';
+import {VirtualElement} from '@floating-ui/dom';
 
 export function makeClickPointVirtualElement(e: React.MouseEvent): VirtualElement {
   return {

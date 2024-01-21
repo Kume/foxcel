@@ -68,3 +68,7 @@ export function emptyFunction(): void {
 export function compact<T>(values: readonly (T | null | undefined | false)[]): T[] {
   return values.filter((i) => i !== undefined && i !== null && i !== false) as T[];
 }
+
+export function isReadonlyArray<T>(value: readonly T[] | unknown): value is readonly T[] {
+  return Array.isArray(value);
+}

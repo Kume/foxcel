@@ -3,17 +3,20 @@ import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 import {RootView} from '@foxcel/ui-react';
 import {NativeFileSystemDataStorage} from './Models/NativeFileSystemDataStorage';
-import YamlDataFormatter from '@foxcel/core/dist/Storage/YamlDataFormatter';
-import {loadFile} from '@foxcel/core/dist/FileLoader';
-import {AppInitializeAction} from '@foxcel/core/dist/App/AppState';
+import {
+  ObjectDataStorage,
+  AppInitializeAction,
+  buildDataSchema,
+  buildUISchema,
+  FullSpecSchemaSample,
+  loadFile,
+  simpleRecursiveSampleConfig,
+  unknownToDataModel,
+  YamlDataFormatter,
+} from '@foxcel/core';
 import {ThemeProvider} from 'styled-components';
 import {LoadedData, Theme} from '@foxcel/ui-react/dist/types';
 import {sampleConfig} from '@foxcel/ui-react/dist/sample';
-import {buildDataSchema} from '@foxcel/core/dist/DataModel/DataSchema';
-import {buildUISchema} from '@foxcel/core/dist/UIModel/UISchema';
-import {unknownToDataModel} from '@foxcel/core';
-import {FullSpecSchemaSample, simpleRecursiveSampleConfig} from '@foxcel/core/dist/samples';
-import ObjectDataStorage from '@foxcel/core/dist/Storage/ObjectDataStorage';
 
 const loadedItemKey = 'DEBUG_loadedItem';
 

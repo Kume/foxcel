@@ -1,4 +1,4 @@
-import ObjectDataStorage from '../ObjectDataStorage';
+import {ObjectDataStorage} from '../ObjectDataStorage';
 
 describe('Test for saveAsync', () => {
   it('Save with single path', async () => {

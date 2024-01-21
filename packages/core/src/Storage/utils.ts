@@ -1,4 +1,4 @@
-import DataStorage from './DataStorage';
+import {DataStorage} from './DataStorage';
 import {DataFormatter} from './DataFormatter';
 import {resolvePath} from '../common/utils';
 import {WritableFileBaseNamedItemNode, WritableFilePathConfigNamedItemMap} from '../common/commonTypes';

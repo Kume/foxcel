@@ -1,6 +1,6 @@
-import DataStorage from './DataStorage';
+import {DataStorage} from './DataStorage';
 import {DataFormatter} from './DataFormatter';
-import YamlDataFormatter from './YamlDataFormatter';
+import {YamlDataFormatter} from './YamlDataFormatter';
 import {StorageDataTrait} from './StorageDataTrait';
 import {getForPath, unknownIsObject} from './StorageCommon';
 import {DataMapperConfig, DataMapperNodeConfig} from '..';
@@ -757,7 +757,7 @@ export class SingleMappingNode<T> extends MappingNode {
   }
 }
 
-export default class DataMapper extends MappingNodeBase {
+export class DataMapper extends MappingNodeBase {
   private indexFileName = 'index.yml';
 
   public static build(config: DataMapperConfig | undefined): DataMapper {

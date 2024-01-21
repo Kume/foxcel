@@ -1,11 +1,27 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {
+  isEndOfTableRange,
+  isStartOfTableRange,
+  mappingTableRowSize,
   MappingTableUIModel,
+  mappingTableUIModelCopy,
+  mappingTableUIModelCut,
+  mappingTableUIModelDelete,
   MappingTableUIModelEmptyRow,
   MappingTableUIModelNotEmptyRow,
+  mappingTableUIModelPaste,
+  parseTsv,
+  selectingTableCellRange,
+  SerializedDataModelContext,
+  stringifyTsv,
+  TableCellRange,
+  TableRange,
+  tableRangeContains,
+  tableUIModelMoveSelection,
   TableUIModelRow,
-} from '@foxcel/core/dist/UIModel/UIModelTypes';
+  TableUISelection,
+} from '@foxcel/core';
 import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
@@ -20,27 +36,8 @@ import {
 } from './TablueUIViewCommon';
 import {useMouseUpTracking} from '../../../common/useMouseUpTracking';
 import {EditFocusCallbacks, useEditFocusControl} from '../../../common/useEditFocusControl';
-import {
-  mappingTableRowSize,
-  mappingTableUIModelCopy,
-  mappingTableUIModelCut,
-  mappingTableUIModelDelete,
-  mappingTableUIModelPaste,
-} from '@foxcel/core/dist/UIModel/MappingTableUIModel';
-import {parseTsv, stringifyTsv} from '@foxcel/core/dist/common/tsv';
 import {TableCellCallbacks} from './TableUIViewCell';
-import {
-  isEndOfTableRange,
-  isStartOfTableRange,
-  selectingTableCellRange,
-  TableCellRange,
-  TableRange,
-  tableRangeContains,
-  tableUIModelMoveSelection,
-  TableUISelection,
-} from '@foxcel/core/dist/UIModel/TableUIModel';
 import styled from 'styled-components';
-import {SerializedDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 
 interface ActionRef {
   readonly selection: TableUISelection | undefined;

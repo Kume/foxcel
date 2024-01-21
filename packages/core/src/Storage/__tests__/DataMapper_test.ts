@@ -1,5 +1,5 @@
-import ObjectDataStorage from '../ObjectDataStorage';
-import DataMapper, {FileDataMapNode} from '../DataMapper';
+import {ObjectDataStorage} from '../ObjectDataStorage';
+import {DataMapper, FileDataMapNode} from '../DataMapper';
 import {RawStorageDataTrait} from '../StorageDataTrait';
 import {DataMapperConfig} from '../../common/ConfigTypes';
 import {dataModelToJson, unknownToDataModel} from '../../DataModel/DataModel';

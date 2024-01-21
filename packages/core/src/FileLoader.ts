@@ -1,10 +1,10 @@
-import DataStorage from './Storage/DataStorage';
+import {DataStorage} from './Storage/DataStorage';
 import {DataFormatter} from './Storage/DataFormatter';
 import {RootSchemaConfig} from './common/ConfigTypes';
 import {buildDataSchema, DataSchemaExcludeRecursive} from './DataModel/DataSchema';
 import {buildUISchema, UISchemaExcludeRecursive} from './UIModel/UISchema';
 import {DataModel} from './DataModel/DataModelTypes';
-import DataMapper from './Storage/DataMapper';
+import {DataMapper} from './Storage/DataMapper';
 import {dataModelStorageDataTrait} from './DataModel/DataModelStorageDataTrait';
 
 export async function loadFile(

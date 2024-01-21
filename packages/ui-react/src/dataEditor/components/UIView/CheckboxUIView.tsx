@@ -1,11 +1,14 @@
 import React, {useEffect, useRef} from 'react';
 import {UIViewProps} from './UIView';
-import {CheckboxUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
-import {checkboxUIModelValue, checkboxUIModelSetValue} from '@foxcel/core/dist/UIModel/CheckboxUIModel';
+import {
+  CheckboxUIModel,
+  checkboxUIModelSetValue,
+  checkboxUIModelValue,
+  CheckBoxUISchema,
+  trueDataModel,
+} from '@foxcel/core';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
-import {CheckBoxUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
-import {trueDataModel} from '@foxcel/core';
 import {withoutModifierKey} from '../../../common/Keybord';
 
 interface Props extends UIViewProps {

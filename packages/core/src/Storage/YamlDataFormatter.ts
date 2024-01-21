@@ -1,7 +1,7 @@
 import {DataFormatter} from './DataFormatter';
 import * as Yaml from 'js-yaml';
 
-export default class YamlDataFormatter implements DataFormatter {
+export class YamlDataFormatter implements DataFormatter {
   format(data: unknown): string {
     return Yaml.dump(data);
   }

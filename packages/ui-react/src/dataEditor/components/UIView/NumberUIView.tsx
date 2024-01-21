@@ -1,16 +1,16 @@
 import {UIViewProps} from './UIView';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {NumberUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
 import {
+  NumberUIModel,
   numberUIModelDisplayText,
   numberUIModelHandleInputForSchema,
   numberUIModelSetText,
-} from '@foxcel/core/dist/UIModel/NumberUIModel';
+  NumberUISchema,
+} from '@foxcel/core';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState} from './TableUIViewCellCommon';
 import styled from 'styled-components';
-import {NumberUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {BackgroundTextarea} from '../BackgroundTextarea';
 import {inputTextStyle} from '../../../common/components/commonStyles';
 

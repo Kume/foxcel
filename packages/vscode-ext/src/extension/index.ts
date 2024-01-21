@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import {BackToFrontMessage, FrontToBackMessage} from '@foxcel/core/dist/messages';
+import {BackToFrontMessage, FrontToBackMessage} from '@foxcel/core';
 import {loadFile} from './loadFile';
 import {saveFile} from './saveFile';
 

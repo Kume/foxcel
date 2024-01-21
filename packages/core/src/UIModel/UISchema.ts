@@ -20,7 +20,7 @@ import {
 } from '..';
 import pick from 'lodash.pick';
 import {mapObjectToObject, mapToObject} from '../common/utils';
-import DataStorage from '../Storage/DataStorage';
+import {DataStorage} from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
 import {loadNestedConfigFile} from '../Storage/utils';

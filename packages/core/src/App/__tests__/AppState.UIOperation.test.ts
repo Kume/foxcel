@@ -1,7 +1,8 @@
-import ObjectDataStorage from '../../Storage/ObjectDataStorage';
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import {ObjectDataStorage} from '../../Storage/ObjectDataStorage';
 import {FullSpecSchemaSample} from '../../samples';
 import {buildDataSchema} from '../../DataModel/DataSchema';
-import YamlDataFormatter from '../../Storage/YamlDataFormatter';
+import {YamlDataFormatter} from '../../Storage/YamlDataFormatter';
 import {buildUISchema} from '../../UIModel/UISchema';
 import {getUIModelByPathAndCheckType, UIModelPath} from '../../UIModel/UIModelPath';
 import {textUIModelSetText} from '../../UIModel/TextUIModel';
@@ -10,7 +11,7 @@ import {numberUIModelDisplayText, numberUIModelSetText} from '../../UIModel/Numb
 import {checkboxUIModelSetValue, checkboxUIModelValue} from '../../UIModel/CheckboxUIModel';
 
 describe('Unit tests for simple form', () => {
-  async function initAppState(): AppState {
+  async function initAppState(): Promise<AppState> {
     const storage = new ObjectDataStorage();
     const config = FullSpecSchemaSample.rootSchema();
     const dataSchema = await buildDataSchema(config, storage, new YamlDataFormatter());
@@ -21,7 +22,7 @@ describe('Unit tests for simple form', () => {
 
   it('キー入力ができる', async () => {
     const appState = await initAppState();
-    const uiPath = [['tab'], ['contentList'], ['form', true]];
+    const uiPath: UIModelPath = [['tab'], ['contentList'], ['form', true]];
     const model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
     // 初期状態はcontentListの一番上の要素のキーが入っている
     expect(model.isKey && model.value).toBe('first');
@@ -52,7 +53,7 @@ describe('Unit tests for simple form', () => {
     // 初期値は入ってないので、空文字が表示される
     expect(numberUIModelDisplayText(model)).toBe('');
 
-    const updatedState = applyAppActionToState(appState, numberUIModelSetText(model, '123'));
+    const updatedState = applyAppActionToState(appState, numberUIModelSetText(model, '123')!);
     const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'number');
     // 入力した値に変化している
     expect(numberUIModelDisplayText(updatedModel)).toBe('123');

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   BooleanDataModel,
   DataModel,
@@ -28,9 +29,9 @@ import {
 } from '../DataModel';
 import {configFixtures} from '../../common/testFixtures';
 import {buildDataSchema, DataSchemaContext} from '../DataSchema';
-import YamlDataFormatter from '../../Storage/YamlDataFormatter';
-import ObjectDataStorage from '../../Storage/ObjectDataStorage';
-import {DataPathComponentType, parsePath} from '../DataPath';
+import {YamlDataFormatter} from '../../Storage/YamlDataFormatter';
+import {ObjectDataStorage} from '../../Storage/ObjectDataStorage';
+import {parsePath} from '../DataPath';
 import {getDataModelByForwardPath} from '../DataModelCollector';
 import {DataModelContext} from '../DataModelContext';
 
@@ -233,7 +234,7 @@ describe('Unit tests for setToDataModel', () => {
     const after2 = setToDataModel(SimplePathContainer.create(['root', 0, 'children', 0, 'children']), context2, {
       model: unknownToDataModel([]),
     });
-    expect(dataModelToJson(after2)).toEqual({root: [{children: [{children: []}]}, {children: []}]});
+    expect(dataModelToJson(after2!)).toEqual({root: [{children: [{children: []}]}, {children: []}]});
   });
 });
 

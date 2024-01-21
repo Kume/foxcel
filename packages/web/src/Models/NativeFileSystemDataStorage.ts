@@ -1,4 +1,4 @@
-import DataStorage from '@foxcel/core/dist/Storage/DataStorage';
+import {DataStorage} from '@foxcel/core';
 import type {} from 'wicg-file-system-access';
 
 interface FileSystemDirectoryNode {

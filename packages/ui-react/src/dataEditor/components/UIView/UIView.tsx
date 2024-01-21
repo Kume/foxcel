@@ -1,13 +1,11 @@
 import React from 'react';
-import {UIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
+import {AppAction, DataModelRoot, UIModel} from '@foxcel/core';
 import {FormUIView} from './FormUIView';
 import {TextUIView} from './TextUIView';
 import {TabUIView} from './TabUIView';
 import {ContentListUIView} from './ContentListUIView';
-import {AppAction} from '@foxcel/core/dist/App/AppState';
 import {TableUIView} from './TableUIView';
 import {SelectUIView} from './SelectUIView';
-import {DataModelRoot} from '@foxcel/core/dist/DataModel/DataModelContext';
 import {CheckboxUIView} from './CheckboxUIView';
 import {NumberUIView} from './NumberUIView';
 import {MappingTableUIView} from './MappingTableUIView';

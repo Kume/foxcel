@@ -1,4 +1,4 @@
-import DataStorage from './DataStorage';
+import {DataStorage} from './DataStorage';
 import * as util from 'util';
 import * as fs from 'fs';
 import * as path from 'path';

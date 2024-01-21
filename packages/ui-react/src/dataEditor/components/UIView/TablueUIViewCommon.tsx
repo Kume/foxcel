@@ -5,10 +5,16 @@ import {SelectUIViewForTableCell} from './SelectUIView';
 import {CheckboxUIViewForTableCell} from './CheckboxUIView';
 import {NumberUIViewForTableCell} from './NumberUIView';
 import React from 'react';
-import {UIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
-import {TableUIModelMoveDirection, TableUISelection} from '@foxcel/core/dist/UIModel/TableUIModel';
-import {DataModel, emptyMapModel, setToMapDataModel} from '@foxcel/core';
-import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
+import {
+  DataModel,
+  emptyMapModel,
+  SerializedDataModelContext,
+  setToMapDataModel,
+  TableUIModelMoveDirection,
+  TableUISelection,
+  UIModel,
+  UISchemaExcludeRecursive,
+} from '@foxcel/core';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowLeft,
@@ -22,7 +28,6 @@ import {
   withShiftKey,
 } from '../../../common/Keybord';
 import {breakableTextStyle, labelTextStyle} from '../../../common/components/commonStyles';
-import {SerializedDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
 
 export const TableUIViewLayoutRoot = styled.table`
   background-color: ${({theme}) => theme.color.border.table};

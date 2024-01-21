@@ -1,6 +1,6 @@
-import DataStorage from './DataStorage';
+import {DataStorage} from './DataStorage';
 
-export default class ObjectDataStorage implements DataStorage {
+export class ObjectDataStorage implements DataStorage {
   get data(): {[key: string]: string} {
     return this._data;
   }

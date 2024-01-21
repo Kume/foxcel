@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import DataStorage from '@foxcel/core/dist/Storage/DataStorage';
+import {DataStorage} from '@foxcel/core';
 
 export function dirUri(uri: vscode.Uri) {
   const pathComponents = uri.path.split('/');

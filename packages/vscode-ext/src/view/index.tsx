@@ -4,15 +4,23 @@ import * as ReactDOM from 'react-dom';
 import {RootView} from '@foxcel/ui-react';
 import {Theme} from '@foxcel/ui-react/dist/types';
 import {ThemeProvider} from 'styled-components';
-import {BackToFrontMessage, FrontToBackMessage} from '@foxcel/core/dist/messages';
-import {DataMapperConfig, DataModel, dataModelToJson, unknownToDataModel} from '@foxcel/core';
-import DataMapper, {FileDataMapNode, FileDataStatusMapNode} from '@foxcel/core/dist/Storage/DataMapper';
-import {dataModelStorageDataTrait} from '@foxcel/core/dist/DataModel/DataModelStorageDataTrait';
-import {DataSchemaExcludeRecursive} from '@foxcel/core/dist/DataModel/DataSchema';
-import {UISchemaExcludeRecursive} from '@foxcel/core/dist/UIModel/UISchema';
-import {WriteOnlyRemoteDataStorage} from '@foxcel/core/dist/Storage/WriteOnlyRemoteDataStorage';
-import {JsonDataFormatter} from '@foxcel/core/dist/Storage/JsonDataFormatter';
-import {AppAction, AppState} from '@foxcel/core/dist/App/AppState';
+import {
+  AppAction,
+  AppState,
+  BackToFrontMessage,
+  DataMapper,
+  DataMapperConfig,
+  DataModel,
+  dataModelStorageDataTrait,
+  DataSchemaExcludeRecursive,
+  FileDataMapNode,
+  FileDataStatusMapNode,
+  FrontToBackMessage,
+  JsonDataFormatter,
+  UISchemaExcludeRecursive,
+  unknownToDataModel,
+  WriteOnlyRemoteDataStorage,
+} from '@foxcel/core';
 
 const defaultTheme: Theme = {
   color: {

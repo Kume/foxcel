@@ -1,4 +1,4 @@
-export default interface DataStorage {
+export interface DataStorage {
   saveAsync(paths: readonly string[], content: string): Promise<void>;
 
   loadAsync(paths: readonly string[]): Promise<string>;

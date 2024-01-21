@@ -1,4 +1,4 @@
-import DataStorage from './DataStorage';
+import {DataStorage} from './DataStorage';
 
 export interface RemoteDataStorageSaveItem {
   readonly path: readonly string[];

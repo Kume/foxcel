@@ -1,7 +1,5 @@
 import React from 'react';
-import {AppAction} from '@foxcel/core/dist/App/AppState';
-import {DataModelRoot, SerializedDataModelContext} from '@foxcel/core/dist/DataModel/DataModelContext';
-import {DataModel} from '@foxcel/core';
+import {AppAction, DataModel, DataModelRoot, SerializedDataModelContext} from '@foxcel/core';
 
 export interface TableCellCallbacks {
   readonly onAction: (action: AppAction) => void;

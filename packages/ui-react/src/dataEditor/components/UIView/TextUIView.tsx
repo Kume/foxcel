@@ -1,12 +1,10 @@
-import {TextUIModel} from '@foxcel/core/dist/UIModel/UIModelTypes';
+import {TextUIModel, textUIModelHandleInputForSchema, textUIModelSetText, TextUISchema} from '@foxcel/core';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
-import {textUIModelHandleInputForSchema, textUIModelSetText} from '@foxcel/core/dist/UIModel/TextUIModel';
 import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState} from './TableUIViewCellCommon';
-import {TextUISchema} from '@foxcel/core/dist/UIModel/UISchemaTypes';
 import {KeyValue_Enter, withAltKey} from '../../../common/Keybord';
 import {BackgroundTextarea} from '../BackgroundTextarea';
 import {inputTextStyle} from '../../../common/components/commonStyles';
