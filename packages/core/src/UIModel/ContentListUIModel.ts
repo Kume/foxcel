@@ -63,7 +63,7 @@ export function contentListRemoveAtAction(model: ContentListUIModel, index: numb
     action: {
       type: 'delete',
       dataContext: model.dataContext,
-      at: model.indexes[index].pointer,
+      at: index,
     },
   };
 }

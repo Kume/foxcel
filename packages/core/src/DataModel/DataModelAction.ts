@@ -1,4 +1,4 @@
-import {DataModel, DataPointer} from './DataModelTypes';
+import {DataModel} from './DataModelTypes';
 import {deleteFromDataModel, insertToDataModel, pushToDataModel, setKeyToDataModel, setToDataModel} from './DataModel';
 import {
   DataModelContext,
@@ -34,12 +34,23 @@ export interface InsertDataModelAction {
   /**
    * undefinedの場合、先頭に要素を挿入する
    */
-  readonly after: DataPointer | undefined;
+  readonly after?: number;
+}
+
+export interface InsertDataValuesModelAction {
+  readonly type: 'insertValues';
+  readonly dataContext: SerializedDataModelContext;
+  readonly data: readonly DataModel[];
+
+  /**
+   * undefinedの場合、先頭に要素を挿入する
+   */
+  readonly after?: number;
 }
 
 export interface DeleteDataModelAction {
   readonly type: 'delete';
-  readonly at?: DataPointer;
+  readonly at?: number | readonly number[];
   readonly dataContext: SerializedDataModelContext;
 }
 
@@ -48,6 +59,7 @@ export type DataModelAction =
   | SetDataModelAction
   | SetKeyDataModelAction
   | InsertDataModelAction
+  | InsertDataValuesModelAction
   | DeleteDataModelAction;
 
 export function applyDataModelAction(root: DataModelRoot, action: DataModelAction): DataModel | undefined {
@@ -63,6 +75,12 @@ export function applyDataModelAction(root: DataModelRoot, action: DataModelActio
       return insertToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
         after: action.after,
         model: action.data,
+      });
+
+    case 'insertValues':
+      return insertToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
+        after: action.after,
+        models: action.data,
       });
 
     case 'push':

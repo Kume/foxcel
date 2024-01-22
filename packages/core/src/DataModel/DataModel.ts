@@ -26,6 +26,7 @@ import {
   IntegerDataModel,
   ListDataModel,
   MapDataModel,
+  MapDataModelItem,
   MapDataModelItemWithNonNullableKey,
   NullDataModel,
   PublicListDataItem,
@@ -36,7 +37,7 @@ import {DataSchemaContext} from './DataSchema';
 import {DataModelOperationError} from './errors';
 import {ConditionConfig} from '..';
 import {defaultDataModelForSchema} from './DataModelWithSchema';
-import {compact} from '../common/utils';
+import {compact, isReadonlyArray} from '../common/utils';
 import {DataModelContext} from './DataModelContext';
 
 export function dataModelTypeToLabel(type: DataModelType): string {
@@ -258,7 +259,7 @@ export function setToDataModel(
       context.schemaContext.currentSchema && defaultDataModelForSchema(context.schemaContext.currentSchema);
   }
 
-  return setToMapOrListDataRecursive2(
+  return setToMapOrListDataRecursive(
     currentModel,
     path,
     context,
@@ -267,13 +268,13 @@ export function setToDataModel(
       const childPath = path.next();
       // ここが最下層であれば、paramsに指定されたモデルをkeyに対してセットすれば良い
       if (!childPath) {
-        return forceAddToMapData(map, params.model, key);
+        return unsafeAddToMapData(map, params.model, key);
       }
 
       const childContext = context.pushMapKey(key);
       if (childContext.schemaContext.currentSchema) {
         const newModel = setToDataModel(childPath, childContext, params);
-        return newModel === undefined ? undefined : forceAddToMapData(map, newModel, key);
+        return newModel === undefined ? undefined : unsafeAddToMapData(map, newModel, key);
       } else {
         // スキーマがないとデフォルトのデータを生成できないのでセット不可
         return undefined;
@@ -307,10 +308,10 @@ export function setKeyToDataModel(
     const [, , index] = child;
     const prevKey = index !== undefined ? getMapKeyAtIndex(currentModel, index) : undefined;
     return index !== undefined && prevKey !== params.key
-      ? forceSetMapKeyForIndex(currentModel, index, params.key)
+      ? unsafeSetMapKeyForIndex(currentModel, index, params.key)
       : undefined;
   } else {
-    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
+    return setToMapOrListDataRecursive(currentModel, path, context, (nextPath, childContext) =>
       setKeyToDataModel(nextPath, childContext, params),
     );
   }
@@ -387,8 +388,9 @@ export class SimplePathContainer implements PathContainer {
 }
 
 interface InsertDataParams {
-  readonly after?: DataPointer;
-  readonly model: DataModel;
+  readonly after?: number;
+  readonly model?: DataModel;
+  readonly models?: readonly DataModel[];
 }
 
 export function insertToDataModel(
@@ -404,26 +406,34 @@ export function insertToDataModel(
       return undefined;
     }
     if (mapOrListDataModelIsMap(currentModel)) {
-      if (params.after === undefined) {
-        return forceInsertToMapData(currentModel, params.model, 0, null);
-      }
-      const index = getMapDataIndexForPointer(currentModel, params.after);
+      const index =
+        params.after === undefined ? 0 : isValidMapIndex(currentModel, params.after) ? params.after + 1 : undefined;
       if (index === undefined) {
         return undefined;
       }
-      return forceInsertToMapData(currentModel, params.model, index + 1, null);
+      if (params.model !== undefined) {
+        return unsafeInsertToMapData(currentModel, params.model, index);
+      } else if (params.models !== undefined) {
+        return unsafeInsertValuesToMapData(currentModel, params.models, index);
+      } else {
+        return undefined;
+      }
     } else {
-      if (params.after === undefined) {
-        return forceInsertToListData(currentModel, params.model, 0);
-      }
-      const index = getListDataIndexForPointer(currentModel, params.after);
+      const index =
+        params.after === undefined ? 0 : isValidListIndex(currentModel, params.after) ? params.after + 1 : undefined;
       if (index === undefined) {
         return undefined;
       }
-      return forceInsertToListData(currentModel, params.model, index + 1);
+      if (params.model !== undefined) {
+        return unsafeInsertToListData(currentModel, params.model, index);
+      } else if (params.models !== undefined) {
+        return unsafeInsertValuesToListData(currentModel, params.models, index);
+      } else {
+        return undefined;
+      }
     }
   } else {
-    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
+    return setToMapOrListDataRecursive(currentModel, path, context, (nextPath, childContext) =>
       insertToDataModel(nextPath, childContext, params),
     );
   }
@@ -455,14 +465,14 @@ export function pushToDataModel(
       return pushToListData(currentModel, params.model);
     }
   } else {
-    return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
+    return setToMapOrListDataRecursive(currentModel, path, context, (nextPath, childContext) =>
       pushToDataModel(nextPath, childContext, params),
     );
   }
 }
 
 interface DeleteDataParams {
-  at: DataPointer | undefined;
+  at?: number | readonly number[];
 }
 
 /**
@@ -483,11 +493,17 @@ export function deleteFromDataModel(
       return undefined;
     }
     if (mapOrListDataModelIsMap(currentModel)) {
-      const index = getMapDataIndexForPointer(currentModel, params.at);
-      return index === undefined ? undefined : forceDeleteFromMapDataAt(currentModel, index);
+      if (isReadonlyArray(params.at)) {
+        return deleteFromMapDataAtIndexes(currentModel, params.at);
+      } else {
+        return getMapItemAtIndex(currentModel, params.at) && unsafeDeleteFromMapDataAt(currentModel, params.at);
+      }
     } else {
-      const index = getListDataIndexForPointer(currentModel, params.at);
-      return index === undefined ? undefined : forceDeleteFromListDataAt(currentModel, index);
+      if (isReadonlyArray(params.at)) {
+        return deleteFromListDataAtIndexes(currentModel, params.at);
+      } else {
+        return getListItemAt(currentModel, params.at) && unsafeDeleteFromListDataAt(currentModel, params.at);
+      }
     }
   }
 
@@ -497,14 +513,14 @@ export function deleteFromDataModel(
     }
     if (mapOrListDataModelIsMap(currentModel)) {
       const index = path.mapChild(currentModel)?.[2];
-      return index === undefined ? undefined : forceDeleteFromMapDataAt(currentModel, index);
+      return index === undefined ? undefined : unsafeDeleteFromMapDataAt(currentModel, index);
     } else {
       const index = path.listChild(currentModel)?.[1];
-      return index === undefined ? undefined : forceDeleteFromListDataAt(currentModel, index);
+      return index === undefined ? undefined : unsafeDeleteFromListDataAt(currentModel, index);
     }
   }
 
-  return setToMapOrListDataRecursive2(currentModel, path, context, (nextPath, childContext) =>
+  return setToMapOrListDataRecursive(currentModel, path, context, (nextPath, childContext) =>
     deleteFromDataModel(nextPath, childContext, params),
   );
 }
@@ -599,8 +615,12 @@ export function getListDataIndexForPointer(list: ListDataModel, pointer: DataPoi
   return list.v.findIndex((item) => pointer.d === item[listItemIdIndex]);
 }
 
-export function getListDataIndexForId(list: ListDataModel, id: number): number | undefined {
+export function getListIndexForId(list: ListDataModel, id: number): number | undefined {
   return list.v.findIndex((item) => item[listItemIdIndex] === id);
+}
+
+export function isValidListIndex(list: ListDataModel, index: number): boolean {
+  return index >= 0 && index < listDataSize(list);
 }
 
 export function listDataSize(list: ListDataModel): number {
@@ -612,26 +632,46 @@ export function setToListDataAt(list: ListDataModel, value: DataModel, at: numbe
   if (!childData) {
     throw new DataModelOperationError('Cannot set data to out of index range of list.');
   }
-  return dataModelEquals(childData, value) ? list : forceSetToListData(list, value, at);
+  return dataModelEquals(childData, value) ? list : unsafeSetToListData(list, value, at);
 }
 
-function forceSetToListData(list: ListDataModel, value: DataModel, index: number): ListDataModel {
+function unsafeSetToListData(list: ListDataModel, value: DataModel, index: number): ListDataModel {
   const v = [...list.v];
   v[index] = [v[index][listItemIdIndex], value];
   return {t: DataModelType.List, v, m: list.m};
 }
 
-function forceInsertToListData(list: ListDataModel, value: DataModel, index: number): ListDataModel {
+function unsafeInsertToListData(list: ListDataModel, value: DataModel, index: number): ListDataModel {
   const v = [...list.v.slice(0, index), [list.m + 1, value] as const, ...list.v.slice(index)];
   return {t: DataModelType.List, v, m: list.m + 1};
+}
+
+function unsafeInsertValuesToListData(list: ListDataModel, values: readonly DataModel[], index: number): ListDataModel {
+  const v = [
+    ...list.v.slice(0, index),
+    ...values.map((value, i) => [list.m + i + 1, value] as const),
+    ...list.v.slice(index),
+  ];
+  return {t: DataModelType.List, v, m: list.m + values.length};
 }
 
 export function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
   return {t: DataModelType.List, v: [...list.v, [list.m + 1, value]], m: list.m + 1};
 }
 
-function forceDeleteFromListDataAt(list: ListDataModel, index: number): ListDataModel {
+function unsafeDeleteFromListDataAt(list: ListDataModel, index: number): ListDataModel {
   return {t: DataModelType.List, v: [...list.v.slice(0, index), ...list.v.slice(index + 1)], m: list.m};
+}
+
+function deleteFromListDataAtIndexes(list: ListDataModel, indexes: readonly number[]): ListDataModel | undefined {
+  const values: (readonly [id: number, data: DataModel])[] = [];
+  const indexSet = new Set(indexes);
+  list.v.forEach((v, index) => {
+    if (!indexSet.has(index)) {
+      values.push(v);
+    }
+  });
+  return list.v.length === values.length ? undefined : {t: DataModelType.List, v: values, m: list.m};
 }
 
 export function deleteFromListDataAtPathComponent(
@@ -639,10 +679,10 @@ export function deleteFromListDataAtPathComponent(
   pathComponent: EditingForwardDataPathComponent,
 ): ListDataModel {
   const index = getListDataIndexByPathComponent(list, pathComponent);
-  return index === undefined ? list : forceDeleteFromListDataAt(list, index);
+  return index === undefined ? list : unsafeDeleteFromListDataAt(list, index);
 }
 
-function setToListDataRecursive2(
+function setToListDataRecursive(
   list: ListDataModel,
   path: PathContainer,
   context: DataModelContext,
@@ -655,28 +695,7 @@ function setToListDataRecursive2(
 
   const [, childIndex] = child;
   const nextChildData = createNextChildData(path.next(), context.pushListIndex(childIndex));
-  return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, childIndex);
-}
-
-function setToListDataRecursive(
-  list: ListDataModel,
-  path: EditingForwardDataPath,
-  schema: DataSchemaContext,
-  createNextChildData: CreateNextChildData,
-): ListDataModel | undefined {
-  const index = getListDataIndexByPathComponent(list, headDataPathComponent(path));
-  if (index === undefined) {
-    throw new DataModelOperationError(
-      `Invalid data path type for set to list data [${JSON.stringify(headDataPathComponent(path))}]`,
-    );
-  }
-  const childData = getListDataAt(list, index);
-  if (!childData) {
-    throw new DataModelOperationError('Cannot set data to out of index range of list.');
-  }
-  const childSchema = schema && schema.getListChild();
-  const nextChildData = createNextChildData(shiftDataPath(path), childData, childSchema);
-  return nextChildData === undefined ? undefined : forceSetToListData(list, nextChildData, index);
+  return nextChildData === undefined ? undefined : unsafeSetToListData(list, nextChildData, childIndex);
 }
 
 export function mapListDataModel<T>(
@@ -717,6 +736,10 @@ export function getMapDataIndexAt(map: MapDataModel, key: string): number | unde
     }
   }
   return undefined;
+}
+
+export function isValidMapIndex(map: MapDataModel, index: number): boolean {
+  return index >= 0 && index < mapDataSize(map);
 }
 
 export function getMapDataAt(map: MapDataModel, key: string): DataModel | undefined {
@@ -823,7 +846,7 @@ export function getMapDataIndexByPathComponent(
   }
 }
 
-function forceSetToMapDataForIndex(
+function unsafeSetToMapDataForIndex(
   map: MapDataModel,
   value: DataModel,
   index: number,
@@ -835,14 +858,14 @@ function forceSetToMapDataForIndex(
   return {t: DataModelType.Map, v, m: map.m};
 }
 
-function forceSetMapKeyForIndex(map: MapDataModel, index: number, key: string | null): MapDataModel {
+function unsafeSetMapKeyForIndex(map: MapDataModel, index: number, key: string | null): MapDataModel {
   const v = [...map.v];
   const item = v[index];
   v[index] = [key, item[mapItemIdIndex], item[mapItemDataIndex]];
   return {t: DataModelType.Map, v, m: map.m};
 }
 
-export function setToMapDataModel(map: MapDataModel, key: string, value: DataModel) {
+export function setToMapDataModel(map: MapDataModel, key: string, value: DataModel): MapDataModel {
   const index = getMapDataIndexAt(map, key);
   if (index === undefined) {
     return pushToMapData(map, value, key);
@@ -850,12 +873,12 @@ export function setToMapDataModel(map: MapDataModel, key: string, value: DataMod
     if (dataModelEquals(value, getMapDataAtIndex(map, index)!)) {
       return map;
     } else {
-      return forceSetToMapDataForIndex(map, value, index, key);
+      return unsafeSetToMapDataForIndex(map, value, index, key);
     }
   }
 }
 
-function forceInsertToMapData(map: MapDataModel, value: DataModel, index: number, key?: string | null): MapDataModel {
+function unsafeInsertToMapData(map: MapDataModel, value: DataModel, index: number, key?: string | null): MapDataModel {
   return {
     t: DataModelType.Map,
     v: [...map.v.slice(0, index), [key ?? null, map.m + 1, value], ...map.v.slice(index)],
@@ -863,7 +886,19 @@ function forceInsertToMapData(map: MapDataModel, value: DataModel, index: number
   };
 }
 
-function forceAddToMapData(map: MapDataModel, value: DataModel, key: string): MapDataModel {
+function unsafeInsertValuesToMapData(map: MapDataModel, values: readonly DataModel[], index: number): MapDataModel {
+  return {
+    t: DataModelType.Map,
+    v: [
+      ...map.v.slice(0, index),
+      ...values.map((value, i) => [null, map.m + 1 + i, value] as const),
+      ...map.v.slice(index),
+    ],
+    m: map.m + values.length,
+  };
+}
+
+function unsafeAddToMapData(map: MapDataModel, value: DataModel, key: string): MapDataModel {
   return {t: DataModelType.Map, v: [...map.v, [key, map.m + 1, value]], m: map.m + 1};
 }
 
@@ -871,8 +906,19 @@ function pushToMapData(map: MapDataModel, value: DataModel, key?: string): MapDa
   return {t: DataModelType.Map, v: [...map.v, [key ?? null, map.m + 1, value]], m: map.m + 1};
 }
 
-function forceDeleteFromMapDataAt(map: MapDataModel, index: number): MapDataModel {
+function unsafeDeleteFromMapDataAt(map: MapDataModel, index: number): MapDataModel {
   return {t: DataModelType.Map, v: [...map.v.slice(0, index), ...map.v.slice(index + 1)], m: map.m};
+}
+
+function deleteFromMapDataAtIndexes(map: MapDataModel, indexes: readonly number[]): MapDataModel | undefined {
+  const indexSet = new Set(indexes);
+  const values: MapDataModelItem[] = [];
+  map.v.forEach((value, index) => {
+    if (!indexSet.has(index)) {
+      values.push(value);
+    }
+  });
+  return mapDataSize(map) === values.length ? undefined : {t: DataModelType.Map, v: values, m: map.m};
 }
 
 function deleteFromMapDataAtPathComponent(
@@ -881,16 +927,16 @@ function deleteFromMapDataAtPathComponent(
 ): MapDataModel {
   if (dataPathComponentIsMapKeyLike(pathComponent)) {
     const index = getMapDataIndexAt(map, dataPathComponentToMapKey(pathComponent));
-    return index === undefined ? map : forceDeleteFromMapDataAt(map, index);
+    return index === undefined ? map : unsafeDeleteFromMapDataAt(map, index);
   }
   if (dataPathComponentIsPointer(pathComponent)) {
     const index = getMapDataIndexForPointer(map, pathComponent);
-    return index === undefined ? map : forceDeleteFromMapDataAt(map, index);
+    return index === undefined ? map : unsafeDeleteFromMapDataAt(map, index);
   }
   return map;
 }
 
-function setToMapDataRecursive2(
+function setToMapDataRecursive(
   map: MapDataModel,
   path: PathContainer,
   context: DataModelContext,
@@ -908,26 +954,7 @@ function setToMapDataRecursive2(
     const nextChildData = createNextChildData(path.next(), context.pushMapIndex(childIndex, childKey));
     return nextChildData === undefined
       ? undefined
-      : forceSetToMapDataForIndex(map, nextChildData, childIndex, childKey);
-  }
-}
-
-function setToMapDataRecursive(
-  map: MapDataModel,
-  path: EditingForwardDataPath,
-  schema: DataSchemaContext,
-  createNextChildData: CreateNextChildData,
-  onKeyMissing?: (key: string | null | undefined, schema: DataSchemaContext) => MapDataModel | undefined,
-): MapDataModel | undefined {
-  const firstPathComponent = headDataPathComponent(path);
-  const {key, index} = getMapKeyAndIndex(map, firstPathComponent);
-  const childSchema = schema?.digByPath(firstPathComponent);
-  if (index !== undefined) {
-    const childData = getMapDataAtIndex(map, index)!;
-    const nextChildData = createNextChildData(shiftDataPath(path), childData, childSchema);
-    return nextChildData === undefined ? undefined : forceSetToMapDataForIndex(map, nextChildData, index, key);
-  } else {
-    return onKeyMissing?.(key, childSchema);
+      : unsafeSetToMapDataForIndex(map, nextChildData, childIndex, childKey);
   }
 }
 
@@ -1026,7 +1053,7 @@ export function* eachMapDataItem(map: MapDataModel): Generator<PublicMapDataItem
 //#endregion For MapDataModel
 
 //#region For CollectionDataModel
-function setToMapOrListDataRecursive2(
+function setToMapOrListDataRecursive(
   model: DataModel | undefined,
   path: PathContainer,
   context: DataModelContext,
@@ -1035,13 +1062,17 @@ function setToMapOrListDataRecursive2(
 ): DataModel | undefined {
   if (dataModelIsMapOrList(model)) {
     if (mapOrListDataModelIsMap(model)) {
-      return setToMapDataRecursive2(model, path, context, createNextChildData, (key) => onKeyMissing?.(model, key));
+      return setToMapDataRecursive(model, path, context, createNextChildData, (key) => onKeyMissing?.(model, key));
     } else {
-      return setToListDataRecursive2(model, path, context, createNextChildData);
+      return setToListDataRecursive(model, path, context, createNextChildData);
     }
   } else {
     return undefined;
   }
+}
+
+export function mapOrListDataSize(mapOrList: MapDataModel | ListDataModel): number {
+  return mapOrList.v.length;
 }
 //#endregion For CollectionDataModel
 

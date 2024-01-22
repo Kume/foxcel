@@ -72,3 +72,11 @@ export function compact<T>(values: readonly (T | null | undefined | false)[]): T
 export function isReadonlyArray<T>(value: readonly T[] | unknown): value is readonly T[] {
   return Array.isArray(value);
 }
+
+export function rangeBySize(start: number, size: number): number[] {
+  return [...Array(size)].map((_, i) => start + i);
+}
+
+export function rangeLt(start: number, sup: number): number[] {
+  return rangeBySize(start, sup - start);
+}

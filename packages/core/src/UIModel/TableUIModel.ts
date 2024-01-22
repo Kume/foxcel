@@ -6,6 +6,8 @@ import {
   dataModelToString,
   emptyListModel,
   emptyMapModel,
+  insertToDataModel,
+  mapOrListDataSize,
   setToMapDataModel,
 } from '../DataModel/DataModel';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
@@ -15,6 +17,8 @@ import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} fro
 import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
 import {DataSchema, dataSchemaIsBoolean, DataSchemaType} from '../DataModel/DataSchema';
 import {UIModelContextMenuItem} from './UIModelCommon';
+import {rangeBySize} from '../common/utils';
+import {DataModelAction} from '../DataModel/DataModelAction';
 
 export interface TableCellPoint {
   readonly row: number;
@@ -403,7 +407,7 @@ export function tableUIModelAddRowBeforeAction(model: TableUIModel, index: numbe
     action: {
       type: 'insert',
       dataContext: model.dataContext,
-      after: index === 0 ? undefined : model.rows[index - 1].pointer,
+      after: index === 0 ? undefined : index - 1,
       data: initialRowData(model),
     },
   };
@@ -415,25 +419,21 @@ export function tableUIModelAddRowAfterAction(model: TableUIModel, index: number
     action: {
       type: 'insert',
       dataContext: model.dataContext,
-      after: model.rows[index]?.pointer,
+      after: index,
       data: initialRowData(model),
     },
   };
 }
 
 export function tableUIModelDeleteRowsBySelection(model: TableUIModel, selection: TableUISelection): AppAction {
-  const actions: AppAction[] = [];
-  for (let i = 0; i < (selection.range.row.size ?? model.rows.length); i++) {
-    actions.push({
-      type: 'data',
-      action: {
-        type: 'delete',
-        dataContext: model.dataContext,
-        at: model.rows[i + selection.range.row.start].pointer,
-      },
-    });
-  }
-  return {type: 'batch', actions};
+  return {
+    type: 'data',
+    action: {
+      type: 'delete',
+      dataContext: model.dataContext,
+      at: rangeBySize(selection.range.row.start, selection.range.row.size ?? model.rows.length),
+    },
+  };
 }
 
 export function tableUIModelContextMenus(
@@ -465,19 +465,30 @@ export function tableUIModelAddRows(
   if (!(Number.isFinite(rows) && rows > 0)) {
     return {t: 'error', message: '行数指定が不正です。'};
   }
+  return {
+    t: 'action',
+    action: {type: 'data', action: tableUIModelAddRowsDataAction(model, rows)},
+  };
+}
 
-  // FIXME パフォーマンス最適化
-  const insertActions = [...Array(rows)].map(
-    (): AppAction => ({
-      type: 'data',
-      action: {type: 'insert', dataContext: model.dataContext, after: undefined, data: initialRowData(model)},
-    }),
-  );
+function tableUIModelAddRowsDataAction(model: TableUIModel, rows: number): DataModelAction {
+  const newModels = [...Array(rows)].map(() => initialRowData(model));
+
   if (model.data === undefined) {
-    insertActions.unshift({
-      type: 'data',
-      action: {type: 'set', dataContext: model.dataContext, data: initialData(model)},
-    });
+    const emptyData = initialData(model);
+    const initial = insertToDataModel(
+      undefined,
+      DataModelContext.createRoot({model: emptyData, schema: model.schema.dataSchema}),
+      {models: newModels},
+    );
+    return {type: 'set', dataContext: model.dataContext, data: initial ?? emptyData};
+  } else {
+    const size = mapOrListDataSize(model.data);
+    return {
+      type: 'insertValues',
+      dataContext: model.dataContext,
+      after: size === 0 ? undefined : size - 1,
+      data: newModels,
+    };
   }
-  return {t: 'action', action: {type: 'batch', actions: insertActions}};
 }
