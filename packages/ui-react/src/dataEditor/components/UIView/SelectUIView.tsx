@@ -517,14 +517,18 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   );
 };
 
-const MultiSelectInputSelectedItem = styled.span<{hasError?: boolean}>`
-  border: ${({hasError}) => (hasError ? 'red 2px solid' : 'darkgray 1px solid')};
+const MultiSelectInputSelectedItem = styled.span`
+  border: darkgray 1px solid;
   ${({theme}) => labelTextStyle(theme)}
   border-radius: 4px;
   margin: 2px;
   padding: 0 4px;
   display: flex;
   align-items: center;
+`;
+
+const MultiSelectInputSelectedErrorItem = styled(MultiSelectInputSelectedItem)`
+  border: red 2px solid;
 `;
 
 const CloseItemIconArea = styled.div`
@@ -555,12 +559,12 @@ const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) =>
         };
         if (current.isInvalid) {
           return (
-            <MultiSelectInputSelectedItem hasError={true} key={index}>
+            <MultiSelectInputSelectedErrorItem key={index}>
               <ErrorLabel>{selectUIModelCurrentLabel(current)}</ErrorLabel>
               <CloseItemIconArea onClick={click}>
                 <VscClose />
               </CloseItemIconArea>
-            </MultiSelectInputSelectedItem>
+            </MultiSelectInputSelectedErrorItem>
           );
         } else {
           return (

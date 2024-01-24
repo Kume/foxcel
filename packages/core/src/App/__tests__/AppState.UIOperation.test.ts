@@ -71,4 +71,22 @@ describe('Unit tests for simple form', () => {
     // 入力した値に変化している
     expect(checkboxUIModelValue(updatedModel)).toBe(true);
   });
+
+  it('マッピングテーブル内のテキスト入力ができる', async () => {
+    const appState = await initAppState();
+    const uiPath: UIModelPath = [
+      ['tab'],
+      ['contentList'],
+      ['form', 'mappingTable'],
+      ['mappingTable', 'a', 'singleLineText'],
+    ];
+    const model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
+    // 初期値は入ってないので、空文字が表示される
+    expect(model.value).toBe('');
+
+    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed'));
+    const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'text');
+    // 入力した値に変化している
+    expect(updatedModel.value).toBe('changed');
+  });
 });

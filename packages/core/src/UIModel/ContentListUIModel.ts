@@ -2,6 +2,8 @@ import {AppAction} from '../App/AppState';
 import {ContentListUIModel} from './UIModelTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
+import {insertToDataModel} from '../DataModel/DataModel';
+import {DataModelContext} from '../DataModel/DataModelContext';
 
 function initialContentData(model: ContentListUIModel): DataModel {
   // TODO このdataSchemaにrecursiveは入ってはいけないのでは？
@@ -21,39 +23,34 @@ export function contentListAddBeforeAction(model: ContentListUIModel, index: num
     action: {
       type: 'insert',
       dataContext: model.dataContext,
-      after: index === 0 ? undefined : model.indexes[index - 1].pointer,
+      after: index === 0 ? undefined : index - 1,
       data: initialContentData(model),
     },
   };
 }
 
 export function contentListAddAfterAction(model: ContentListUIModel, index: number): AppAction {
-  const insertAction: AppAction = {
-    type: 'data',
-    action: {
-      type: 'insert',
-      dataContext: model.dataContext,
-      after: model.indexes[index]?.pointer,
-      data: initialContentData(model),
-    },
-  };
   if (model.data === undefined) {
+    const emptyData = initialData(model);
+    const initial = insertToDataModel(
+      undefined,
+      DataModelContext.createRoot({model: emptyData, schema: model.schema.dataSchema}),
+      {model: initialData(model)},
+    );
     return {
-      type: 'batch',
-      actions: [
-        {
-          type: 'data',
-          action: {
-            type: 'set',
-            dataContext: model.dataContext,
-            data: initialData(model),
-          },
-        },
-        insertAction,
-      ],
+      type: 'data',
+      action: {type: 'set', dataContext: model.dataContext, data: initial ?? emptyData},
     };
   } else {
-    return insertAction;
+    return {
+      type: 'data',
+      action: {
+        type: 'insert',
+        dataContext: model.dataContext,
+        after: index,
+        data: initialContentData(model),
+      },
+    };
   }
 }
 

@@ -8,12 +8,10 @@ import {
   mappingTableUIModelCopy,
   mappingTableUIModelCut,
   mappingTableUIModelDelete,
-  MappingTableUIModelEmptyRow,
   MappingTableUIModelNotEmptyRow,
   mappingTableUIModelPaste,
   parseTsv,
   selectingTableCellRange,
-  SerializedDataModelContext,
   stringifyTsv,
   TableCellRange,
   TableRange,
@@ -25,7 +23,6 @@ import {
 import {
   handleTableUIViewKeyboardInput,
   renderTableUIViewCell,
-  renderTableUIViewCellWithSchema,
   TableUIViewCellLayout,
   TableUIViewHeaderCell,
   TableUIViewIndexCell,
@@ -222,21 +219,19 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
       </thead>
       <tbody>
         {model.rows.map((row, index) => {
-          const props = {
-            key: row.key,
-            rowNumber: index,
-            mainSelectedColumn: state.selection?.origin.row === index ? state.selection.origin.col : undefined,
-            selectionRange: tableRangeContains(state.selection?.range.row, index)
-              ? state.selection?.range.col
-              : undefined,
-            isSelectionStart: isStartOfTableRange(selectionRange?.row, index),
-            isSelectionEnd: isEndOfTableRange(selectionRange?.row, index, mappingTableRowSize(model)),
-            callbacks,
-          } as const;
-          return row.isEmpty ? (
-            <MappingTableEmptyRowView {...props} row={row} tableDataContext={model.dataContext} />
-          ) : (
-            <MappingTableRowView {...props} row={row} />
+          return (
+            <MappingTableRowView
+              key={row.key}
+              rowNumber={index}
+              mainSelectedColumn={state.selection?.origin.row === index ? state.selection.origin.col : undefined}
+              selectionRange={
+                tableRangeContains(state.selection?.range.row, index) ? state.selection?.range.col : undefined
+              }
+              isSelectionStart={isStartOfTableRange(selectionRange?.row, index)}
+              isSelectionEnd={isEndOfTableRange(selectionRange?.row, index, mappingTableRowSize(model))}
+              callbacks={callbacks}
+              row={row}
+            />
           );
         })}
         {model.danglingRows.map((row, index) => {
@@ -308,71 +303,6 @@ const MappingTableRowView = React.memo<MappingTableRowViewProps>(
 );
 
 MappingTableRowView.displayName = 'MappingTableRowView';
-
-interface MappingTableEmptyRowViewProps {
-  readonly row: MappingTableUIModelEmptyRow;
-  readonly rowNumber: number;
-  readonly tableDataContext: SerializedDataModelContext;
-  readonly selectionRange: TableRange | undefined;
-  readonly isSelectionStart: boolean;
-  readonly isSelectionEnd: boolean;
-  readonly mainSelectedColumn: number | undefined;
-  readonly callbacks: TableCellCallbacks;
-}
-
-const MappingTableEmptyRowView = React.memo<MappingTableEmptyRowViewProps>(
-  ({
-    tableDataContext,
-    row,
-    rowNumber,
-    selectionRange,
-    isSelectionStart,
-    isSelectionEnd,
-    mainSelectedColumn,
-    callbacks,
-  }) => {
-    const headerCallbacks = useMemo(
-      () => ({
-        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, rowNumber, undefined),
-        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, rowNumber, undefined),
-      }),
-      [callbacks, rowNumber],
-    );
-    return (
-      <TableUIViewRow>
-        <TableUIViewIndexCell {...headerCallbacks} selected={selectionRange && selectionRange.size === undefined}>
-          {row.key}
-        </TableUIViewIndexCell>
-        {row.cells.map((cell, index) => {
-          const isSelected = tableRangeContains(selectionRange, index);
-          const border = [
-            isSelected && isSelectionStart,
-            isEndOfTableRange(selectionRange, index, row.cells.length),
-            isSelected && isSelectionEnd,
-            isStartOfTableRange(selectionRange, index),
-          ] as const;
-          const isMainSelected = mainSelectedColumn === index;
-          return (
-            <TableUIViewCellLayout key={index} selected={isSelected} border={border}>
-              {renderTableUIViewCellWithSchema(
-                row.key,
-                cell.key,
-                cell.schema,
-                cell.dataContext,
-                isMainSelected,
-                rowNumber,
-                index,
-                callbacks,
-              )}
-            </TableUIViewCellLayout>
-          );
-        })}
-      </TableUIViewRow>
-    );
-  },
-);
-
-MappingTableEmptyRowView.displayName = 'MappingTableEmptyRowView';
 
 interface MappingTableDanglingRowViewProps {
   readonly row: TableUIModelRow;

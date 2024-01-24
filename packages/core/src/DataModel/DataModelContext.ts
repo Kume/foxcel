@@ -82,12 +82,15 @@ export class DataModelContextPathContainer implements PathContainer {
     return this.isLast ? undefined : new DataModelContextPathContainer(this.path, this.index + 1);
   }
 
-  public nextForMapKey(map: MapDataModel, key: string): DataModelContextPathContainer | undefined {
+  public nextForMapKey(map: MapDataModel | undefined, key: string): DataModelContextPathContainer | undefined {
     const currentPathComponent = this.path[this.index];
     switch (currentPathComponent.type) {
       case 'map_k':
         return currentPathComponent.key === key ? this.next() : undefined;
       case 'map_i': {
+        if (map === undefined) {
+          return undefined;
+        }
         const item = getMapItemAt(map, key);
         return item && item[2] === key ? this.next() : undefined;
       }

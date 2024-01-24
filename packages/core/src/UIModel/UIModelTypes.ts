@@ -22,7 +22,6 @@ import {
 import {FilledTemplate} from '../DataModel/TemplateEngine';
 import {UIDataFocusLogNode, UISchemaFocusLogNode} from './UIModelFocus';
 import {SerializedDataModelContext} from '../DataModel/DataModelContext';
-import {UISchemaExcludeRecursive} from './UISchema';
 
 interface UIModelCommon {
   readonly dataContext: SerializedDataModelContext;
@@ -61,7 +60,7 @@ export interface FormUIModelContent {
 interface KeyTextUIModel {
   readonly type: 'text';
   readonly isKey: true;
-  readonly schema?: undefined;
+  readonly schema: TextUISchema;
   readonly dataContext: SerializedDataModelContext;
   readonly value: string | null;
 }
@@ -118,8 +117,8 @@ export interface TableUIModelColumn {
 }
 
 export interface TableUIModelRow {
-  readonly pointer: DataPointer;
   readonly key: string | null | undefined;
+  readonly uniqueKey: number | string;
   readonly data: MapDataModel | undefined;
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly dataContext: SerializedDataModelContext;
@@ -132,27 +131,11 @@ export interface MappingTableUIModel extends UIModelCommon {
   readonly schema: MappingTableUISchema;
   readonly data: MapDataModel | undefined;
   readonly columns: readonly TableUIModelColumn[];
-  readonly rows: readonly MappingTableUIModelRow[];
+  readonly rows: readonly TableUIModelRow[];
   readonly danglingRows: readonly TableUIModelRow[];
 }
 
 export type MappingTableUIModelNotEmptyRow = TableUIModelRow & {isEmpty?: false};
-
-/**
- * 対応するDataModelが存在しないRow
- * TODO これが必要だったのが、パスをDataPathで表現していたためだった気もするので、無くせるかも？
- */
-export interface MappingTableUIModelEmptyRow {
-  readonly isEmpty: true;
-  readonly key: string | null | undefined;
-  readonly cells: readonly MappingTableUIModelEmptyCell[];
-}
-export type MappingTableUIModelRow = MappingTableUIModelNotEmptyRow | MappingTableUIModelEmptyRow;
-export interface MappingTableUIModelEmptyCell {
-  readonly schema: UISchemaExcludeRecursive;
-  readonly key: string;
-  readonly dataContext: SerializedDataModelContext;
-}
 
 export interface SelectUIModelCommon extends UIModelCommon {
   readonly type: 'select';

@@ -66,7 +66,7 @@ function getUIModelByPathRecursive(model: UIModel | undefined, path: UIModelPath
       if (model.type === 'mappingTable') {
         const row = model.rows.find((row) => row.key === current[1]);
         if (!row) return undefined;
-        const cell = row.isEmpty ? undefined : row.cells.find((cell) => cell.schema?.key === current[2]);
+        const cell = row.cells.find((cell) => cell.schema?.key === current[2]);
         return getUIModelByPathRecursive(cell, path, index + 1);
       } else {
         return undefined;

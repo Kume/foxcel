@@ -31,31 +31,17 @@ export function mappingTableUIModelPaste(
   );
 
   const actions: AppAction[] = [];
+  // TODO アクションを一つだけ発行するように
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
     const row = model.rows[selection.row.start + rowDataIndex];
     if (row) {
-      if (row.isEmpty) {
-        const {data: newRowData} = tableUIModelMakeNewRow(
-          model,
-          data[rowDataIndex].map((value, columnDataIndex) => ({
-            columnIndex: columnDataIndex + selection.col.start,
-            value,
-          })),
-          root,
-        );
-        actions.push({
-          type: 'data',
-          action: {type: 'push', data: newRowData, dataContext: model.dataContext, key: row.key},
-        });
-      } else {
-        for (let columnDataIndex = 0; columnDataIndex < pasteColumnSize; columnDataIndex++) {
-          const columnIndex = selection.col.start + columnDataIndex;
-          const cellUIModel = row.cells[columnIndex];
-          const cellData = data[rowDataIndex % dataRowSize][columnDataIndex % dataColumnSize];
-          const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
-          if (action) {
-            actions.push(action);
-          }
+      for (let columnDataIndex = 0; columnDataIndex < pasteColumnSize; columnDataIndex++) {
+        const columnIndex = selection.col.start + columnDataIndex;
+        const cellUIModel = row.cells[columnIndex];
+        const cellData = data[rowDataIndex % dataRowSize][columnDataIndex % dataColumnSize];
+        const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
+        if (action) {
+          actions.push(action);
         }
       }
     }
@@ -85,20 +71,13 @@ export function mappingTableUIModelCopy(model: MappingTableUIModel, selection: T
   for (let selectionRowIndex = 0; selectionRowIndex < rowSize; selectionRowIndex++) {
     const row = model.rows[selection.row.start + selectionRowIndex];
     const rowData: string[] = [];
-    if (row.isEmpty) {
-      for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
-        const column = model.schema.contents[selection.col.start + selectionColumnIndex];
-        rowData.push(tableUIModelStringToDataModelWithSchema(column.dataSchema, undefined));
+    for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
+      const cell = row.cells[selection.col.start + selectionColumnIndex];
+      if (cell.isKey) {
+        // TODO スキーマのバリデーションにも実装を追加
+        throw new Error('mapping tableのカラムにkeyを指定するフィールドが存在してはいけない。');
       }
-    } else {
-      for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
-        const cell = row.cells[selection.col.start + selectionColumnIndex];
-        if (cell.isKey) {
-          // TODO スキーマのバリデーションにも実装を追加
-          throw new Error('mapping tableのカラムにkeyを指定するフィールドが存在してはいけない。');
-        }
-        rowData.push(tableUIModelStringToDataModelWithSchema(cell.schema.dataSchema, cell.data));
-      }
+      rowData.push(tableUIModelStringToDataModelWithSchema(cell.schema.dataSchema, cell.data));
     }
     data.push(rowData);
   }
@@ -143,14 +122,12 @@ export function mappingTableUIModelDelete(model: MappingTableUIModel, selection:
   for (let selectionRowIndex = 0; selectionRowIndex < rowSize; selectionRowIndex++) {
     const row = model.rows[selection.row.start + selectionRowIndex];
     for (let selectionColumnIndex = 0; selectionColumnIndex < columnSize; selectionColumnIndex++) {
-      if (!row.isEmpty) {
-        const cell = row.cells[selection.col.start + selectionColumnIndex];
-        if (cell.isKey) {
-          // TODO スキーマのバリデーションにも実装を追加
-          throw new Error('mapping tableのカラムにkeyを指定するフィールドが存在してはいけない。');
-        }
-        actions.push({type: 'data', action: {type: 'delete', dataContext: model.dataContext}});
+      const cell = row.cells[selection.col.start + selectionColumnIndex];
+      if (cell.isKey) {
+        // TODO スキーマのバリデーションにも実装を追加
+        throw new Error('mapping tableのカラムにkeyを指定するフィールドが存在してはいけない。');
       }
+      actions.push({type: 'data', action: {type: 'delete', dataContext: model.dataContext}});
     }
   }
 

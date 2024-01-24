@@ -35,7 +35,7 @@ class StringPathContainer implements PathContainer {
     return this.currentListIndex() === index ? this.next() : this;
   }
 
-  public nextForMapKey(map: MapDataModel, key: string): PathContainer | undefined {
+  public nextForMapKey(map: MapDataModel | undefined, key: string): PathContainer | undefined {
     const child = this.mapChild(map);
     return key === child?.[1] ? this.next() : this;
   }

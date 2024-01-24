@@ -327,7 +327,7 @@ export type PathContainerMapChild =
 export interface PathContainer {
   next(): PathContainer | undefined;
   nextForListIndex(index: number): PathContainer | undefined;
-  nextForMapKey(map: MapDataModel, key: string): PathContainer | undefined;
+  nextForMapKey(map: MapDataModel | undefined, key: string): PathContainer | undefined;
   listChild(list: DataModel | undefined): [model: DataModel, index: number] | undefined;
   mapChild(map: DataModel | undefined): PathContainerMapChild;
 }
@@ -373,7 +373,7 @@ export class SimplePathContainer implements PathContainer {
   nextForListIndex(index: number): PathContainer | undefined {
     return this.path[this.index] === index ? this.next() : undefined;
   }
-  nextForMapKey(map: MapDataModel, key: string): PathContainer | undefined {
+  nextForMapKey(map: MapDataModel | undefined, key: string): PathContainer | undefined {
     return this.path[this.index] === key ? this.next() : undefined;
   }
   listChild(list: DataModel | undefined): [model: DataModel, index: number] | undefined {
@@ -1082,7 +1082,7 @@ export function mapOrListDataSize(mapOrList: MapDataModel | ListDataModel): numb
 //   return pointer?.i;
 // }
 
-export function getIdFromDataPointer(pointer: DataPointer | undefined): number;
+export function getIdFromDataPointer(pointer: DataPointer): number;
 export function getIdFromDataPointer(pointer: DataPointer | undefined): number | undefined;
 export function getIdFromDataPointer(pointer: DataPointer | undefined): number | undefined {
   return pointer?.d;

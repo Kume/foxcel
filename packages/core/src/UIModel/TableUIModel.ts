@@ -3,6 +3,7 @@ import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
 import {
   dataModelIsBoolean,
+  dataModelIsMapOrList,
   dataModelToString,
   emptyListModel,
   emptyMapModel,
@@ -19,6 +20,7 @@ import {DataSchema, dataSchemaIsBoolean, DataSchemaType} from '../DataModel/Data
 import {UIModelContextMenuItem} from './UIModelCommon';
 import {rangeBySize} from '../common/utils';
 import {DataModelAction} from '../DataModel/DataModelAction';
+import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
 
 export interface TableCellPoint {
   readonly row: number;
@@ -207,6 +209,10 @@ export function tableUIModelPaste(
     tableUIModelPasteRange(selection.col, dataColumnSize, model.columns.length),
     model.columns.length - selection.col.start,
   );
+  let updatingModel = model.data ?? defaultDataModelForSchema(model.schema.dataSchema);
+  if (!dataModelIsMapOrList(updatingModel)) {
+    return undefined;
+  }
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
     const row = model.rows[selection.row.start + rowDataIndex];
     if (row) {

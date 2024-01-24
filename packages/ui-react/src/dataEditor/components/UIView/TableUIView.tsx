@@ -295,7 +295,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
         <tbody>
           {model.rows.map((row, index) => (
             <TableRowView
-              key={getIdFromDataPointer(row.pointer)}
+              key={row.uniqueKey}
               row={row}
               rowNumber={index}
               mainSelectedColumn={state.selection?.origin.row === index ? state.selection?.origin.col : undefined}
