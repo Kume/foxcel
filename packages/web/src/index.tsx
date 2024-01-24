@@ -17,6 +17,7 @@ import {
 import {ThemeProvider} from 'styled-components';
 import {LoadedData, Theme} from '@foxcel/ui-react/dist/types';
 import {sampleConfig} from '@foxcel/ui-react/dist/sample';
+import {createRoot} from 'react-dom/client';
 
 const loadedItemKey = 'DEBUG_loadedItem';
 
@@ -277,13 +278,14 @@ const App: React.FC = () => {
   );
 };
 
-ReactDOM.render(
+const root = createRoot(document.getElementById('root')!);
+
+root.render(
   <React.StrictMode>
     <ThemeProvider theme={currentTheme}>
       <App />
     </ThemeProvider>
   </React.StrictMode>,
-  document.getElementById('root'),
 );
 
 // If you want your app to work offline and load faster, you can change
