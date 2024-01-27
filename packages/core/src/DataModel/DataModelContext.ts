@@ -54,12 +54,48 @@ export interface SerializedDataModelContext {
   readonly isKey?: boolean;
 }
 
-export type DataModelContextPathComponent =
+type DataModelContextPathComponent =
   | DataModelContextListPathComponent
   | DataModelContextMapKeyPathComponent
   | DataModelContextMapIndexPathComponent;
 
-export type DataModelContextPath = readonly DataModelContextPathComponent[];
+type DataModelContextPath = readonly DataModelContextPathComponent[];
+
+export interface RelativeDataModelContextPath {
+  readonly path: DataModelContextPath;
+  readonly isKey?: boolean;
+}
+
+const emptySerializedDataModelContext: SerializedDataModelContext = {
+  path: [],
+  keys: [],
+};
+
+function serializedPathComponentEquals(a: DataModelContextPathComponent, b: DataModelContextPathComponent): boolean {
+  switch (a.type) {
+    case 'list':
+      return b.type === a.type && a.index === b.index;
+    case 'map_k':
+      return b.type === a.type && a.key === b.key;
+    case 'map_i':
+      return b.type === a.type && a.index === b.index && a.key === b.key;
+  }
+}
+
+function serializedPathEquals(a: DataModelContextPath, b: DataModelContextPath): boolean {
+  return a.length === b.length && a.every((value, index) => serializedPathComponentEquals(value, b[index]));
+}
+
+function keysEqual(a: Keys, b: Keys): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+export function serializedDataModelContextEquals(
+  a: SerializedDataModelContext,
+  b: SerializedDataModelContext,
+): boolean {
+  return !a.isKey === !b.isKey && serializedPathEquals(a.path, b.path) && keysEqual(a.keys, b.keys);
+}
 
 export interface DataModelRoot {
   readonly model: DataModel | undefined;
@@ -68,7 +104,9 @@ export interface DataModelRoot {
 
 // TODO DataPathContainerをなくせたら、PathContainerの設計をisKeyを考慮したものにする
 export class DataModelContextPathContainer implements PathContainer {
-  public static create({path}: SerializedDataModelContext): DataModelContextPathContainer | undefined {
+  public static create({
+    path,
+  }: SerializedDataModelContext | RelativeDataModelContextPath): DataModelContextPathContainer | undefined {
     return path.length === 0 ? undefined : new DataModelContextPathContainer(path, 0);
   }
 

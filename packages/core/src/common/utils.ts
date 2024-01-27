@@ -80,3 +80,18 @@ export function rangeBySize(start: number, size: number): number[] {
 export function rangeLt(start: number, sup: number): number[] {
   return rangeBySize(start, sup - start);
 }
+
+export function rangeInArrayEqual<Item>(
+  a: readonly Item[],
+  b: readonly Item[],
+  itemEquals: (a: Item, b: Item) => boolean,
+  start: number,
+  size: number,
+): boolean {
+  for (let i = start; i < start + size; i++) {
+    if (!itemEquals(a[i], b[i])) {
+      return false;
+    }
+  }
+  return true;
+}

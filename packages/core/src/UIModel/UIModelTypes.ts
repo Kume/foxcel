@@ -120,6 +120,7 @@ export interface TableUIModelRow {
   readonly key: string | null | undefined;
   readonly uniqueKey: number | string;
   readonly data: MapDataModel | undefined;
+  // TODO 現在使われてない。キャッシュを考慮したうえで使わないなら消す
   readonly dataFocusLog: UIDataFocusLogNode | undefined;
   readonly dataContext: SerializedDataModelContext;
   readonly cells: readonly UIModel[];
