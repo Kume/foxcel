@@ -66,31 +66,37 @@ export function applyDataModelAction(root: DataModelRoot, action: DataModelActio
   const context = DataModelContext.createRoot(root);
   switch (action.type) {
     case 'set':
-      return setToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {model: action.data});
+      return setToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
+        model: action.data,
+      });
 
     case 'setKey':
-      return setKeyToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {key: action.key});
+      return setKeyToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
+        key: action.key,
+      });
 
     case 'insert':
-      return insertToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
+      return insertToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         after: action.after,
         model: action.data,
       });
 
     case 'insertValues':
-      return insertToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
+      return insertToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         after: action.after,
         models: action.data,
       });
 
     case 'push':
-      return pushToDataModel(DataModelContextPathContainer.create(action.dataContext), context, {
+      return pushToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         model: action.data,
         key: action.key ?? undefined,
       });
 
     case 'delete':
-      return deleteFromDataModel(DataModelContextPathContainer.create(action.dataContext), context, {at: action.at});
+      return deleteFromDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
+        at: action.at,
+      });
   }
 }
 

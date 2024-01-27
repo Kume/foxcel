@@ -483,6 +483,7 @@ function tableUIModelAddRowsDataAction(model: TableUIModel, rows: number): DataM
   if (model.data === undefined) {
     const emptyData = initialData(model);
     const initial = insertToDataModel(
+      emptyData,
       undefined,
       DataModelContext.createRoot({model: emptyData, schema: model.schema.dataSchema}),
       {models: newModels},

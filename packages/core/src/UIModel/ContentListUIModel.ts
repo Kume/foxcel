@@ -33,6 +33,7 @@ export function contentListAddAfterAction(model: ContentListUIModel, index: numb
   if (model.data === undefined) {
     const emptyData = initialData(model);
     const initial = insertToDataModel(
+      emptyData,
       undefined,
       DataModelContext.createRoot({model: emptyData, schema: model.schema.dataSchema}),
       {model: initialData(model)},

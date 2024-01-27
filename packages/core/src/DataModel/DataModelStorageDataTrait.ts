@@ -70,6 +70,7 @@ export const dataModelStorageDataTrait: StorageDataTrait<DataModel> = {
 
   setForPath(destination: DataModel, model: DataModel, path: readonly string[]): DataModel {
     const result = setToDataModel(
+      destination,
       StringPathContainer.createRoot(path),
       DataModelContext.createRoot({model: destination, schema: undefined}),
       {model},

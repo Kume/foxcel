@@ -345,7 +345,7 @@ export class DataModelContext {
 
   private constructor(
     public readonly schemaContext: DataSchemaContext,
-    private readonly path: readonly DataModelContextPathComponent[],
+    private readonly path: DataModelContextPath,
     private readonly keys: Keys,
     public readonly currentModel: DataModel | undefined,
     public readonly root: DataModelRoot,
@@ -398,7 +398,7 @@ export class DataModelContext {
 
   public assertAutoResolveConditional(value: boolean): void {
     if (this.autoResolveConditional !== value) {
-      throw new Error(`Invalid autoResolveConditional value. expected=${value}`);
+      throw new Error(`Invalid autoResolveConditional value. expected=${value ? 'true' : 'false'}`);
     }
   }
 
@@ -489,6 +489,13 @@ export class DataModelContext {
     return getModelByPath(rootModel, this.path);
   }
 }
+
+export type DataModelContextWithoutData = Pick<DataModelContext, 'assertAutoResolveConditional' | 'schemaContext'> & {
+  pushMapIndex(index: number, key: string | null): DataModelContext;
+  pushMapIndexOrKey(mapKey: string): DataModelContextWithoutData;
+  pushMapKey(mapKey: string): DataModelContextWithoutData;
+  pushListIndex(index: number): DataModelContextWithoutData;
+};
 
 export class DataModelContextWithoutSchema {
   public static deserialize(
