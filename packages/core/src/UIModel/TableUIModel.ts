@@ -1,4 +1,4 @@
-import {AppAction} from '../App/AppState';
+import {AppAction, AppDataModelAction} from '../App/AppState';
 import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
 import {
@@ -13,13 +13,18 @@ import {
 } from '../DataModel/DataModel';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {selectUIModelHandleInputForSchema, selectUIModelSetString} from './SelectUIModel';
-import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot, relativeSerializedDataModelContextPath} from '../DataModel/DataModelContext';
 import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} from './CheckboxUIModel';
 import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
 import {DataSchema, dataSchemaIsBoolean, DataSchemaType} from '../DataModel/DataSchema';
 import {UIModelContextMenuItem} from './UIModelCommon';
 import {rangeBySize} from '../common/utils';
-import {DataModelAction} from '../DataModel/DataModelAction';
+import {
+  buildMultiSetDataModelActionNode,
+  DataModelAction,
+  DataModelAtomicAction,
+  SetMultipleDataActionChild,
+} from '../DataModel/DataModelAction';
 import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
 
 export interface TableCellPoint {
@@ -171,11 +176,7 @@ export function tableUIModelMakeNewRow(
   return {data: rowData, key};
 }
 
-export function tableUIModelPasteCellAction(
-  cellUIModel: UIModel,
-  cellData: string,
-  root: DataModelRoot,
-): AppAction | undefined {
+export function tableUIModelPasteCellAction(cellUIModel: UIModel, cellData: string, root: DataModelRoot) {
   switch (cellUIModel.type) {
     case 'text':
       return textUIModelSetText(cellUIModel, cellData);
@@ -209,10 +210,25 @@ export function tableUIModelPaste(
     tableUIModelPasteRange(selection.col, dataColumnSize, model.columns.length),
     model.columns.length - selection.col.start,
   );
-  let updatingModel = model.data ?? defaultDataModelForSchema(model.schema.dataSchema);
-  if (!dataModelIsMapOrList(updatingModel)) {
-    return undefined;
+  const setRowSize = Math.min(pasteRowSize, model.rows.length - selection.row.start);
+  const children: SetMultipleDataActionChild[] = [];
+  for (let rowIndex = 0; rowIndex < setRowSize; rowIndex++) {
+    const row = model.rows[selection.row.start + rowIndex];
+    const actionsForRow: DataModelAtomicAction[] = [];
+    for (let columnIndex = 0; columnIndex < pasteColumnSize; columnIndex++) {
+      const cellUIModel = row.cells[selection.col.start + columnIndex];
+      const cellData = data[rowIndex % dataRowSize][columnIndex % dataColumnSize];
+      const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
+      if (action) {
+        actionsForRow.push(action.action);
+      }
+    }
+    const actionChild = buildMultiSetDataModelActionNode(row.dataContext, actionsForRow);
+    if (actionChild) {
+      children.push({path: relativeSerializedDataModelContextPath(model.dataContext, row.dataContext), ...actionChild});
+    }
   }
+
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
     const row = model.rows[selection.row.start + rowDataIndex];
     if (row) {

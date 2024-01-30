@@ -6,7 +6,7 @@ import {
   nullDataModel,
   trueDataModel,
 } from '../DataModel/DataModel';
-import {AppAction} from '../App/AppState';
+import {AppAction, AppDataModelAction} from '../App/AppState';
 import {CheckBoxUISchema} from './UISchemaTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
 
@@ -21,11 +21,14 @@ export function checkboxUIModelSetValue(model: CheckboxUIModel, value: boolean):
   };
 }
 
-export function checkboxUIModelSetStringValue(model: CheckboxUIModel, value: string): AppAction | undefined {
+export function checkboxUIModelSetStringValue(model: CheckboxUIModel, value: string) {
   const dataModel = stringToDataModel(value);
   return dataModel === undefined
     ? undefined
-    : {type: 'data', action: {type: 'set', dataContext: model.dataContext, data: dataModel}};
+    : ({
+        type: 'data',
+        action: {type: 'set', dataContext: model.dataContext, data: dataModel},
+      } as const satisfies AppDataModelAction);
 }
 
 function stringToDataModel(value: string | null): DataModel | undefined {

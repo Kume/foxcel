@@ -1,13 +1,16 @@
-import {AppAction} from '../App/AppState';
+import {AppAction, AppDataModelAction} from '../App/AppState';
 import {nullDataModel, numberDataModelToNumber, numberToIntegerDataModel} from '../DataModel/DataModel';
 import {NumberUIModel} from './UIModelTypes';
 import {NumberUISchema} from './UISchemaTypes';
 import {DataModel} from '../DataModel/DataModelTypes';
 
-export function numberUIModelSetText(model: NumberUIModel, textValue: string): AppAction | undefined {
+export function numberUIModelSetText(model: NumberUIModel, textValue: string) {
   const dataModel = stringToDataModel(textValue);
   return dataModel !== undefined
-    ? {type: 'data', action: {type: 'set', dataContext: model.dataContext, data: dataModel}}
+    ? ({
+        type: 'data',
+        action: {type: 'set', dataContext: model.dataContext, data: dataModel},
+      } as const satisfies AppDataModelAction)
     : undefined;
 }
 

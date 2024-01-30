@@ -279,21 +279,21 @@ export function setToDataModel(
   );
 }
 
-interface SetDataRecursiveParams {
-  readonly setActions?: {
+export interface SetDataRecursiveParams {
+  readonly setActions?: readonly {
     /** relative path */
     readonly path: PathContainer | undefined;
     readonly params: SetDataParams;
   }[];
-  readonly setKeyActions?: {
+  readonly setKeyActions?: readonly {
     /** relative path */
     readonly path: PathContainer | undefined;
     readonly params: SetKeyDataParams;
   }[];
-  readonly children?: {
+  readonly deleteActions?: readonly {
     /** relative path */
     readonly path: PathContainer | undefined;
-    readonly params: SetDataRecursiveParams;
+    readonly params: DeleteDataParams;
   }[];
 }
 
@@ -322,11 +322,6 @@ export function setToDataModelRecursive(
     if (params.setKeyActions) {
       for (const action of params.setKeyActions) {
         model = setKeyToDataModel(model, action.path, context, action.params) ?? model;
-      }
-    }
-    if (params.children) {
-      for (const child of params.children) {
-        model = setToDataModelRecursive(model, child.path, context, child.params) ?? model;
       }
     }
     return model === dataModel ? undefined : model;
@@ -507,7 +502,8 @@ export function insertToDataModel(
 }
 
 export interface PushDataParams {
-  readonly model: DataModel;
+  readonly models?: readonly {readonly value: DataModel; readonly key?: string}[];
+  readonly model?: DataModel;
   readonly key?: string;
 }
 
@@ -525,9 +521,24 @@ export function pushToDataModel(
       );
     }
     if (mapOrListDataModelIsMap(dataModel)) {
-      return pushToMapData(dataModel, params.model, params.key);
+      if (params.model) {
+        return pushToMapData(dataModel, params.model, params.key);
+      } else if (params.models) {
+        return pushValuesToMapData(dataModel, params.models);
+      } else {
+        return undefined;
+      }
     } else {
-      return pushToListData(dataModel, params.model);
+      if (params.model) {
+        return pushToListData(dataModel, params.model);
+      } else if (params.models) {
+        return pushValuesToListData(
+          dataModel,
+          params.models.map(({value}) => value),
+        );
+      } else {
+        return undefined;
+      }
     }
   } else {
     return setToMapOrListDataRecursive(dataModel, path, context, (childData, nextPath, childContext) =>
@@ -720,6 +731,14 @@ function unsafeInsertValuesToListData(list: ListDataModel, values: readonly Data
 
 export function pushToListData(list: ListDataModel, value: DataModel): ListDataModel {
   return {t: DataModelType.List, v: [...list.v, [list.m + 1, value]], m: list.m + 1};
+}
+
+export function pushValuesToListData(list: ListDataModel, values: readonly DataModel[]): ListDataModel {
+  return {
+    t: DataModelType.List,
+    v: [...list.v, ...values.map((value, index) => [list.m + 1 + index, value] as const)],
+    m: list.m + list.v.length,
+  };
 }
 
 function unsafeDeleteFromListDataAt(list: ListDataModel, index: number): ListDataModel {
@@ -967,6 +986,17 @@ function unsafeAddToMapData(map: MapDataModel, value: DataModel, key: string): M
 
 function pushToMapData(map: MapDataModel, value: DataModel, key?: string): MapDataModel {
   return {t: DataModelType.Map, v: [...map.v, [key ?? null, map.m + 1, value]], m: map.m + 1};
+}
+
+function pushValuesToMapData(
+  map: MapDataModel,
+  values: readonly {readonly key?: string; readonly value: DataModel}[],
+): MapDataModel {
+  return {
+    t: DataModelType.Map,
+    v: [...map.v, ...values.map(({value, key}, index) => [key ?? null, map.m + 1 + index, value] as const)],
+    m: map.m + values.length,
+  };
 }
 
 function unsafeDeleteFromMapDataAt(map: MapDataModel, index: number): MapDataModel {

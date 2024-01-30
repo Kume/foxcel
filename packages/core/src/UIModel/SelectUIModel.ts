@@ -1,5 +1,5 @@
 import {SelectUIModel, SelectUIModelCurrentValue} from './UIModelTypes';
-import {AppAction} from '../App/AppState';
+import {AppAction, AppDataModelAction} from '../App/AppState';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {
   dataModelEquals,
@@ -117,11 +117,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
   }
 }
 
-export function selectUIModelSetString(
-  model: SelectUIModel,
-  value: string,
-  root: DataModelRoot,
-): AppAction | undefined {
+export function selectUIModelSetString(model: SelectUIModel, value: string, root: DataModelRoot) {
   const resultData = selectUIModelHandleInputForSchema(
     model.schema,
     value,
@@ -129,7 +125,10 @@ export function selectUIModelSetString(
   );
   return resultData === undefined
     ? undefined
-    : {type: 'data', action: {type: 'set', dataContext: model.dataContext, data: resultData}};
+    : ({
+        type: 'data',
+        action: {type: 'set', dataContext: model.dataContext, data: resultData},
+      } as const satisfies AppDataModelAction);
 }
 
 export function formatDynamicSelectUIOption(

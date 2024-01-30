@@ -18,13 +18,13 @@ export function formatTextUIInput(schema: TextUISchema, input: string | null): s
   }
 }
 
-export function textUIModelSetText(model: TextUIModel, value: string | null): AppDataModelAction {
+export function textUIModelSetText(model: TextUIModel, value: string | null) {
   return {
     type: 'data',
     action: model.isKey
       ? {type: 'setKey', dataContext: model.dataContext, key: formatTextUIInput(model.schema, value) || null}
       : {type: 'set', dataContext: model.dataContext, data: unknownToDataModel(formatTextUIInput(model.schema, value))},
-  };
+  } as const satisfies AppDataModelAction;
 }
 
 type Result = {type: 'key'; key: string | null} | {type: 'value'; value: DataModel};
