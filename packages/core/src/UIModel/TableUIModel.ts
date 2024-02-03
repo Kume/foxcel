@@ -1,9 +1,8 @@
-import {AppAction, AppDataModelAction} from '../App/AppState';
+import {AppAction} from '../App/AppState';
 import {MappingTableUIModel, TableUIModel, UIModel} from './UIModelTypes';
 import {textUIModelHandleInputForSchema, textUIModelSetText} from './TextUIModel';
 import {
   dataModelIsBoolean,
-  dataModelIsMapOrList,
   dataModelToString,
   emptyListModel,
   emptyMapModel,
@@ -13,19 +12,13 @@ import {
 } from '../DataModel/DataModel';
 import {DataModel, ListDataModel, MapDataModel} from '../DataModel/DataModelTypes';
 import {selectUIModelHandleInputForSchema, selectUIModelSetString} from './SelectUIModel';
-import {DataModelContext, DataModelRoot, relativeSerializedDataModelContextPath} from '../DataModel/DataModelContext';
+import {DataModelContext, DataModelRoot} from '../DataModel/DataModelContext';
 import {checkboxUIModelHandleInputWithSchema, checkboxUIModelSetStringValue} from './CheckboxUIModel';
 import {numberUIModelHandleInputForSchema, numberUIModelSetText} from './NumberUIModel';
 import {DataSchema, dataSchemaIsBoolean, DataSchemaType} from '../DataModel/DataSchema';
 import {UIModelContextMenuItem} from './UIModelCommon';
 import {rangeBySize} from '../common/utils';
-import {
-  buildMultiSetDataModelActionNode,
-  DataModelAction,
-  DataModelAtomicAction,
-  SetMultipleDataActionChild,
-} from '../DataModel/DataModelAction';
-import {defaultDataModelForSchema} from '../DataModel/DataModelWithSchema';
+import {buildMultiSetDataModelActionNode, DataModelAction, DataModelAtomicAction} from '../DataModel/DataModelAction';
 
 export interface TableCellPoint {
   readonly row: number;
@@ -203,59 +196,48 @@ export function tableUIModelPaste(
   }
   const dataColumnSize = data[0].length;
 
-  const actions: AppAction[] = [];
-
   const pasteRowSize = tableUIModelPasteRange(selection.row, dataRowSize, model.rows.length);
   const pasteColumnSize = Math.min(
     tableUIModelPasteRange(selection.col, dataColumnSize, model.columns.length),
     model.columns.length - selection.col.start,
   );
   const setRowSize = Math.min(pasteRowSize, model.rows.length - selection.row.start);
-  const children: SetMultipleDataActionChild[] = [];
+  const actions: DataModelAtomicAction[] = [];
   for (let rowIndex = 0; rowIndex < setRowSize; rowIndex++) {
     const row = model.rows[selection.row.start + rowIndex];
-    const actionsForRow: DataModelAtomicAction[] = [];
     for (let columnIndex = 0; columnIndex < pasteColumnSize; columnIndex++) {
       const cellUIModel = row.cells[selection.col.start + columnIndex];
       const cellData = data[rowIndex % dataRowSize][columnIndex % dataColumnSize];
       const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
       if (action) {
-        actionsForRow.push(action.action);
+        actions.push(action.action);
       }
-    }
-    const actionChild = buildMultiSetDataModelActionNode(row.dataContext, actionsForRow);
-    if (actionChild) {
-      children.push({path: relativeSerializedDataModelContextPath(model.dataContext, row.dataContext), ...actionChild});
     }
   }
 
-  for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
-    const row = model.rows[selection.row.start + rowDataIndex];
-    if (row) {
-      for (let columnDataIndex = 0; columnDataIndex < pasteColumnSize; columnDataIndex++) {
-        const columnIndex = selection.col.start + columnDataIndex;
-        const cellUIModel = row.cells[columnIndex];
-        const cellData = data[rowDataIndex % dataRowSize][columnDataIndex % dataColumnSize];
-        const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
-        if (action) {
-          actions.push(action);
-        }
-      }
-    } else {
-      const {data: newRowData, key} = tableUIModelMakeNewRow(
-        model,
-        data[rowDataIndex].map((value, columnDataIndex) => ({
-          columnIndex: columnDataIndex + selection.col.start,
-          value,
-        })),
-        root,
-      );
-      actions.push({type: 'data', action: {type: 'push', data: newRowData, dataContext: model.dataContext, key}});
-    }
+  const pushRowSize = pasteRowSize - setRowSize;
+  const pushValuesData: {readonly value: DataModel; readonly key?: string}[] = [];
+  for (let rowIndex = 0; rowIndex < pushRowSize; rowIndex++) {
+    const {data: newRowData, key} = tableUIModelMakeNewRow(
+      model,
+      data[(rowIndex + setRowSize) % dataRowSize].map((value, columnIndex) => ({
+        columnIndex: columnIndex + selection.col.start,
+        value,
+      })),
+      root,
+    );
+    pushValuesData.push({value: newRowData, key: key ?? undefined});
   }
 
   return {
-    action: {type: 'batch', actions},
+    action: {
+      type: 'data',
+      action: {
+        type: 'batch',
+        setMultiple: buildMultiSetDataModelActionNode(model.dataContext, actions),
+        push: {type: 'pushValues', data: pushValuesData, dataContext: model.dataContext},
+      },
+    },
     changedSelection: {
       row: {start: selection.row.start, size: pasteRowSize},
       col: {start: selection.col.start, size: pasteColumnSize},
@@ -310,7 +292,7 @@ export function tableUIModelCut(model: TableUIModel, selection: TableCellRange):
 }
 
 export function tableUIModelDelete(model: TableUIModel, selection: TableCellRange): AppAction {
-  const actions: AppAction[] = [];
+  const actions: DataModelAtomicAction[] = [];
 
   const selectionRowSize = selection.row.size ?? model.rows.length;
   const selectionColumnSize = selection.col.size ?? model.columns.length;
@@ -319,17 +301,14 @@ export function tableUIModelDelete(model: TableUIModel, selection: TableCellRang
     for (let selectionColumnIndex = 0; selectionColumnIndex < selectionColumnSize; selectionColumnIndex++) {
       const cell = row.cells[selection.col.start + selectionColumnIndex];
       if (cell.isKey) {
-        actions.push({
-          type: 'data',
-          action: {type: 'setKey', dataContext: cell.dataContext, key: null},
-        });
+        actions.push({type: 'setKey', dataContext: cell.dataContext, key: null});
       } else {
-        actions.push({type: 'data', action: {type: 'delete', dataContext: cell.dataContext}});
+        actions.push({type: 'delete', dataContext: cell.dataContext});
       }
     }
   }
 
-  return {type: 'batch', actions};
+  return {type: 'data', action: buildMultiSetDataModelActionNode(model.dataContext, actions)!};
 }
 
 export type TableUIModelMoveDirection = 'up' | 'right' | 'left' | 'down';

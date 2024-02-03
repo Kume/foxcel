@@ -273,26 +273,8 @@ describe('Unit tests for setToDataModelRecursive', () => {
     const context = DataModelContext.createRoot({model: before, schema});
     const after = setToDataModelRecursive(before, SimplePathContainer.create(['empty1']), context, {
       setActions: [{path: SimplePathContainer.create(['empty2']), params: {model: unknownToDataModel({})}}],
-      children: [],
     });
     expect(dataModelToJson(after!)).toEqual({empty1: {empty2: {}}});
-  });
-
-  it('Can cascade set to empty map', () => {
-    const schema = dataSchemaForFixture(dataSchemaFixture.mapMapMap);
-    const before = unknownToDataModel({});
-    const context = DataModelContext.createRoot({model: before, schema});
-    const after = setToDataModelRecursive(before, SimplePathContainer.create(['empty1']), context, {
-      children: [
-        {
-          path: SimplePathContainer.create(['empty2']),
-          params: {
-            setActions: [{path: SimplePathContainer.create(['empty3']), params: {model: unknownToDataModel({})}}],
-          },
-        },
-      ],
-    });
-    expect(dataModelToJson(after!)).toEqual({empty1: {empty2: {empty3: {}}}});
   });
 
   it('Can set to map with existing value', () => {

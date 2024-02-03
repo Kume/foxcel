@@ -324,6 +324,11 @@ export function setToDataModelRecursive(
         model = setKeyToDataModel(model, action.path, context, action.params) ?? model;
       }
     }
+    if (params.deleteActions) {
+      for (const action of params.deleteActions) {
+        model = deleteFromDataModel(model, action.path, context, action.params) ?? model;
+      }
+    }
     return model === dataModel ? undefined : model;
   }
 

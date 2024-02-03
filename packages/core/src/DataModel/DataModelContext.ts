@@ -71,6 +71,10 @@ const emptySerializedDataModelContext: SerializedDataModelContext = {
   keys: [],
 };
 
+const emptyRelativeDataModelContextPath: RelativeDataModelContextPath = {
+  path: [],
+};
+
 function serializedPathComponentEquals(a: DataModelContextPathComponent, b: DataModelContextPathComponent): boolean {
   switch (a.type) {
     case 'list':
@@ -86,6 +90,21 @@ function serializedPathEquals(a: DataModelContextPath, b: DataModelContextPath):
   return a.length === b.length && a.every((value, index) => serializedPathComponentEquals(value, b[index]));
 }
 
+function serializedPathPartialEquals(
+  a: DataModelContextPath,
+  b: DataModelContextPath,
+  start: number,
+  size: number,
+): boolean {
+  const end = start + size;
+  for (let i = start; i < end; i++) {
+    if (!serializedPathComponentEquals(a[i], b[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function keysEqual(a: Keys, b: Keys): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
@@ -95,6 +114,28 @@ export function serializedDataModelContextEquals(
   b: SerializedDataModelContext,
 ): boolean {
   return !a.isKey === !b.isKey && serializedPathEquals(a.path, b.path) && keysEqual(a.keys, b.keys);
+}
+
+export function relativeSerializedDataModelContextPath(
+  context: SerializedDataModelContext,
+  from: SerializedDataModelContext,
+): RelativeDataModelContextPath {
+  if (serializedDataModelContextEquals(context, from)) {
+    return emptyRelativeDataModelContextPath;
+  }
+  if (from.isKey) {
+    throw new Error("Cannot create a relative path when the 'from' path points to a key");
+  }
+  if (
+    context.path.length < from.path.length ||
+    !serializedPathPartialEquals(context.path, from.path, 0, from.path.length)
+  ) {
+    throw new Error(`Cannot create a relative path that ascends higher in the hierarchy.`);
+  }
+  return {
+    path: context.path.slice(from.path.length),
+    isKey: context.isKey,
+  };
 }
 
 export interface DataModelRoot {

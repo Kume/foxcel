@@ -28,7 +28,6 @@ export interface PushValuesDataModelAction {
   readonly type: 'pushValues';
   readonly dataContext: SerializedDataModelContext;
   readonly data: readonly {readonly value: DataModel; readonly key?: string}[];
-  readonly key?: string | null;
 }
 
 export interface SetDataModelAction {
@@ -37,14 +36,7 @@ export interface SetDataModelAction {
   readonly data: DataModel;
 }
 
-interface SetMultipleDataActionNode {
-  readonly setActions?: readonly SetMultipleDataChildSetAction[];
-  readonly setKeyActions?: readonly SetMultipleDataChildSetKeyAction[];
-  readonly deleteActions?: readonly SetMultipleDataChildDeleteAction[];
-  readonly children?: SetMultipleDataActionChild[];
-}
-
-export interface SetMultipleDataAction extends SetMultipleDataActionNode {
+export interface SetMultipleDataAction {
   readonly type: 'multiSet';
   readonly dataContext: SerializedDataModelContext;
   readonly setActions?: readonly SetMultipleDataChildSetAction[];
@@ -55,7 +47,7 @@ export interface SetMultipleDataAction extends SetMultipleDataActionNode {
 export interface BatchDataAction {
   readonly type: 'batch';
   readonly setMultiple?: SetMultipleDataAction;
-  readonly push?: PushDataModelAction;
+  readonly push?: PushDataModelAction | PushValuesDataModelAction;
 }
 
 export interface SetMultipleDataChildSetAction {
@@ -71,10 +63,6 @@ export interface SetMultipleDataChildSetKeyAction {
 export interface SetMultipleDataChildDeleteAction {
   readonly path: RelativeDataModelContextPath;
   readonly at?: number | readonly number[];
-}
-
-export interface SetMultipleDataActionChild extends SetMultipleDataActionNode {
-  readonly path: RelativeDataModelContextPath;
 }
 
 export interface SetKeyDataModelAction {
@@ -119,50 +107,81 @@ export type DataModelAction =
   | PushValuesDataModelAction
   | InsertDataModelAction
   | InsertDataValuesModelAction
-  | SetMultipleDataAction;
+  | SetMultipleDataAction
+  | BatchDataAction;
 
 export function applyDataModelAction(root: DataModelRoot, action: DataModelAction): DataModel | undefined {
   const context = DataModelContext.createRoot(root);
-  const path = DataModelContextPathContainer.create(action.dataContext);
   switch (action.type) {
     case 'set':
-      return setToDataModel(root.model, path, context, {
+      return setToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         model: action.data,
       });
 
     case 'setKey':
-      return setKeyToDataModel(root.model, path, context, {
+      return setKeyToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         key: action.key,
       });
 
     case 'insert':
-      return insertToDataModel(root.model, path, context, {
+      return insertToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         after: action.after,
         model: action.data,
       });
 
     case 'insertValues':
-      return insertToDataModel(root.model, path, context, {
+      return insertToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         after: action.after,
         models: action.data,
       });
 
     case 'push':
-      return pushToDataModel(root.model, path, context, {
+      return pushToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         model: action.data,
         key: action.key ?? undefined,
       });
 
     case 'pushValues':
-      return pushToDataModel(root.model, path, context, {models: action.data, key: action.key ?? undefined});
+      return pushToDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
+        models: action.data,
+      });
 
     case 'delete':
-      return deleteFromDataModel(root.model, path, context, {
+      return deleteFromDataModel(root.model, DataModelContextPathContainer.create(action.dataContext), context, {
         at: action.at,
       });
 
     case 'multiSet':
-      return setToDataModelRecursive(root.model, path, context, setMultipleDataActionToParams(action));
+      return setToDataModelRecursive(
+        root.model,
+        DataModelContextPathContainer.create(action.dataContext),
+        context,
+        setMultipleDataActionToParams(action),
+      );
+
+    case 'batch': {
+      const tmpData = action.setMultiple
+        ? setToDataModelRecursive(
+            root.model,
+            DataModelContextPathContainer.create(action.setMultiple.dataContext),
+            context,
+            setMultipleDataActionToParams(action.setMultiple),
+          )
+        : root.model;
+      switch (action.push?.type) {
+        case 'push':
+          return pushToDataModel(tmpData, DataModelContextPathContainer.create(action.push.dataContext), context, {
+            model: action.push.data,
+            key: action.push.key ?? undefined,
+          });
+        case 'pushValues':
+          return pushToDataModel(tmpData, DataModelContextPathContainer.create(action.push.dataContext), context, {
+            models: action.push.data,
+          });
+        case undefined:
+          return tmpData;
+      }
+    }
   }
 }
 
@@ -191,9 +210,9 @@ function setMultipleDataActionToParams(action: SetMultipleDataAction): SetDataRe
 }
 
 export function buildMultiSetDataModelActionNode(
-  baseContext: SerializedDataModelContext,
+  dataContext: SerializedDataModelContext,
   actions: readonly DataModelAtomicAction[],
-): SetMultipleDataActionNode | undefined {
+): SetMultipleDataAction | undefined {
   let setActions: SetMultipleDataChildSetAction[] | undefined;
   let setKeyActions: SetMultipleDataChildSetKeyAction[] | undefined;
   let deleteActions: SetMultipleDataChildDeleteAction[] | undefined;
@@ -203,7 +222,7 @@ export function buildMultiSetDataModelActionNode(
       case 'set':
         setActions = setActions ?? [];
         setActions.push({
-          path: relativeSerializedDataModelContextPath(baseContext, action.dataContext),
+          path: relativeSerializedDataModelContextPath(action.dataContext, dataContext),
           data: action.data,
         });
         break;
@@ -211,17 +230,19 @@ export function buildMultiSetDataModelActionNode(
       case 'setKey':
         setKeyActions = setKeyActions ?? [];
         setKeyActions.push({
-          path: relativeSerializedDataModelContextPath(baseContext, action.dataContext),
+          path: relativeSerializedDataModelContextPath(action.dataContext, dataContext),
           key: action.key,
         });
         break;
 
       case 'delete':
         deleteActions = deleteActions ?? [];
-        deleteActions.push({path: relativeSerializedDataModelContextPath(baseContext, action.dataContext)});
+        deleteActions.push({path: relativeSerializedDataModelContextPath(action.dataContext, dataContext)});
         break;
     }
   }
 
-  return setActions || setKeyActions || deleteActions ? {setActions, setKeyActions, deleteActions} : undefined;
+  return setActions || setKeyActions || deleteActions
+    ? {type: 'multiSet', dataContext, setActions, setKeyActions, deleteActions}
+    : undefined;
 }
