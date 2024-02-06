@@ -71,7 +71,7 @@ function findDataModelImpl(
   originalContext: DataModelContextWithoutSchema,
 ): DataModelSearchSingleResult | undefined {
   const data = currentContext.currentModel;
-  if (!data) {
+  if (data === undefined) {
     // TODO ログ記録?
     return undefined;
   }
@@ -131,8 +131,14 @@ function findDataModelImpl(
         case DataPathComponentType.Nested: {
           // TODO withNestedDataPathでログ記録
           const childPath = shiftDataPath(path);
-          for (const [, childContext] of withNestedDataPath(data, otherPathComponent.v, originalContext)) {
+          for (const [, childContext] of withNestedDataPath(
+            data,
+            otherPathComponent.v,
+            currentContext,
+            originalContext,
+          )) {
             const findResult = findDataModelImpl(matcher, childPath, childContext, originalContext);
+            console.log('xxxx nested', childContext, findResult, childPath);
             if (findResult) {
               return findResult;
             }

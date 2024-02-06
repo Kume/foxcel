@@ -694,7 +694,7 @@ export class DataModelContextWithoutSchema {
     return new DataModelContextWithoutSchema(
       poppedPath,
       getModelByPath(this.root.model, poppedPath),
-      this.keys,
+      popKeys(this.keys, popCount),
       this.root,
       false,
     );

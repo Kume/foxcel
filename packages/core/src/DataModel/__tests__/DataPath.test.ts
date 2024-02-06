@@ -1,4 +1,4 @@
-import {DataPathComponentType, popDataPath, shiftDataPath, tailDataPathComponent} from '../DataPath';
+import {DataPathComponentType, parsePath, popDataPath, shiftDataPath, tailDataPathComponent} from '../DataPath';
 
 describe('Unit tests for DataPath', () => {
   describe('Unit tests for popDataPath', () => {
@@ -28,6 +28,18 @@ describe('Unit tests for DataPath', () => {
   describe('Unit tests for tailDataPathComponent', () => {
     it('Can get last element', () => {
       expect(tailDataPathComponent({components: ['a', 6, 'd']})).toBe('d');
+    });
+  });
+
+  describe('Unit tests for parse', () => {
+    it('Contains $key', () => {
+      const result = parsePath('a/b/$key');
+      expect(result).toEqual({components: ['a', 'b', {t: DataPathComponentType.Key}], r: 0});
+    });
+
+    it('Single $key', () => {
+      const result = parsePath('$key');
+      expect(result).toEqual({components: [{t: DataPathComponentType.Key}], r: 0});
     });
   });
 });

@@ -254,17 +254,18 @@ export interface DataModelCollectionItem {
 export function* withNestedDataPath(
   model: DataModel | undefined,
   path: MultiDataPath,
-  context: DataModelContextWithoutSchema,
+  currentContext: DataModelContextWithoutSchema,
+  originalContext: DataModelContextWithoutSchema,
 ): Generator<[DataModel | undefined, DataModelContextWithoutSchema], void> {
   if (dataModelIsMapOrList(model)) {
-    const nestedValues = collectDataModel(path, context);
+    const nestedValues = collectDataModel(path, originalContext);
     if (mapOrListDataModelIsList(model)) {
       for (const {data} of nestedValues) {
         if (!dataModelIsInteger(data)) {
           continue;
         }
         const index = numberDataModelToNumber(data);
-        yield [getListDataAt(model, index), context.pushListIndex(index)];
+        yield [getListDataAt(model, index), currentContext.pushListIndex(index)];
       }
     } else {
       const keyIndexMap = mapDataModelKeyIndexMap(model);
@@ -277,7 +278,7 @@ export function* withNestedDataPath(
         if (index === undefined) {
           continue;
         }
-        yield [getMapDataAtIndex(model, index), context.pushMapIndex(index, key)];
+        yield [getMapDataAtIndex(model, index), currentContext.pushMapIndex(index, key)];
       }
     }
   }

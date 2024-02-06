@@ -343,6 +343,9 @@ export function parsePath(source: string, pathType: 'single'): DataPath;
 export function parsePath(source: string, pathType: 'forward'): ForwardDataPath;
 export function parsePath(source: string): MultiDataPath;
 export function parsePath(source: string, pathType?: 'forward' | 'single'): MultiDataPath {
+  if (source === '$key' || source === '$') {
+    return {components: [{t: DataPathComponentType.Key}], r: 0};
+  }
   return parsedPathToDataPath(parse(source), pathType);
 }
 
