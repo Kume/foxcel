@@ -28,7 +28,7 @@ import {
   dataModelIsMapOrList,
   dataModelIsString,
   getListDataAt,
-  getListDataIndexForPointer,
+  getListDataIndexAtPointer,
   getListItemAt,
   getMapDataAtIndex,
   getMapDataIndexAt,
@@ -113,7 +113,7 @@ export function digForPathComponent<Return, PathComponent extends AnyDataPathCom
     }
   } else if (dataPathComponentIsPointer(pathComponent)) {
     if (dataModelIsList(model)) {
-      const listIndex = getListDataIndexForPointer(model, pathComponent);
+      const listIndex = getListDataIndexAtPointer(model, pathComponent);
       if (listIndex === undefined) {
         return undefined;
       }

@@ -9,6 +9,7 @@ import {textUIModelSetText} from '../../UIModel/TextUIModel';
 import {applyAppActionToState, AppState, initialAppState} from '../AppState';
 import {numberUIModelDisplayText, numberUIModelSetText} from '../../UIModel/NumberUIModel';
 import {checkboxUIModelSetValue, checkboxUIModelValue} from '../../UIModel/CheckboxUIModel';
+import {mappingTableUIModelPaste} from '../../UIModel/MappingTableUIModel';
 
 describe('Unit tests for simple form', () => {
   async function initAppState(): Promise<AppState> {
@@ -88,5 +89,42 @@ describe('Unit tests for simple form', () => {
     const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'text');
     // 入力した値に変化している
     expect(updatedModel.value).toBe('changed');
+  });
+
+  it('マッピングテーブルにペーストができる(やや複雑なパターン)', async () => {
+    const appState = await initAppState();
+    const uiPath: UIModelPath = [['tab'], ['contentList'], ['form', 'mappingTable']];
+    const model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'mappingTable');
+    const root = {model: appState.data, schema: appState.uiSchema?.dataSchema};
+    const paste = mappingTableUIModelPaste(
+      model,
+      {row: {start: 0, size: 1}, col: {start: 0, size: 1}},
+      [
+        ['A', ''],
+        ['B', '1'],
+        ['', '2'],
+      ],
+      root,
+    );
+    const updatedState = applyAppActionToState(appState, paste!.action);
+    const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'mappingTable');
+    // pasteした値は3行だが、mapping元のデータが2行なのでこちらも2行のまま
+    expect(updatedModel.rows.length).toBe(2);
+    // 無効な行も発生しない
+    expect(updatedModel.danglingRows.length).toBe(0);
+
+    // 結果が下記になっているはず
+    // | A |   |
+    // | B | 1 |
+    expect(getUIModelByPathAndCheckType(updatedModel, [['mappingTable', 'a', 'singleLineText']], 'text').value).toBe(
+      'A',
+    );
+    expect(getUIModelByPathAndCheckType(updatedModel, [['mappingTable', 'a', 'multiLineText']], 'text').value).toBe('');
+    expect(getUIModelByPathAndCheckType(updatedModel, [['mappingTable', 'b', 'singleLineText']], 'text').value).toBe(
+      'B',
+    );
+    expect(getUIModelByPathAndCheckType(updatedModel, [['mappingTable', 'b', 'multiLineText']], 'text').value).toBe(
+      '1',
+    );
   });
 });

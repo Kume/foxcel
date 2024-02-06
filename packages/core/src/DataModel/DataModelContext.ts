@@ -1,4 +1,4 @@
-import {DataModel, ListDataModel, MapDataModel, StringDataModel} from './DataModelTypes';
+import {DataModel, DataPointer, ListDataModel, MapDataModel, StringDataModel} from './DataModelTypes';
 import {
   ConditionalDataSchema,
   DataSchemaContext,
@@ -11,11 +11,17 @@ import {
   dataModelIsMap,
   dataModelIsMapOrList,
   getListDataAt,
+  getListDataIndexAtPointer,
+  getListItemAt,
   getMapDataAt,
   getMapDataAtIndex,
+  getMapDataAtPointer,
   getMapDataIndexAt,
+  getMapDataIndexForPointer,
   getMapItemAt,
   getMapItemAtIndex,
+  isValidListIndex,
+  isValidMapIndex,
   PathContainer,
   PathContainerMapChild,
   SimplePathContainer,
@@ -23,20 +29,27 @@ import {
 } from './DataModel';
 import {AnyDataPath} from './DataPath';
 import {getDataModelBySinglePath} from './DataModelCollector';
+import {isReadonlyArray} from '../common/utils';
+
+const enum PathComponentType {
+  List,
+  MapKey,
+  MapIndex,
+}
 
 export interface DataModelContextListPathComponent {
-  readonly type: 'list';
+  readonly type: PathComponentType.List;
   readonly index: number;
 }
 
 export interface DataModelContextMapKeyPathComponent {
-  readonly type: 'map_k';
+  readonly type: PathComponentType.MapKey;
 
   readonly key: string;
 }
 
 export interface DataModelContextMapIndexPathComponent {
-  readonly type: 'map_i';
+  readonly type: PathComponentType.MapIndex;
 
   /**
    * スキーマを決定する場合など、indexでは解決不可な決定を実現するためにkey情報も持たせる
@@ -66,22 +79,17 @@ export interface RelativeDataModelContextPath {
   readonly isKey?: boolean;
 }
 
-const emptySerializedDataModelContext: SerializedDataModelContext = {
-  path: [],
-  keys: [],
-};
-
 const emptyRelativeDataModelContextPath: RelativeDataModelContextPath = {
   path: [],
 };
 
 function serializedPathComponentEquals(a: DataModelContextPathComponent, b: DataModelContextPathComponent): boolean {
   switch (a.type) {
-    case 'list':
+    case PathComponentType.List:
       return b.type === a.type && a.index === b.index;
-    case 'map_k':
+    case PathComponentType.MapKey:
       return b.type === a.type && a.key === b.key;
-    case 'map_i':
+    case PathComponentType.MapIndex:
       return b.type === a.type && a.index === b.index && a.key === b.key;
   }
 }
@@ -143,15 +151,74 @@ export interface DataModelRoot {
   readonly schema: DataSchemaExcludeRecursive | undefined;
 }
 
+/**
+ * DataPointer : listのpointer(実態がありpointerが取得できる場合)
+ * number : listのindex(pointerが取得できない場合)
+ * Tuple : mapのpointerとkey(実態がありpointerが取得できる場合)
+ * string : mapのkey(pointerが取得できない場合)
+ * null : mapのkeyもpointerも不明の場合
+ */
+type PathContainerPathComponent = DataPointer | number | readonly [DataPointer, string | null] | string | null;
+
 // TODO DataPathContainerをなくせたら、PathContainerの設計をisKeyを考慮したものにする
 export class DataModelContextPathContainer implements PathContainer {
-  public static create({
-    path,
-  }: SerializedDataModelContext | RelativeDataModelContextPath): DataModelContextPathContainer | undefined {
-    return path.length === 0 ? undefined : new DataModelContextPathContainer(path, 0);
+  public static create(
+    context: SerializedDataModelContext | RelativeDataModelContextPath,
+    model: DataModel | undefined,
+  ): DataModelContextPathContainer | undefined {
+    return DataModelContextPathContainer.createWithTargetModel(context, model)?.[0];
   }
 
-  public constructor(private readonly path: DataModelContextPath, private readonly index: number) {}
+  public static createWithTargetModel(
+    {path}: SerializedDataModelContext | RelativeDataModelContextPath,
+    model: DataModel | undefined,
+  ): [DataModelContextPathContainer, DataModel | undefined] | undefined {
+    const innerPath: PathContainerPathComponent[] = [];
+    for (const pathComponent of path) {
+      switch (pathComponent.type) {
+        case PathComponentType.List: {
+          const item = dataModelIsList(model) ? getListItemAt(model, pathComponent.index) : undefined;
+          if (item) {
+            const [childModel, pointer] = item;
+            model = childModel;
+            innerPath.push(pointer);
+          } else {
+            model = undefined;
+            innerPath.push(pathComponent.index);
+          }
+          break;
+        }
+        case PathComponentType.MapKey: {
+          const item = dataModelIsMap(model) ? getMapItemAt(model, pathComponent.key) : undefined;
+          if (item) {
+            const [childModel, pointer, key] = item;
+            model = childModel;
+            innerPath.push([pointer, key]);
+          } else {
+            model = undefined;
+            innerPath.push(pathComponent.key);
+          }
+          break;
+        }
+        case PathComponentType.MapIndex: {
+          const item = dataModelIsMap(model) ? getMapItemAtIndex(model, pathComponent.index) : undefined;
+          if (item) {
+            const [childModel, pointer, key] = item;
+            model = childModel;
+            innerPath.push([pointer, key]);
+          } else {
+            model = undefined;
+            innerPath.push(pathComponent.key);
+          }
+          break;
+        }
+      }
+    }
+
+    return innerPath.length === 0 ? undefined : [new DataModelContextPathContainer(innerPath, 0), model];
+  }
+
+  public constructor(private readonly path: readonly PathContainerPathComponent[], private readonly index: number) {}
 
   public get isLast(): boolean {
     return this.path.length - 1 === this.index;
@@ -163,45 +230,64 @@ export class DataModelContextPathContainer implements PathContainer {
 
   public nextForMapKey(map: MapDataModel | undefined, key: string): DataModelContextPathContainer | undefined {
     const currentPathComponent = this.path[this.index];
-    switch (currentPathComponent.type) {
-      case 'map_k':
-        return currentPathComponent.key === key ? this.next() : undefined;
-      case 'map_i': {
-        if (map === undefined) {
-          return undefined;
-        }
-        const item = getMapItemAt(map, key);
-        return item && item[2] === key ? this.next() : undefined;
-      }
+    switch (typeof currentPathComponent) {
+      case 'string':
+        return currentPathComponent === key ? this.next() : undefined;
+      case 'object':
+        return isReadonlyArray(currentPathComponent) &&
+          map !== undefined &&
+          getMapDataAtPointer(map, currentPathComponent[0])
+          ? this.next()
+          : undefined;
       default:
         return undefined;
     }
   }
 
-  public nextForListIndex(index: number): DataModelContextPathContainer | undefined {
+  public nextForListIndex(list: ListDataModel | undefined, index: number): DataModelContextPathContainer | undefined {
     const currentPathComponent = this.path[this.index];
-    return currentPathComponent?.type === 'list' && currentPathComponent.index === index ? this.next() : undefined;
+    switch (typeof currentPathComponent) {
+      case 'number':
+        return currentPathComponent === index ? this.next() : undefined;
+      case 'object':
+        return !isReadonlyArray(currentPathComponent) &&
+          currentPathComponent !== null &&
+          list !== undefined &&
+          getListDataIndexAtPointer(list, currentPathComponent)
+          ? this.next()
+          : undefined;
+      default:
+        return undefined;
+    }
   }
 
   public listChild(list: DataModel): [model: DataModel, index: number] | undefined {
     const currentPathComponent = this.path[this.index];
-    if (currentPathComponent?.type !== 'list') return undefined;
-    return SimplePathContainer.listChildForIndex(list, currentPathComponent.index);
+    switch (typeof currentPathComponent) {
+      case 'number':
+        return SimplePathContainer.listChildForIndex(list, currentPathComponent);
+      case 'object':
+        if (!isReadonlyArray(currentPathComponent) && currentPathComponent !== null && dataModelIsList(list)) {
+          const index = getListDataIndexAtPointer(list, currentPathComponent);
+          return index === undefined ? undefined : SimplePathContainer.listChildForIndex(list, index);
+        }
+    }
+    return undefined;
   }
 
   public mapChild(map: DataModel): PathContainerMapChild {
     const currentPathComponent = this.path[this.index];
-    switch (currentPathComponent?.type) {
-      case 'list':
-        return undefined;
-      case 'map_k': {
-        return SimplePathContainer.mapChildForKey(map, currentPathComponent.key);
-      }
-      case 'map_i': {
-        const item = dataModelIsMap(map) && getMapItemAtIndex(map, currentPathComponent.index);
-        return (item && SimplePathContainer.mapItemToChild(item)) || undefined;
-      }
+    switch (typeof currentPathComponent) {
+      case 'string':
+        return SimplePathContainer.mapChildForKey(map, currentPathComponent);
+      case 'object':
+        if (isReadonlyArray(currentPathComponent) && dataModelIsMap(map)) {
+          const index = getMapDataIndexForPointer(map, currentPathComponent[0]);
+          const item = index === undefined ? undefined : getMapItemAtIndex(map, index);
+          return item && SimplePathContainer.mapItemToChild(item);
+        }
     }
+    return undefined;
   }
 }
 
@@ -258,13 +344,17 @@ function getModelByPathComponent(
 ): DataModel | undefined {
   if (dataModelIsMapOrList(model)) {
     if (dataModelIsList(model)) {
-      return pathComponent.type === 'list' ? getListDataAt(model, pathComponent.index) : undefined;
+      return pathComponent.type === PathComponentType.List && isValidListIndex(model, pathComponent.index)
+        ? getListDataAt(model, pathComponent.index)
+        : undefined;
     } else {
       switch (pathComponent.type) {
-        case 'map_k':
+        case PathComponentType.MapKey:
           return pathComponent.key === undefined ? undefined : getMapDataAt(model, pathComponent.key);
-        case 'map_i':
-          return getMapDataAtIndex(model, pathComponent.index);
+        case PathComponentType.MapIndex:
+          return isValidMapIndex(model, pathComponent.index)
+            ? getMapDataAtIndex(model, pathComponent.index)
+            : undefined;
         default:
           return undefined;
       }
@@ -278,11 +368,11 @@ function getParentKeyDataModel(path: DataModelContextPath): StringDataModel | un
   for (let i = path.length - 1; i >= 0; i--) {
     const lastPathComponent = path[i];
     switch (lastPathComponent.type) {
-      case 'list':
+      case PathComponentType.List:
         return stringToDataModel(`${lastPathComponent.index}`);
-      case 'map_i':
+      case PathComponentType.MapIndex:
         return typeof lastPathComponent.key === 'string' ? stringToDataModel(lastPathComponent.key) : undefined;
-      case 'map_k':
+      case PathComponentType.MapKey:
         return lastPathComponent.key;
     }
   }
@@ -349,13 +439,13 @@ export class DataModelContext {
       // keysを一つ進める。contextKeyはconditionalが持つことはできないのでこの位置
       currentKeys = addContextKey(currentKeys, schemaContext.contextKey());
       switch (pathComponent.type) {
-        case 'map_k':
+        case PathComponentType.MapKey:
           break;
-        case 'map_i':
+        case PathComponentType.MapIndex:
           // スキーマはkeyを優先して利用する
           schemaContext = schemaContext.dig(pathComponent.key ?? pathComponent.index);
           break;
-        case 'list':
+        case PathComponentType.List:
           schemaContext = schemaContext.dig(pathComponent.index);
           break;
       }
@@ -444,7 +534,7 @@ export class DataModelContext {
   }
 
   public pushListIndex(index: number): DataModelContext {
-    return this.push(this.schemaContext.dig(index), {type: 'list', index});
+    return this.push(this.schemaContext.dig(index), {type: PathComponentType.List, index});
   }
 
   /**
@@ -453,12 +543,12 @@ export class DataModelContext {
    * @param mapKey
    */
   public pushMapKey(mapKey: string): DataModelContext {
-    const pushed = this.push(this.schemaContext.dig(mapKey), {type: 'map_k', key: mapKey});
+    const pushed = this.push(this.schemaContext.dig(mapKey), {type: PathComponentType.MapKey, key: mapKey});
     return this.autoResolveConditional ? pushed.pushConditionalOrSelf() : pushed;
   }
 
   public pushMapIndex(index: number, key: string | null): DataModelContext {
-    const pushed = this.push(this.schemaContext.dig(key), {type: 'map_i', index, key});
+    const pushed = this.push(this.schemaContext.dig(key), {type: PathComponentType.MapIndex, index, key});
     return this.autoResolveConditional ? pushed.pushConditionalOrSelf() : pushed;
   }
 
@@ -584,11 +674,11 @@ export class DataModelContextWithoutSchema {
   }
 
   pushMapIndex(index: number, mapKey: string | null): DataModelContextWithoutSchema {
-    return this.push({type: 'map_i', index, key: mapKey});
+    return this.push({type: PathComponentType.MapIndex, index, key: mapKey});
   }
 
   pushListIndex(index: number): DataModelContextWithoutSchema {
-    return this.push({type: 'list', index});
+    return this.push({type: PathComponentType.List, index});
   }
 
   pushIsParentKey(): DataModelContextWithoutSchema {

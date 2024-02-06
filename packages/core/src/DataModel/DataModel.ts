@@ -298,6 +298,8 @@ export interface SetDataRecursiveParams {
 }
 
 /**
+ *
+ * 元々recursiveな設計だったが、実装が複雑になりそうだったのでrecursiveではなくなった。要改名。
  * @return 更新があったら更新後のデータモデルを、更新がなければundefinedを返す
  */
 export function setToDataModelRecursive(
@@ -340,7 +342,7 @@ export function setToDataModelRecursive(
     (map, key) => {
       const childContext = context.pushMapKey(key);
       if (childContext.schemaContext.currentSchema) {
-        const newModel = setToDataModelRecursive(map, path.next(), childContext, params);
+        const newModel = setToDataModelRecursive(undefined, path.next(), childContext, params);
         return newModel === undefined ? undefined : unsafeAddToMapData(map, newModel, key);
       } else {
         // スキーマがないとデフォルトのデータを生成できないのでセット不可
@@ -393,7 +395,7 @@ export type PathContainerMapChild =
 
 export interface PathContainer {
   next(): PathContainer | undefined;
-  nextForListIndex(index: number): PathContainer | undefined;
+  nextForListIndex(list: ListDataModel | undefined, index: number): PathContainer | undefined;
   nextForMapKey(map: MapDataModel | undefined, key: string): PathContainer | undefined;
   listChild(list: DataModel | undefined): [model: DataModel, index: number] | undefined;
   mapChild(map: DataModel | undefined): PathContainerMapChild;
@@ -437,7 +439,7 @@ export class SimplePathContainer implements PathContainer {
   next(): PathContainer | undefined {
     return this.isLast ? undefined : new SimplePathContainer(this.path, this.index + 1);
   }
-  nextForListIndex(index: number): PathContainer | undefined {
+  nextForListIndex(list: ListDataModel | undefined, index: number): PathContainer | undefined {
     return this.path[this.index] === index ? this.next() : undefined;
   }
   nextForMapKey(map: MapDataModel | undefined, key: string): PathContainer | undefined {
@@ -681,13 +683,13 @@ export function getListDataIndexByPathComponent(
     const index = dataPathComponentToListIndex(pathComponent);
     return index < 0 || index >= listDataSize(list) ? undefined : index;
   } else if (dataPathComponentIsPointer(pathComponent)) {
-    return getListDataIndexForPointer(list, pathComponent);
+    return getListDataIndexAtPointer(list, pathComponent);
   } else {
     return undefined;
   }
 }
 
-export function getListDataIndexForPointer(list: ListDataModel, pointer: DataPointer): number | undefined {
+export function getListDataIndexAtPointer(list: ListDataModel, pointer: DataPointer): number | undefined {
   if (getListDataIdAtIndex(list, pointer.i) === pointer.d) {
     return pointer.i;
   }

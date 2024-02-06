@@ -11,7 +11,7 @@ import {
   dataPointerIdEquals,
   eachMapDataItem,
   getIdFromDataPointer,
-  getListDataIndexForPointer,
+  getListDataIndexAtPointer,
   getListDataPointerAt,
   getMapDataIndexForPointer,
   getMapDataPointerAtIndex,
@@ -230,7 +230,7 @@ export function buildUIModel(
             const id = getIdFromDataPointer(pointer);
             const oldRow = oldRowsById.get(id);
             const rowDataFocusLog = dataFocusLog?.c[id];
-            const rowDataPathFocus = dataPathFocus?.nextForListIndex(index);
+            const rowDataPathFocus = dataPathFocus?.nextForListIndex(dataModel, index);
             const rowDataContext = dataContext.pushListIndex(index);
             return {
               key: undefined,
@@ -486,7 +486,7 @@ export function buildUIModel(
 
           const currentDataIndex =
             dataPathFocus?.listChild(listDataModel)?.[1] ??
-            (dataFocusLog?.a && getListDataIndexForPointer(listDataModel, dataFocusLog.a)) ??
+            (dataFocusLog?.a && getListDataIndexAtPointer(listDataModel, dataFocusLog.a)) ??
             0;
           const pointer = getListDataPointerAt(listDataModel, currentDataIndex);
           if (pointer) {
@@ -496,7 +496,7 @@ export function buildUIModel(
                 ? oldModel.content
                 : undefined,
               dataContext.pushListIndex(currentDataIndex),
-              dataPathFocus?.nextForListIndex(currentDataIndex),
+              dataPathFocus?.nextForListIndex(listDataModel, currentDataIndex),
               dataFocusLog?.c?.[getIdFromDataPointer(pointer)],
               schemaFocusLog,
             );

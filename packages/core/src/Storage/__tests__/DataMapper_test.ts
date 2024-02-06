@@ -297,7 +297,7 @@ describe('Unit Test for DataMapper', () => {
 
     function makeTestContext(...path: (string | number)[]): SerializedDataModelContext {
       return {
-        path: path.map((i) => (typeof i === 'number' ? {type: 'list', index: i} : {type: 'map_k', key: i})),
+        path: path.map((i) => (typeof i === 'number' ? {type: 0, index: i} : {type: 1, key: i})),
         keys: [],
       };
     }

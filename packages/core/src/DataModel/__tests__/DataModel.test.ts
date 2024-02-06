@@ -287,6 +287,20 @@ describe('Unit tests for setToDataModelRecursive', () => {
     expect(dataModelToJson(after!)).toEqual({existing1: {existing2: 'changed'}});
   });
 
+  it('同じkeyに対して2回以上セットできること', () => {
+    // 途中でデータが変化するのでDataContextと実際のデータに乖離が生じるのでバグりやすい
+    const schema = dataSchemaForFixture(dataSchemaFixture.mapMapMap);
+    const before = unknownToDataModel({existing1: {existing2: {}}});
+    const context = DataModelContext.createRoot({model: before, schema});
+    const after = setToDataModelRecursive(before, SimplePathContainer.create(['existing1']), context, {
+      setActions: [
+        {path: SimplePathContainer.create(['new', 'new1']), params: {model: unknownToDataModel('added1')}},
+        {path: SimplePathContainer.create(['new', 'new2']), params: {model: unknownToDataModel('added2')}},
+      ],
+    });
+    expect(dataModelToJson(after!)).toEqual({existing1: {existing2: {}, new: {new1: 'added1', new2: 'added2'}}});
+  });
+
   it('Can set multiple value', () => {
     const schema = dataSchemaForFixture(dataSchemaFixture.mapMapMap);
     const before = unknownToDataModel({existing1: {}});

@@ -9,6 +9,7 @@ import {
 } from './TableUIModel';
 import {AppAction} from '../App/AppState';
 import {DataModelRoot} from '../DataModel/DataModelContext';
+import {buildMultiSetDataModelActionNode, DataModelAtomicAction} from '../DataModel/DataModelAction';
 
 export function mappingTableUIModelPaste(
   model: MappingTableUIModel,
@@ -30,7 +31,7 @@ export function mappingTableUIModelPaste(
     model.columns.length - selection.col.start,
   );
 
-  const actions: AppAction[] = [];
+  const actions: DataModelAtomicAction[] = [];
   // TODO アクションを一つだけ発行するように
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
     const row = model.rows[selection.row.start + rowDataIndex];
@@ -41,7 +42,7 @@ export function mappingTableUIModelPaste(
         const cellData = data[rowDataIndex % dataRowSize][columnDataIndex % dataColumnSize];
         const action = tableUIModelPasteCellAction(cellUIModel, cellData, root);
         if (action) {
-          actions.push(action);
+          actions.push(action.action);
         }
       }
     }
@@ -50,7 +51,10 @@ export function mappingTableUIModelPaste(
   // danglingRowsは変更不可のため、pasteもできない。
 
   return {
-    action: {type: 'batch', actions},
+    action: {
+      type: 'data',
+      action: buildMultiSetDataModelActionNode(model.dataContext, actions)!,
+    },
     changedSelection: {
       row: {start: selection.row.start, size: pasteRowSize},
       col: {start: selection.col.start, size: pasteColumnSize},
@@ -114,7 +118,7 @@ export function mappingTableUIModelCut(model: MappingTableUIModel, selection: Ta
 }
 
 export function mappingTableUIModelDelete(model: MappingTableUIModel, selection: TableCellRange): AppAction {
-  const actions: AppAction[] = [];
+  const actions: DataModelAtomicAction[] = [];
 
   // TODO danglingも考慮
   const rowSize = Math.min(selection.row.size ?? model.rows.length, model.rows.length - selection.row.start);
@@ -127,11 +131,11 @@ export function mappingTableUIModelDelete(model: MappingTableUIModel, selection:
         // TODO スキーマのバリデーションにも実装を追加
         throw new Error('mapping tableのカラムにkeyを指定するフィールドが存在してはいけない。');
       }
-      actions.push({type: 'data', action: {type: 'delete', dataContext: model.dataContext}});
+      actions.push({type: 'delete', dataContext: cell.dataContext});
     }
   }
 
-  return {type: 'batch', actions};
+  return {type: 'data', action: buildMultiSetDataModelActionNode(model.dataContext, actions)!};
 }
 
 export function mappingTableRowSize(model: MappingTableUIModel): number {

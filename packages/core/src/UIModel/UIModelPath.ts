@@ -16,7 +16,7 @@ export function getUIModelByPathAndCheckType<Type extends UIModel['type']>(
 ): UIModelForType<Type> {
   const model = getUIModelByPath(root, path);
   if (model?.type !== type) {
-    throw new Error(`Invalid ui model type. expected=${type} actual=${model?.type}`);
+    throw new Error(`Invalid ui model type. expected=${type} actual=${model?.type ?? ''}`);
   }
   return model as UIModelForType<Type>;
 }

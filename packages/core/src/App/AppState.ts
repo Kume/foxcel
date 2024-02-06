@@ -66,18 +66,7 @@ export interface AppRedoAction {
   readonly type: 'redo';
 }
 
-export interface AppBatchAction {
-  readonly type: 'batch';
-  readonly actions: AppAction[];
-}
-
-export type AppAction =
-  | AppInitializeAction
-  | AppFocusAction
-  | AppDataModelAction
-  | AppBatchAction
-  | AppUndoAction
-  | AppRedoAction;
+export type AppAction = AppInitializeAction | AppFocusAction | AppDataModelAction | AppUndoAction | AppRedoAction;
 
 export const initialAppState: AppState = {
   data: undefined,
@@ -126,7 +115,7 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
         state.rootUISchemaContext,
         state.uiModel,
         DataModelContext.createRoot(root, false),
-        DataModelContextPathContainer.create(action.dataContext),
+        DataModelContextPathContainer.create(action.dataContext, state.data),
         state.dataFocusLog,
         state.schemaFocusLog,
       );
@@ -174,21 +163,6 @@ export function applyAppActionToState(state: AppState, action: AppAction, disabl
           : [...state.actionHistories, makeHistory(state, action)],
         forwardActions: disableHistory ? state.forwardActions : [],
       };
-    }
-    case 'batch': {
-      let currentState = state;
-      for (const innerAction of action.actions) {
-        currentState = applyAppActionToState(currentState, innerAction, true);
-      }
-      if (disableHistory) {
-        return currentState;
-      } else {
-        return {
-          ...currentState,
-          actionHistories: [...state.actionHistories, makeHistory(state, action)],
-          forwardActions: disableHistory ? state.forwardActions : [],
-        };
-      }
     }
     case 'undo': {
       if (state.actionHistories.length === 0) {

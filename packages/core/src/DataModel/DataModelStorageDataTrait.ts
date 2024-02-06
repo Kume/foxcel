@@ -1,5 +1,5 @@
 import {StorageDataTrait} from '../Storage/StorageDataTrait';
-import {DataModel, MapDataModel} from './DataModelTypes';
+import {DataModel, ListDataModel, MapDataModel} from './DataModelTypes';
 import {
   dataModelEquals,
   dataModelIsMap,
@@ -31,7 +31,7 @@ class StringPathContainer implements PathContainer {
     return this.isLast ? undefined : new StringPathContainer(this.path, this.index + 1);
   }
 
-  public nextForListIndex(index: number): PathContainer | undefined {
+  public nextForListIndex(list: ListDataModel | undefined, index: number): PathContainer | undefined {
     return this.currentListIndex() === index ? this.next() : this;
   }
 
