@@ -1,13 +1,7 @@
 import {UIViewProps} from './UIView';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {
-  NumberUIModel,
-  numberUIModelDisplayText,
-  numberUIModelHandleInputForSchema,
-  numberUIModelSetText,
-  NumberUISchema,
-} from '@foxcel/core';
-import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
+import {NumberUIModel, numberUIModelDisplayText, numberUIModelSetText, NumberUISchema} from '@foxcel/core';
+import {TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState} from './TableUIViewCellCommon';
 import styled from 'styled-components';
@@ -49,7 +43,7 @@ export const NumberUIView: React.FC<Props> = ({model, onAction}) => {
   );
 };
 
-type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<NumberUIModel, NumberUISchema>;
+type PropsForTableCell = TableUIViewCellProps & {readonly model: NumberUIModel};
 
 const LayoutRootForTableCell = styled.div`
   position: relative;
@@ -58,14 +52,7 @@ const LayoutRootForTableCell = styled.div`
 
 const useTableCellEditState = makeUseTableCellEditState<NumberUIModel, NumberUISchema>(numberUIModelDisplayText);
 
-export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
-  model,
-  schema,
-  isMainSelected,
-  row,
-  col,
-  callbacks,
-}) => {
+export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMainSelected, row, col, callbacks}) => {
   const change = useCallback(
     (model: NumberUIModel, textInput: string) => {
       const action = numberUIModelSetText(model, textInput);
@@ -79,35 +66,17 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [callbacks],
   );
-  const changeWithSchema = (uiSchema: NumberUISchema, text: string) => {
-    const result = numberUIModelHandleInputForSchema(uiSchema, text);
-    if (result !== undefined) {
-      schema?.onEdit(result);
-    } else {
-      dispatch(['resetText', '']);
-    }
-  };
   const changeTextInput = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => dispatch(['changeText', e.target.value]),
     // dispatchは不変のため、depsには不要
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const {editingText, isEditing, dispatch, startEdit} = useTableCellEditState(
-    model,
-    schema?.schema,
-    isMainSelected,
-    change,
-    changeWithSchema,
-  );
+  const {editingText, isEditing, dispatch, startEdit} = useTableCellEditState(model, isMainSelected, change);
 
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const blur = () => {
-    if (model) {
-      change(model, editingText);
-    } else if (schema) {
-      changeWithSchema(schema.schema, editingText);
-    }
+    change(model, editingText);
   };
 
   return (

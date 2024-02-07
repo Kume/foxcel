@@ -1,13 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import {UIViewProps} from './UIView';
-import {
-  CheckboxUIModel,
-  checkboxUIModelSetValue,
-  checkboxUIModelValue,
-  CheckBoxUISchema,
-  trueDataModel,
-} from '@foxcel/core';
-import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
+import {CheckboxUIModel, checkboxUIModelSetValue, checkboxUIModelValue} from '@foxcel/core';
+import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {withoutModifierKey} from '../../../common/Keybord';
 
@@ -25,7 +19,7 @@ export const CheckboxUIView: React.FC<Props> = ({model, onAction}) => {
   );
 };
 
-type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<CheckboxUIModel, CheckBoxUISchema>;
+type PropsForTableCell = TableUIViewCellProps & {readonly model: CheckboxUIModel};
 
 const LayoutRootForTableCell = styled.div`
   display: flex;
@@ -39,7 +33,6 @@ const LabelForTableCell = styled.div`
 
 export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,
-  schema,
   isMainSelected,
   row,
   col,
@@ -64,20 +57,12 @@ export const CheckboxUIViewForTableCell: React.FC<PropsForTableCell> = ({
           onKeyDown={(e) => {
             if (!callbacks.onKeyDown(e, false)) {
               if (e.key === 'Space' && withoutModifierKey(e)) {
-                if (model) {
-                  callbacks.onAction(checkboxUIModelSetValue(model, !checkboxRef.current?.checked));
-                } else if (schema) {
-                  schema.onEdit(trueDataModel);
-                }
+                callbacks.onAction(checkboxUIModelSetValue(model, !checkboxRef.current?.checked));
               }
             }
           }}
           onChange={(e) => {
-            if (model) {
-              callbacks.onAction(checkboxUIModelSetValue(model, e.target.checked));
-            } else if (schema) {
-              schema.onEdit(trueDataModel);
-            }
+            callbacks.onAction(checkboxUIModelSetValue(model, e.target.checked));
           }}
         />
       </LabelForTableCell>

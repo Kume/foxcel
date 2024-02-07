@@ -2,21 +2,17 @@ import React, {useEffect, useMemo, useReducer, useRef} from 'react';
 import {UIViewProps} from './UIView';
 import {
   AppAction,
-  DataModelContext,
   DataModelRoot,
   filterSelectUIOptionsByText,
   getSelectUIOptions,
-  getSelectUIOptionsWithSchema,
   MultiSelectUIModel,
   SelectUIModel,
   selectUIModelCurrentLabel,
-  selectUIModelHandleInputForSchema,
   selectUIModelSetValue,
   SelectUIOption,
-  SelectUISchema,
   SingleSelectUIModel,
 } from '@foxcel/core';
-import {ModelOrSchemaHolder, TableUIViewCellProps, TableUIViewCellSchemaInfo} from './TableUIViewCell';
+import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {flip, shift, useFloating} from '@floating-ui/react-dom';
 import {VscClose} from 'react-icons/vsc';
@@ -42,11 +38,7 @@ interface State {
   readonly currentIndex?: number;
 }
 
-type GetOptionParams = [
-  getRoot: () => DataModelRoot,
-  model: SelectUIModel | undefined,
-  schema?: TableUIViewCellSchemaInfo<SelectUISchema>,
-];
+type GetOptionParams = [getRoot: () => DataModelRoot, model: SelectUIModel];
 
 type Action =
   | [type: 'setOptions', options: readonly SelectUIOption[]]
@@ -56,18 +48,8 @@ type Action =
   | ['up', readonly SelectUIOption[], ...GetOptionParams]
   | ['down', readonly SelectUIOption[], ...GetOptionParams];
 
-function getOptions(
-  getRoot: () => DataModelRoot,
-  model: SelectUIModel | undefined,
-  schema: TableUIViewCellSchemaInfo<SelectUISchema> | undefined,
-): readonly SelectUIOption[] {
-  if (model) {
-    return getSelectUIOptions(model, getRoot());
-  } else if (schema) {
-    const root = getRoot();
-    return getSelectUIOptionsWithSchema(schema.schema, DataModelContext.deserialize(schema.dataContext, root));
-  }
-  return [];
+function getOptions(getRoot: () => DataModelRoot, model: SelectUIModel): readonly SelectUIOption[] {
+  return getSelectUIOptions(model, getRoot());
 }
 
 const initialState: State = {isEditing: false, editingText: '', options: [], isOpen: false};
@@ -85,40 +67,40 @@ function reducer(prev: State, action: Action): State {
     case 'setOptions':
       return {...prev, options: action[1]};
     case 'change': {
-      const [, value, getRoot, model, schema] = action;
+      const [, value, getRoot, model] = action;
       return {
         isEditing: true,
         editingText: value,
-        options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
+        options: prev.isOpen ? prev.options : getSelectUIOptions(model, getRoot()),
         isOpen: true,
         currentIndex: undefined,
       };
     }
     case 'open': {
-      const [, getRoot, model, schema] = action;
+      const [, getRoot, model] = action;
       return {
         ...prev,
-        options: getOptions(getRoot, model, schema),
+        options: getOptions(getRoot, model),
         isOpen: true,
         currentIndex: undefined,
       };
     }
     case 'up': {
-      const [, , getRoot, model, schema] = action;
+      const [, , getRoot, model] = action;
       return {
         ...prev,
         isEditing: true,
-        options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
+        options: prev.isOpen ? prev.options : getSelectUIOptions(model, getRoot()),
         isOpen: true,
         currentIndex: prev.currentIndex === undefined ? 0 : Math.max(prev.currentIndex - 1, 0),
       };
     }
     case 'down': {
-      const [, filteredOptions, getRoot, model, schema] = action;
+      const [, filteredOptions, getRoot, model] = action;
       return {
         ...prev,
         isEditing: true,
-        options: prev.isOpen ? prev.options : getOptions(getRoot, model, schema),
+        options: prev.isOpen ? prev.options : getSelectUIOptions(model, getRoot()),
         isOpen: true,
         currentIndex: prev.currentIndex === undefined ? 0 : Math.min(prev.currentIndex + 1, filteredOptions.length - 1),
       };
@@ -384,11 +366,10 @@ const InputAreaForTableCell = styled(TableCellLabel)`
   display: flex;
 `;
 
-type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<SelectUIModel, SelectUISchema>;
+type PropsForTableCell = TableUIViewCellProps & {readonly model: SelectUIModel};
 
 export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,
-  schema,
   isMainSelected,
   disabled,
   row,
@@ -408,7 +389,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
 
   const change = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!disabled) {
-      dispatch(['change', e.target.value, callbacks.getRoot, model, schema]);
+      dispatch(['change', e.target.value, callbacks.getRoot, model]);
     }
   };
   useEffect(() => {
@@ -420,23 +401,11 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
   }, [isMainSelected, model]);
   const openDropdown = () => {
     if (!disabled) {
-      dispatch(['open', callbacks.getRoot, model, schema]);
+      dispatch(['open', callbacks.getRoot, model]);
     }
   };
   const select = (value: SelectUIOption | null) => {
-    if (model) {
-      callbacks.onAction(selectUIModelSetValue(model, value));
-    } else if (schema) {
-      const root = callbacks.getRoot();
-      const result = selectUIModelHandleInputForSchema(
-        schema.schema,
-        value?.value ?? null,
-        DataModelContext.deserialize(schema.dataContext, root),
-      );
-      if (result !== undefined) {
-        schema.onEdit(result);
-      }
-    }
+    callbacks.onAction(selectUIModelSetValue(model, value));
     dispatch(['blur']);
   };
 
@@ -444,11 +413,11 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
     if (state.isOpen) {
       switch (e.key) {
         case KeyValue_ArrowUp:
-          dispatch(['up', filteredOptions, callbacks.getRoot, model, schema]);
+          dispatch(['up', filteredOptions, callbacks.getRoot, model]);
           e.preventDefault();
           break;
         case KeyValue_ArrowDown:
-          dispatch(['down', filteredOptions, callbacks.getRoot, model, schema]);
+          dispatch(['down', filteredOptions, callbacks.getRoot, model]);
           e.preventDefault();
           break;
         case KeyValue_Enter: {
@@ -478,14 +447,14 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       callbacks.onKeyDown(e, state.isEditing);
     }
   };
-  const isMulti = model?.isMulti || schema?.schema.isMulti;
+  const isMulti = model?.isMulti;
 
   return (
     <LayoutRootForTableCell
       ref={reference}
       onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
-      onDoubleClick={() => dispatch(['open', callbacks.getRoot, model, schema])}>
+      onDoubleClick={() => dispatch(['open', callbacks.getRoot, model])}>
       <InputAreaForTableCell>
         {model?.isMulti ? (
           <MultiSelectInput model={model} onAction={callbacks.onAction} />

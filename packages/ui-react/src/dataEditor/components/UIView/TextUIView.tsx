@@ -1,7 +1,7 @@
-import {TextUIModel, textUIModelHandleInputForSchema, textUIModelSetText, TextUISchema} from '@foxcel/core';
+import {TextUIModel, textUIModelSetText, TextUISchema} from '@foxcel/core';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
-import {ModelOrSchemaHolder, TableUIViewCellProps} from './TableUIViewCell';
+import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState} from './TableUIViewCellCommon';
@@ -98,7 +98,7 @@ export const TextUIView: React.FC<TextUIViewProps> = ({model, onAction}) => {
   }
 };
 
-type PropsForTableCell = TableUIViewCellProps & ModelOrSchemaHolder<TextUIModel, TextUISchema>;
+type PropsForTableCell = TableUIViewCellProps & {readonly model: TextUIModel};
 
 const LayoutRootForTableCell = styled.div`
   position: relative;
@@ -109,27 +109,16 @@ const useTableCellEditState = makeUseTableCellEditState<TextUIModel, TextUISchem
 
 export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,
-  schema,
   isMainSelected,
   disabled,
   row,
   col,
   callbacks,
 }) => {
-  const changeWithSchema = (uiSchema: TextUISchema, text: string) => {
-    const result = textUIModelHandleInputForSchema(uiSchema, text);
-    if (result.type === 'key') {
-      throw new Error('schemaプロパティ利用時にkey指定のschemaは入ってこないはず。');
-    } else {
-      schema?.onEdit(result.value);
-    }
-  };
   const {editingText, isEditing, dispatch, startEdit} = useTableCellEditState(
     model,
-    schema?.schema,
     isMainSelected,
     (model, textInput) => callbacks.onAction(textUIModelSetText(model, textInput)),
-    changeWithSchema,
   );
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const change = useCallback(
@@ -139,11 +128,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
     [],
   );
   const blur = () => {
-    if (model) {
-      callbacks.onAction(textUIModelSetText(model, editingText));
-    } else if (schema) {
-      changeWithSchema(schema.schema, editingText);
-    }
+    callbacks.onAction(textUIModelSetText(model, editingText));
   };
 
   useEffect(() => {

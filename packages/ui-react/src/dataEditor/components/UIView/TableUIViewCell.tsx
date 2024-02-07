@@ -22,7 +22,3 @@ export interface TableUIViewCellSchemaInfo<Schema> {
   readonly dataContext: SerializedDataModelContext;
   readonly onEdit: (model: DataModel) => void;
 }
-
-export type ModelOrSchemaHolder<Model, Schema> =
-  | {readonly model: Model; readonly schema?: undefined}
-  | {readonly model?: undefined; readonly schema: TableUIViewCellSchemaInfo<Schema>};
