@@ -15,7 +15,7 @@ import {
   stringToNumberDataModel,
   unknownToDataModel,
 } from '../DataModel/DataModel';
-import {collectDataModel} from '../DataModel/DataModelCollector';
+import {collectDataModel, getDataModelBySinglePath} from '../DataModel/DataModelCollector';
 import {DataModelContext, DataModelContextWithoutSchema, DataModelRoot} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {dataSchemaIsString, SelectDynamicOptionSchema} from '../DataModel/DataSchema';
@@ -75,13 +75,13 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
     if (value === null) {
       throw new Error('MultiSelectで選択解除はこのメソッドでは行わない想定。(View側で制御)');
     }
-    if (model.data) {
+    if (model.data !== undefined) {
       return {
         type: 'data',
         action: {
           type: 'push',
           dataContext: model.dataContext,
-          data: value.data,
+          data: value.value,
         },
       };
     } else {
@@ -91,7 +91,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         action: {
           type: 'set',
           dataContext: model.dataContext,
-          data: pushToListData(emptyListModel, value.data),
+          data: pushToListData(emptyListModel, value.value),
         },
       };
     }
@@ -110,7 +110,7 @@ export function selectUIModelSetValue(model: SelectUIModel, value: SelectUIOptio
         action: {
           type: 'set',
           dataContext: model.dataContext,
-          data: value.data,
+          data: value.value,
         },
       };
     }
@@ -136,9 +136,9 @@ export function formatDynamicSelectUIOption(
   data: DataModel,
   context: DataModelContextWithoutSchema,
 ): SelectUIOption {
-  const stringValue = dataModelToString(data);
+  const stringValue = dataModelToString(option.valuePath ? getDataModelBySinglePath(option.valuePath, context) : data);
   return {
-    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, context) : stringValue,
+    label: option.labelTemplate ? fillTemplateLineAndToString(option.labelTemplate, context) : dataModelToString(data),
     value: stringValue,
     data: data,
   };
