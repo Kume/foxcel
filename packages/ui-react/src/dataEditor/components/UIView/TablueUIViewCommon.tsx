@@ -188,66 +188,6 @@ export function renderTableUIViewCell(
   }
 }
 
-export function renderTableUIViewCellWithSchema(
-  rowKey: string | null | undefined,
-  cellKey: string,
-  schema: UISchemaExcludeRecursive,
-  dataContext: SerializedDataModelContext,
-  isMainSelected: boolean,
-  row: number,
-  col: number,
-  callbacks: TableCellCallbacks,
-): React.ReactNode {
-  const onEdit = (model: DataModel) => {
-    const newRow = setToMapDataModel(emptyMapModel, cellKey, model);
-    callbacks.onAction({type: 'data', action: {type: 'push', data: newRow, dataContext, key: rowKey}});
-  };
-  switch (schema.type) {
-    case 'text':
-      return (
-        <TextUIViewForTableCell
-          schema={{schema, onEdit, dataContext}}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    case 'number':
-      return (
-        <NumberUIViewForTableCell
-          schema={{schema, onEdit, dataContext}}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    case 'select':
-      return (
-        <SelectUIViewForTableCell
-          schema={{schema, onEdit, dataContext}}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    case 'checkbox':
-      return (
-        <CheckboxUIViewForTableCell
-          schema={{schema, onEdit, dataContext}}
-          isMainSelected={isMainSelected}
-          row={row}
-          col={col}
-          callbacks={callbacks}
-        />
-      );
-    default:
-      return <div>Error</div>;
-  }
-}
-
 export interface TableUIViewState {
   readonly isMouseActive: boolean;
   readonly selection?: TableUISelection;

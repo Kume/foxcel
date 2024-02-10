@@ -29,11 +29,9 @@ export interface UseTableCellEditStateReturn {
 
 export function makeUseTableCellEditState<Model, Schema>(modelToText: (model: Model) => string) {
   return (
-    model: Model | undefined,
-    schema: Schema | undefined,
+    model: Model,
     isMainSelected: boolean,
     onChange: (model: Model, text: string) => void,
-    onChangeWithSchema: (schema: Schema, text: string) => void,
   ): UseTableCellEditStateReturn => {
     const modelText = useMemo(() => (model ? modelToText(model) : ''), [model]);
     const [state, dispatch] = useReducer(tableCellEditStateReducer, {isEditing: false, editingText: modelText});
@@ -48,11 +46,7 @@ export function makeUseTableCellEditState<Model, Schema>(modelToText: (model: Mo
       if (!isMainSelected) {
         dispatch(['endEdit']);
         if (modelText !== state.editingText) {
-          if (model) {
-            onChange(model, state.editingText);
-          } else if (schema) {
-            onChangeWithSchema(schema, state.editingText);
-          }
+          onChange(model, state.editingText);
         }
       }
       // isMainSelectedがtrueからfalseになった時だけ実行したい意図なので、他のdepsは不要
