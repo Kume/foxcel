@@ -302,7 +302,7 @@ const LayoutRootForTableCell = styled.div`
   position: relative;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: stretch;
 `;
 
 /**
@@ -454,6 +454,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
       ref={reference}
       onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
+      onMouseUp={() => textAreaRef.current?.focus()}
       onDoubleClick={() => dispatch(['open', callbacks.getRoot, model])}>
       <InputAreaForTableCell>
         {model?.isMulti ? (
