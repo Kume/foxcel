@@ -1,5 +1,5 @@
 import {TextUIModel, textUIModelSetText, TextUISchema} from '@foxcel/core';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
@@ -131,11 +131,10 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
     callbacks.onAction(textUIModelSetText(model, editingText));
   };
 
-  useEffect(() => {
-    if (isMainSelected) {
-      textAreaRef.current?.focus();
-    }
-  }, [isMainSelected]);
+  const stopPropagationIfEditing = useMemo(
+    () => (isEditing ? (e: React.BaseSyntheticEvent) => e.stopPropagation() : undefined),
+    [isEditing],
+  );
 
   return (
     <LayoutRootForTableCell
@@ -149,8 +148,10 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
           $isVisible={isEditing}
           ref={textAreaRef}
           onChange={change}
-          onBlur={blur}
           value={(isEditing && editingText) || ''}
+          onCopy={stopPropagationIfEditing}
+          onPaste={stopPropagationIfEditing}
+          onCut={stopPropagationIfEditing}
           onKeyDown={(e: React.KeyboardEvent) => {
             if (!callbacks.onKeyDown(e, isEditing)) {
               // TODO multilineのときのみこの操作を許可

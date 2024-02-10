@@ -1,5 +1,5 @@
 import {UIViewProps} from './UIView';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {NumberUIModel, numberUIModelDisplayText, numberUIModelSetText, NumberUISchema} from '@foxcel/core';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
@@ -79,19 +79,27 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
     change(model, editingText);
   };
 
+  const stopPropagationIfEditing = useMemo(
+    () => (isEditing ? (e: React.BaseSyntheticEvent) => e.stopPropagation() : undefined),
+    [isEditing],
+  );
+
   return (
     <LayoutRootForTableCell
       onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
       onMouseUp={() => textAreaRef.current?.focus()}
       onDoubleClick={startEdit}>
-      <TextWithBreak text={editingText ?? ''} />
+      <TextWithBreak text={editingText ?? ''} hidden={isEditing} />
       {isMainSelected && (
         <BackgroundTextarea
           $isVisible={isEditing}
           ref={textAreaRef}
           onChange={changeTextInput}
           onBlur={blur}
+          onCopy={stopPropagationIfEditing}
+          onPaste={stopPropagationIfEditing}
+          onCut={stopPropagationIfEditing}
           onKeyDown={(e: React.KeyboardEvent) => callbacks.onKeyDown(e, isEditing)}
           value={(isEditing && editingText) || ''}
         />
