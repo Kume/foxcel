@@ -148,6 +148,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
           $isVisible={isEditing}
           ref={textAreaRef}
           onChange={change}
+          onBlur={blur}
           value={(isEditing && editingText) || ''}
           onCopy={stopPropagationIfEditing}
           onPaste={stopPropagationIfEditing}
