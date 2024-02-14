@@ -10,9 +10,9 @@ import {
   buildUISchema,
   FullSpecSchemaSample,
   loadFile,
-  simpleRecursiveSampleConfig,
   unknownToDataModel,
   YamlDataFormatter,
+  RecursiveSchemaSample,
 } from '@foxcel/core';
 import {ThemeProvider} from 'styled-components';
 import {LoadedData, Theme} from '@foxcel/ui-react/dist/types';
@@ -194,19 +194,8 @@ const samples = [
   {
     label: '再帰',
     name: '2',
-    config: simpleRecursiveSampleConfig,
-    data: unknownToDataModel({
-      root: [
-        {
-          label: 'test1',
-          children: [{label: 'test1-1', children: []}],
-        },
-        {
-          label: 'test2',
-          children: [],
-        },
-      ],
-    }),
+    config: RecursiveSchemaSample.rootSchema(),
+    data: RecursiveSchemaSample.basicInitialData(),
   },
   {
     label: '全部入り',
