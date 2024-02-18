@@ -2,50 +2,6 @@ import {DataSchemaConfig, RootSchemaConfig, UISchemaConfig} from './common/Confi
 import {mapObjectToObject} from './common/utils';
 import {unknownToDataModel} from './DataModel/DataModel';
 
-export const simpleRecursiveSampleConfig: RootSchemaConfig = {
-  dataSchema: {
-    type: 'fixed_map',
-    items: {
-      root: 'recursiveItem',
-    },
-  },
-  namedDataSchema: {
-    recursiveItem: {
-      type: 'list',
-      label: 'Children',
-      item: {
-        type: 'fixed_map',
-        dataLabel: '{{label}}',
-        items: {
-          label: {
-            type: 'string',
-            label: 'Name',
-          },
-          children: 'recursiveItem',
-        },
-      },
-    },
-  },
-  namedUiSchema: {
-    recursiveUi: {
-      key: 'root',
-      type: 'contentList',
-      content: {
-        type: 'form',
-        contents: [
-          {type: 'text', key: 'label'},
-          {type: 'ref', ref: 'recursiveUi', key: 'children'},
-        ],
-      },
-    },
-  },
-  uiRoot: {
-    type: 'tab',
-    contents: [{type: 'ref', ref: 'recursiveUi', key: 'root'}],
-  },
-  fileMap: {children: []},
-};
-
 interface SchemaPair {
   readonly data: DataSchemaConfig;
   readonly ui: UISchemaConfig;
@@ -175,5 +131,71 @@ export class FullSpecSchemaSample {
         ui: {type: 'select'},
       },
     } as const satisfies SchemaPairMap;
+  }
+}
+
+export class RecursiveSchemaSample {
+  public static rootSchema(): RootSchemaConfig {
+    return {
+      dataSchema: {
+        type: 'fixed_map',
+        items: {
+          root: 'recursiveItem',
+        },
+      },
+      namedDataSchema: {
+        recursiveItem: {
+          type: 'list',
+          label: 'Children',
+          item: {
+            type: 'fixed_map',
+            dataLabel: '{{label}}',
+            items: {
+              label: {
+                type: 'string',
+                label: 'Name',
+              },
+              children: 'recursiveItem',
+            },
+          },
+        },
+      },
+      namedUiSchema: {
+        recursiveUi: {
+          key: 'root',
+          type: 'contentList',
+          content: {
+            type: 'form',
+            contents: [
+              {type: 'text', key: 'label'},
+              {type: 'ref', ref: 'recursiveUi', key: 'children'},
+            ],
+          },
+        },
+      },
+      uiRoot: {
+        type: 'tab',
+        contents: [{type: 'ref', ref: 'recursiveUi', key: 'root'}],
+      },
+      fileMap: {children: []},
+    };
+  }
+
+  public static basicInitialData() {
+    return unknownToDataModel({
+      root: [
+        {
+          label: 'test1',
+          children: [
+            {label: 'test1-1', children: []},
+            {label: 'test1-2', children: []},
+          ],
+        },
+        {
+          label: 'test2',
+          children: [],
+        },
+      ],
+    });
   }
 }

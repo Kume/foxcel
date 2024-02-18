@@ -36,7 +36,7 @@ export function contentListAddAfterAction(model: ContentListUIModel, index: numb
       emptyData,
       undefined,
       DataModelContext.createRoot({model: emptyData, schema: model.schema.dataSchema}),
-      {model: initialData(model)},
+      {model: initialContentData(model)},
     );
     return {
       type: 'data',

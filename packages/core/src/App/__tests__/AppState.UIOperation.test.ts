@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {ObjectDataStorage} from '../../Storage/ObjectDataStorage';
-import {FullSpecSchemaSample} from '../../samples';
+import {FullSpecSchemaSample, RecursiveSchemaSample} from '../../samples';
 import {buildDataSchema} from '../../DataModel/DataSchema';
 import {YamlDataFormatter} from '../../Storage/YamlDataFormatter';
 import {buildUISchema} from '../../UIModel/UISchema';
-import {getUIModelByPathAndCheckType, UIModelPath} from '../../UIModel/UIModelPath';
+import {getUIModelByPath, getUIModelByPathAndCheckType, UIModelPath} from '../../UIModel/UIModelPath';
 import {textUIModelSetText} from '../../UIModel/TextUIModel';
 import {applyAppActionToState, AppState, initialAppState} from '../AppState';
 import {numberUIModelDisplayText, numberUIModelSetText} from '../../UIModel/NumberUIModel';
 import {checkboxUIModelSetValue, checkboxUIModelValue} from '../../UIModel/CheckboxUIModel';
 import {mappingTableUIModelPaste} from '../../UIModel/MappingTableUIModel';
+import {contentListAddAfterAction} from '../../UIModel/ContentListUIModel';
+import {FormUIModel} from '../../UIModel/UIModelTypes';
 
 describe('Unit tests for simple form', () => {
   async function initAppState(): Promise<AppState> {
@@ -126,5 +128,96 @@ describe('Unit tests for simple form', () => {
     expect(getUIModelByPathAndCheckType(updatedModel, [['mappingTable', 'b', 'multiLineText']], 'text').value).toBe(
       '1',
     );
+  });
+});
+
+describe('Unit tests for recursive', () => {
+  async function initAppState(): Promise<AppState> {
+    const storage = new ObjectDataStorage();
+    const config = RecursiveSchemaSample.rootSchema();
+    const dataSchema = await buildDataSchema(config, storage, new YamlDataFormatter());
+    const uiSchema = await buildUISchema(config, dataSchema, storage, new YamlDataFormatter());
+    const initialData = RecursiveSchemaSample.basicInitialData();
+    return applyAppActionToState(initialAppState, {type: 'init', uiSchema, data: initialData, dataSchema});
+  }
+
+  function pathForDescendant(depth: number): UIModelPath {
+    return [
+      ['tab'],
+      ...Array(depth)
+        .fill([['contentList'], ['form', 'children']])
+        .flat(),
+    ];
+  }
+
+  it('再帰的なContentListに子孫を追加できること', async () => {
+    let appState = await initAppState();
+
+    // 追加前は3階層目は存在しない
+    expect(getUIModelByPath(appState.uiModel, pathForDescendant(3))).toBeUndefined();
+
+    {
+      const model = getUIModelByPathAndCheckType(appState.uiModel, pathForDescendant(2), 'contentList');
+      appState = applyAppActionToState(appState, contentListAddAfterAction(model, 0));
+    }
+    // 追加すると3階層目が現れる
+    expect(getUIModelByPath(appState.uiModel, pathForDescendant(3))).not.toBeUndefined();
+    // 4階層目はまだない
+    expect(getUIModelByPath(appState.uiModel, pathForDescendant(3))).not.toBeUndefined();
+
+    {
+      const model = getUIModelByPathAndCheckType(appState.uiModel, pathForDescendant(3), 'contentList');
+      appState = applyAppActionToState(appState, contentListAddAfterAction(model, 0));
+    }
+    // 追加すると4階層目が現れる
+    expect(getUIModelByPath(appState.uiModel, pathForDescendant(4))).not.toBeUndefined();
+  });
+
+  it('再帰的なContentListの要素を選択できること', async () => {
+    const appState = await initAppState();
+
+    // 1階層目の2つ目を選択
+    {
+      const initialContentLabel = getUIModelByPathAndCheckType(
+        appState.uiModel,
+        [...pathForDescendant(0), ['contentList'], ['form', 'label']],
+        'text',
+      );
+      // 変更前はtest1が選択されている
+      expect(initialContentLabel.value).toBe('test1');
+      const model = getUIModelByPathAndCheckType(appState.uiModel, pathForDescendant(0), 'contentList');
+
+      const updatedState = applyAppActionToState(appState, {type: 'focus', dataContext: model.indexes[1].dataContext});
+
+      const updatedContentLabel = getUIModelByPathAndCheckType(
+        updatedState.uiModel,
+        [...pathForDescendant(0), ['contentList'], ['form', 'label']],
+        'text',
+      );
+      // 変更後はtest2が選択されている
+      expect(updatedContentLabel.value).toBe('test2');
+    }
+
+    // 2階層目の2つ目を選択
+    {
+      const initialContentLabel = getUIModelByPathAndCheckType(
+        appState.uiModel,
+        [...pathForDescendant(1), ['contentList'], ['form', 'label']],
+        'text',
+      );
+      // 変更前はtest1-1が選択されている
+      expect(initialContentLabel.value).toBe('test1-1');
+      const model = getUIModelByPathAndCheckType(appState.uiModel, pathForDescendant(1), 'contentList');
+
+      const updatedState = applyAppActionToState(appState, {type: 'focus', dataContext: model.indexes[1].dataContext});
+
+      const updatedContentLabel = getUIModelByPathAndCheckType(
+        updatedState.uiModel,
+        [...pathForDescendant(1), ['contentList'], ['form', 'label']],
+        'text',
+      );
+      // 変更後はtest2が選択されている
+      expect(updatedContentLabel.value).toBe('test1-2');
+    }
   });
 });
