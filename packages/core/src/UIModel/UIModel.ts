@@ -422,6 +422,7 @@ export function buildUIModel(
       } as const satisfies Partial<ContentListUIModel>;
       if (dataSchemaIsMap(currentSchema.dataSchema)) {
         // TODO FixedMap対応だけではダメ
+        //      currentSchema.dataSchema.item は conditional or recursive の可能性があるのでそのままでも使えない
         const itemDataSchema =
           currentSchema.dataSchema.item?.t === DataSchemaType.FixedMap ? currentSchema.dataSchema.item : undefined;
         const mapDataModel = dataModelIsMap(dataModel) ? dataModel : undefined;
@@ -470,6 +471,7 @@ export function buildUIModel(
         const listDataModel = dataModelIsList(dataModel) ? dataModel : undefined;
         if (dataModelIsList(listDataModel) && listDataSize(listDataModel) > 0) {
           // TODO FixedMap対応だけではダメ
+          //      currentSchema.dataSchema.item は conditional or recursive の可能性があるのでそのままでも使えない
           const itemDataSchema =
             currentSchema.dataSchema.item?.t === DataSchemaType.FixedMap ? currentSchema.dataSchema.item : undefined;
 

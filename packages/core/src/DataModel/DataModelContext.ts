@@ -253,7 +253,7 @@ export class DataModelContextPathContainer implements PathContainer {
         return !isReadonlyArray(currentPathComponent) &&
           currentPathComponent !== null &&
           list !== undefined &&
-          getListDataIndexAtPointer(list, currentPathComponent)
+          getListDataIndexAtPointer(list, currentPathComponent) !== undefined
           ? this.next()
           : undefined;
       default:
