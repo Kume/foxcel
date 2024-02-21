@@ -2,7 +2,7 @@ import React from 'react';
 import {AppAction, DataModel, DataModelRoot, SerializedDataModelContext} from '@foxcel/core';
 
 export interface TableCellCallbacks {
-  readonly onAction: (action: AppAction) => void;
+  readonly onAction: (action: AppAction | undefined) => void;
   readonly getRoot: () => DataModelRoot;
   readonly onMouseDown: (e: React.MouseEvent, row: number | undefined, column: number | undefined) => void;
   readonly onMouseOver: (e: React.MouseEvent, row: number | undefined, column: number | undefined) => void;

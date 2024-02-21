@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useReducer, useRef} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {AppInitializeAction, applyAppActionToState, AppState, DataModel, DataModelRoot} from '@foxcel/core';
+import {AppAction, AppInitializeAction, applyAppActionToState, AppState, DataModel, DataModelRoot} from '@foxcel/core';
 import styled from 'styled-components';
 import {LoadedData} from './types';
 
@@ -29,6 +29,11 @@ const initialState: AppState = {
 
 export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeState}) => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
+  const execAction = useCallback((action: AppAction | undefined) => {
+    if (action) {
+      dispatch(action);
+    }
+  }, []);
   const stateRef = useRef<AppState>(state);
   stateRef.current = state;
   const getRoot = useCallback((): DataModelRoot => {
@@ -77,7 +82,7 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeS
     <LayoutRoot>
       {loadFile && <button onClick={async () => dispatch(await loadFile())}>LOAD</button>}
       {saveFile && <button onClick={() => saveFile(state.data)}>SAVE</button>}
-      {state.uiModel && <UIView model={state.uiModel} onAction={dispatch} getRoot={getRoot} />}
+      {state.uiModel && <UIView model={state.uiModel} onAction={execAction} getRoot={getRoot} />}
     </LayoutRoot>
   );
 };
