@@ -12,7 +12,7 @@ import {MappingTableUIView} from './MappingTableUIView';
 
 export interface UIViewProps {
   readonly model: UIModel;
-  onAction(action: AppAction): void;
+  onAction(action: AppAction | undefined): void;
   getRoot(): DataModelRoot;
 }
 

@@ -516,7 +516,7 @@ const ErrorLabel = styled.span`
 
 interface MultiSelectInputProps {
   readonly model: MultiSelectUIModel;
-  onAction(action: AppAction): void;
+  onAction(action: AppAction | undefined): void;
 }
 
 const MultiSelectInput: React.FC<MultiSelectInputProps> = ({model, onAction}) => {

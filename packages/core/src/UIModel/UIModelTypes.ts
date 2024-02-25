@@ -62,6 +62,7 @@ interface KeyTextUIModel {
   readonly isKey: true;
   readonly schema: TextUISchema;
   readonly dataContext: SerializedDataModelContext;
+  readonly data?: undefined;
   readonly value: string | null;
 }
 
