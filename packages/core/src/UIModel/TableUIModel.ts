@@ -128,10 +128,17 @@ export function tableUIModelMakeNewRow(
     switch (columnSchema.type) {
       case 'text': {
         const result = textUIModelHandleInputForSchema(columnSchema, defaultValue.value);
-        if (result.type === 'key') {
-          key = result.key;
-        } else if (typeof columnSchema.key === 'string') {
-          rowData = setToMapDataModel(rowData, columnSchema.key, result.value);
+        switch (result.type) {
+          case 'empty':
+            break;
+          case 'key':
+            key = result.key;
+            break;
+          case 'value':
+            if (typeof columnSchema.key === 'string') {
+              rowData = setToMapDataModel(rowData, columnSchema.key, result.value);
+            }
+            break;
         }
         break;
       }

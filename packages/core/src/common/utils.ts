@@ -95,3 +95,7 @@ export function rangeInArrayEqual<Item>(
   }
   return true;
 }
+
+export function isNullOrEmptyString(value: string | undefined | null): value is '' | null | undefined {
+  return value == null || value === '';
+}

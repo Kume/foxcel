@@ -30,7 +30,7 @@ describe('Unit tests for simple form', () => {
     // 初期状態はcontentListの一番上の要素のキーが入っている
     expect(model.isKey && model.value).toBe('first');
 
-    const updatedAppState = applyAppActionToState(appState, textUIModelSetText(model, 'changed'));
+    const updatedAppState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
     const updatedModel = getUIModelByPathAndCheckType(updatedAppState.uiModel, uiPath, 'text');
     // 編集したので、UIに表示されるテキストも変化する
     expect(updatedModel.isKey && updatedModel.value).toBe('changed');
@@ -43,7 +43,7 @@ describe('Unit tests for simple form', () => {
     // 初期値は入ってないので、空文字が表示される
     expect(model.value).toBe('');
 
-    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed'));
+    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
     const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'text');
     // 入力した値に変化している
     expect(updatedModel.value).toBe('changed');
@@ -87,7 +87,7 @@ describe('Unit tests for simple form', () => {
     // 初期値は入ってないので、空文字が表示される
     expect(model.value).toBe('');
 
-    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed'));
+    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
     const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'text');
     // 入力した値に変化している
     expect(updatedModel.value).toBe('changed');
