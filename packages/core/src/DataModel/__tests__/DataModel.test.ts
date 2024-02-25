@@ -15,7 +15,7 @@ import {
   dataModelIsList,
   dataModelIsMap,
   dataModelToJson,
-  getFromDataModel,
+  getDataModelSimple,
   getListDataAt,
   getMapDataAtIndex,
   getMapKeyAtIndex,
@@ -210,7 +210,7 @@ describe('Unit tests for setToDataModel', () => {
     const before = unknownToDataModel({a: 1, b: 'c'});
     const context = DataModelContext.createRoot({model: before, schema: undefined});
     const after = setToDataModel(before, SimplePathContainer.create([1]), context, {model: unknownToDataModel('d')})!;
-    expect(after).toBe(undefined);
+    expect(dataModelToJson(after)).toEqual({a: 1, b: 'd'});
   });
 
   it('Can set to nested map data model', () => {
@@ -377,56 +377,6 @@ describe('Unit tests for pushToDataModel', () => {
     const after = pushToDataModel(before, SimplePathContainer.create(['b', 2]), context, {
       model: unknownToDataModel('e'),
     });
-    expect(dataModelToJson(getFromDataModel(after!, {components: ['b', 2, 1]})!)).toEqual('e');
-  });
-});
-
-describe('Unit tests for getFromDataModel', () => {
-  it('Can get from map data model', () => {
-    const source = unknownToDataModel({a: 7, b: 99});
-    const result = getFromDataModel(source, {components: ['b']});
-    expect(dataModelToJson(result!)).toBe(99);
-  });
-
-  it('Can get from map data model by index', () => {
-    const source = unknownToDataModel({a: 7, b: 99});
-    const result = getFromDataModel(source, {components: [1]});
-    expect(dataModelToJson(result!)).toBe(99);
-  });
-
-  it('Cannot get from map data model by invalid key', () => {
-    const source = unknownToDataModel({a: 7, b: 99});
-    const result = getFromDataModel(source, {components: ['c']});
-    expect(result).toBeUndefined();
-  });
-
-  it('Can get from list data model', () => {
-    const source = unknownToDataModel(['aaa', 'bbbb']);
-    const result = getFromDataModel(source, {components: [1]});
-    expect(dataModelToJson(result!)).toBe('bbbb');
-  });
-
-  it('Cannot get from list data model by key', () => {
-    const source = unknownToDataModel(['aaa', 'bbbb']);
-    const result = getFromDataModel(source, {components: ['aaa']});
-    expect(result).toBeUndefined();
-  });
-
-  it('Cannot get from list data model by invalid index', () => {
-    const source = unknownToDataModel(['aaa', 'bbbb']);
-    const result = getFromDataModel(source, {components: [3]});
-    expect(result).toBeUndefined();
-  });
-
-  it('Can get from nested data model', () => {
-    const source = unknownToDataModel({a: 7, b: [1, 2, {c: 89}]});
-    const result = getFromDataModel(source, {components: ['b', 2, 'c']});
-    expect(dataModelToJson(result!)).toBe(89);
-  });
-
-  it('Can get from nested data model by invalid path', () => {
-    const source = unknownToDataModel({a: 7, b: [1, 2, {c: 89}]});
-    const result = getFromDataModel(source, {components: ['b', 'c']});
-    expect(result).toBeUndefined();
+    expect(dataModelToJson(getDataModelSimple(after, ['b', 2, 1])!)).toEqual('e');
   });
 });

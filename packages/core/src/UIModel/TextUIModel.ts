@@ -29,7 +29,7 @@ function dataActionForValue(model: TextUIModel, value: string | null): DataModel
   const handle = textUIModelHandleInputForSchema(model.schema, value);
   switch (handle.type) {
     case 'empty':
-      return model.value === undefined ? undefined : {type: 'delete', dataContext: model.dataContext};
+      return model.data === undefined ? undefined : {type: 'delete', dataContext: model.dataContext};
     case 'key':
       return {type: 'setKey', dataContext: model.dataContext, key: handle.key};
     case 'value':

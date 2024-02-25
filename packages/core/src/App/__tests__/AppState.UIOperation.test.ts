@@ -11,7 +11,7 @@ import {numberUIModelDisplayText, numberUIModelSetText} from '../../UIModel/Numb
 import {checkboxUIModelSetValue, checkboxUIModelValue} from '../../UIModel/CheckboxUIModel';
 import {mappingTableUIModelPaste} from '../../UIModel/MappingTableUIModel';
 import {contentListAddAfterAction} from '../../UIModel/ContentListUIModel';
-import {FormUIModel} from '../../UIModel/UIModelTypes';
+import {getDataModelSimple} from '../../DataModel/DataModel';
 
 describe('Unit tests for simple form', () => {
   async function initAppState(): Promise<AppState> {
@@ -76,21 +76,30 @@ describe('Unit tests for simple form', () => {
   });
 
   it('マッピングテーブル内のテキスト入力ができる', async () => {
-    const appState = await initAppState();
+    let appState = await initAppState();
     const uiPath: UIModelPath = [
       ['tab'],
       ['contentList'],
       ['form', 'mappingTable'],
       ['mappingTable', 'a', 'singleLineText'],
     ];
-    const model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
+    let model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
     // 初期値は入ってないので、空文字が表示される
     expect(model.value).toBe('');
 
-    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
-    const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'text');
+    appState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
+    model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
     // 入力した値に変化している
-    expect(updatedModel.value).toBe('changed');
+    expect(model.value).toBe('changed');
+    expect(getDataModelSimple(appState.data, ['simple', 'first', 'mappingTable', 'a', 'singleLineText'])).toBe(
+      'changed',
+    );
+
+    appState = applyAppActionToState(appState, textUIModelSetText(model, '')!);
+    // 空文字列を入力すると空文字列がセットされるのではなくデータが消える
+    expect(
+      getDataModelSimple(appState.data, ['simple', 'first', 'mappingTable', 'a', 'singleLineText']),
+    ).toBeUndefined();
   });
 
   it('マッピングテーブルにペーストができる(やや複雑なパターン)', async () => {
@@ -128,6 +137,10 @@ describe('Unit tests for simple form', () => {
     expect(getUIModelByPathAndCheckType(updatedModel, [['mappingTable', 'b', 'multiLineText']], 'text').value).toBe(
       '1',
     );
+    // 空文字列を貼り付けられた場合、空文字列が入るのではなく、何もセットされない
+    expect(
+      getDataModelSimple(updatedState.data, ['simple', 'first', 'mappingTable', 0, 'multiLineText']),
+    ).toBeUndefined();
   });
 });
 

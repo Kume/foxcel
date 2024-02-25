@@ -426,6 +426,18 @@ export class SimplePathContainer implements PathContainer {
     return [model, key, index];
   }
 
+  public static mapChildForIndex(map: DataModel | undefined, index: number): PathContainerMapChild {
+    if (!dataModelIsMap(map)) {
+      return undefined;
+    }
+    const item = getMapItemAtIndex(map, index);
+    if (!item) {
+      return undefined;
+    }
+    const [model, , key] = item;
+    return [model, key, index];
+  }
+
   public static mapItemToChild(item: PublicMapDataItem): PathContainerMapChild {
     const [model, , key, index] = item;
     return [model, key, index];
@@ -452,7 +464,9 @@ export class SimplePathContainer implements PathContainer {
   }
   mapChild(map: DataModel | undefined): PathContainerMapChild {
     const current = this.path[this.index];
-    return typeof current !== 'string' ? undefined : SimplePathContainer.mapChildForKey(map, current);
+    return typeof current === 'string'
+      ? SimplePathContainer.mapChildForKey(map, current)
+      : SimplePathContainer.mapChildForIndex(map, current);
   }
 }
 
@@ -608,35 +622,28 @@ export function deleteFromDataModel(
   );
 }
 
-export function getFromDataModelForPathComponent(
+export function getDataModelByPathContainer(
   model: DataModel | undefined,
-  pathComponent: ForwardDataPathComponent,
+  path: PathContainer | undefined,
 ): DataModel | undefined {
-  if (!model) {
-    return undefined;
+  if (!path) {
+    return model;
   }
   if (!dataModelIsMapOrList(model)) {
     return undefined;
   }
-  if (dataModelIsList(model)) {
-    if (!dataPathComponentIsListIndexLike(pathComponent)) {
-      return undefined;
-    }
-    const index = dataPathComponentToListIndex(pathComponent);
-    return getListDataAt(model, index);
+  if (mapOrListDataModelIsMap(model)) {
+    return getDataModelByPathContainer(path.mapChild(model)?.[0], path.next());
   } else {
-    const {index} = getMapKeyAndIndex(model, pathComponent);
-    return index === undefined ? undefined : getMapDataAtIndex(model, index);
+    return getDataModelByPathContainer(path.listChild(model)?.[0], path.next());
   }
 }
 
-export function getFromDataModel(model: DataModel, path: ForwardDataPath): DataModel | undefined {
-  if (dataPathLength(path) === 0) {
-    return model;
-  }
-  const headPathComponent = headDataPathComponent(path);
-  const childModel = getFromDataModelForPathComponent(model, headPathComponent);
-  return childModel && getFromDataModel(childModel, shiftDataPath(path));
+export function getDataModelSimple(
+  model: DataModel | undefined,
+  path: readonly (number | string)[],
+): DataModel | undefined {
+  return getDataModelByPathContainer(model, SimplePathContainer.create(path));
 }
 
 type CreateNextChildData = (
