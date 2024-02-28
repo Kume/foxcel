@@ -11,7 +11,7 @@ import {numberUIModelDisplayText, numberUIModelSetText} from '../../UIModel/Numb
 import {checkboxUIModelSetValue, checkboxUIModelValue} from '../../UIModel/CheckboxUIModel';
 import {mappingTableUIModelPaste} from '../../UIModel/MappingTableUIModel';
 import {contentListAddAfterAction} from '../../UIModel/ContentListUIModel';
-import {getDataModelSimple} from '../../DataModel/DataModel';
+import {getDataModelByPathContainer, getDataModelSimple} from '../../DataModel/DataModel';
 
 describe('Unit tests for simple form', () => {
   async function initAppState(): Promise<AppState> {
@@ -37,16 +37,26 @@ describe('Unit tests for simple form', () => {
   });
 
   it('テキスト入力ができる', async () => {
-    const appState = await initAppState();
+    let appState = await initAppState();
     const uiPath: UIModelPath = [['tab'], ['contentList'], ['form', 'singleLineText']];
-    const model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
+    const dataPath = ['simple', 'first', 'singleLineText'];
+    let model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
     // 初期値は入ってないので、空文字が表示される
     expect(model.value).toBe('');
 
-    const updatedState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
-    const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'text');
+    appState = applyAppActionToState(appState, textUIModelSetText(model, 'changed')!);
+    model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
     // 入力した値に変化している
-    expect(updatedModel.value).toBe('changed');
+    expect(model.value).toBe('changed');
+    // データも同様
+    expect(getDataModelSimple(appState.data, dataPath)).toBe('changed');
+
+    appState = applyAppActionToState(appState, textUIModelSetText(model, '')!);
+    model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
+    // 見た目は空文字列に変化している
+    expect(model.value).toBe('');
+    // データは消えている
+    expect(getDataModelSimple(appState.data, dataPath)).toBeUndefined();
   });
 
   it('数値入力ができる', async () => {

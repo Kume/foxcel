@@ -79,6 +79,13 @@ export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({model, is
     change(model, editingText);
   };
 
+  // キーボード操作以外で選択されたときのフォーカス
+  useEffect(() => {
+    if (isMainSelected) {
+      textAreaRef.current?.focus();
+    }
+  }, [isMainSelected]);
+
   const stopPropagationIfEditing = useMemo(
     () => (isEditing ? (e: React.BaseSyntheticEvent) => e.stopPropagation() : undefined),
     [isEditing],
