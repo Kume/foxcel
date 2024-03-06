@@ -126,10 +126,11 @@ export function unknownToDataModel(value: unknown): DataModel {
   }
 }
 
-export function dataModelEquals(a: DataModel, b: DataModel): boolean {
+export function dataModelEquals(a: DataModel | undefined, b: DataModel | undefined): boolean {
   if (a === b) {
     return true;
   }
+  // === で一致判定ができないのは両方がobject(Array含む)の場合のみなので、それ以外なら一致していないと判断
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
     return false;
   }
@@ -143,7 +144,7 @@ export function dataModelEquals(a: DataModel, b: DataModel): boolean {
       }
       // switch文に入る前に長さが同じであることを確認済みのため、getListDataAt(b, index)は必ずundefinedにならない
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return a.v.every(([, aValue], index) => dataModelEquals(aValue, getListDataAt(b, index)!));
+      return a.v.every((aItem, index) => dataModelEquals(aItem[listItemDataIndex], getListDataAt(b, index)!));
     case DataModelType.Map:
       if (b.t !== a.t) {
         return false;

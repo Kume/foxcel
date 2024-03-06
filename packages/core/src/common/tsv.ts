@@ -73,6 +73,8 @@ export function parseTsv(tsv: string): string[][] {
   const remainText = readingText + tsv.substring(cursor);
   if (remainText.length > 0) {
     parsedRow.push(remainText);
+  } else if (tsv.substring(tsv.length - 1) === '\t') {
+    parsedRow.push('');
   }
   if (parsedRow.length > 0) {
     parsedRows.push(parsedRow);

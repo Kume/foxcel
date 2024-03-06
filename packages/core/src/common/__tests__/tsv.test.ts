@@ -9,6 +9,23 @@ interface TestCase {
 
 const tsvCases: TestCase[] = [
   {label: 'empty string', tsv: '', data: []},
+  {label: 'empty cells', tsv: '\t\t', data: [['', '', '']]},
+  {
+    label: 'empty rows',
+    tsv: '\t\t\n\t\t',
+    data: [
+      ['', '', ''],
+      ['', '', ''],
+    ],
+  },
+  {
+    label: 'surrogate pair and ligature',
+    tsv: '👨🏻‍🦱\t👨🏻‍🦱\n𦥯\t𦥯',
+    data: [
+      ['👨🏻‍🦱', '👨🏻‍🦱'],
+      ['𦥯', '𦥯'],
+    ],
+  },
   {label: 'LF char', tsv: '\n', forStringify: '', data: [['']]},
   {
     label: 'LF char',

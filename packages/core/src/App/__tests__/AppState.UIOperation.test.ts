@@ -11,7 +11,7 @@ import {numberUIModelDisplayText, numberUIModelSetText} from '../../UIModel/Numb
 import {checkboxUIModelSetValue, checkboxUIModelValue} from '../../UIModel/CheckboxUIModel';
 import {mappingTableUIModelPaste} from '../../UIModel/MappingTableUIModel';
 import {contentListAddAfterAction} from '../../UIModel/ContentListUIModel';
-import {getDataModelByPathContainer, getDataModelSimple} from '../../DataModel/DataModel';
+import {dataModelEquals, getDataModelSimple, unknownToDataModel} from '../../DataModel/DataModel';
 
 describe('Unit tests for simple form', () => {
   async function initAppState(): Promise<AppState> {
@@ -49,7 +49,10 @@ describe('Unit tests for simple form', () => {
     // 入力した値に変化している
     expect(model.value).toBe('changed');
     // データも同様
-    expect(getDataModelSimple(appState.data, dataPath)).toBe('changed');
+    expect(dataModelEquals(getDataModelSimple(appState.data, dataPath), unknownToDataModel('changed'))).toBeTruthy();
+
+    // 同じ文字を入力した場合はアクションを発行しない
+    expect(textUIModelSetText(model, 'changed')).toBeUndefined();
 
     appState = applyAppActionToState(appState, textUIModelSetText(model, '')!);
     model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'text');
@@ -60,16 +63,29 @@ describe('Unit tests for simple form', () => {
   });
 
   it('数値入力ができる', async () => {
-    const appState = await initAppState();
+    let appState = await initAppState();
     const uiPath: UIModelPath = [['tab'], ['contentList'], ['form', 'number']];
-    const model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'number');
+    const dataPath = ['simple', 'first', 'number'];
+    let model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'number');
     // 初期値は入ってないので、空文字が表示される
     expect(numberUIModelDisplayText(model)).toBe('');
 
-    const updatedState = applyAppActionToState(appState, numberUIModelSetText(model, '123')!);
-    const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'number');
+    appState = applyAppActionToState(appState, numberUIModelSetText(model, '123')!);
+    model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'number');
     // 入力した値に変化している
-    expect(numberUIModelDisplayText(updatedModel)).toBe('123');
+    expect(numberUIModelDisplayText(model)).toBe('123');
+    // データは数値がセットされている
+    expect(dataModelEquals(getDataModelSimple(appState.data, dataPath), unknownToDataModel(123))).toBeTruthy();
+
+    // 同じ文字を入力した場合はアクションを発行しない
+    expect(numberUIModelSetText(model, '123')).toBeUndefined();
+
+    appState = applyAppActionToState(appState, numberUIModelSetText(model, '')!);
+    model = getUIModelByPathAndCheckType(appState.uiModel, uiPath, 'number');
+    // 見た目は空文字列に変化している
+    expect(numberUIModelDisplayText(model)).toBe('');
+    // データは消えている
+    expect(getDataModelSimple(appState.data, dataPath)).toBeUndefined();
   });
 
   it('チェックボックスの入力ができる', async () => {
