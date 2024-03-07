@@ -32,7 +32,6 @@ export function mappingTableUIModelPaste(
   );
 
   const actions: DataModelAtomicAction[] = [];
-  // TODO アクションを一つだけ発行するように
   for (let rowDataIndex = 0; rowDataIndex < pasteRowSize; rowDataIndex++) {
     const row = model.rows[selection.row.start + rowDataIndex];
     if (row) {
@@ -50,11 +49,10 @@ export function mappingTableUIModelPaste(
 
   // danglingRowsは変更不可のため、pasteもできない。
 
+  const dataAction = buildMultiSetDataModelActionNode(model.dataContext, actions);
+
   return {
-    action: {
-      type: 'data',
-      action: buildMultiSetDataModelActionNode(model.dataContext, actions)!,
-    },
+    action: dataAction && {type: 'data', action: dataAction},
     changedSelection: {
       row: {start: selection.row.start, size: pasteRowSize},
       col: {start: selection.col.start, size: pasteColumnSize},

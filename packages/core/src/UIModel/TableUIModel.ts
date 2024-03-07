@@ -100,8 +100,8 @@ export function tableUIModelPasteRange(selectionRange: TableRange, dataSize: num
 }
 
 export interface TableUIModelPasteResult {
-  readonly action: AppAction;
-  readonly changedSelection?: TableCellRange;
+  readonly action: AppAction | undefined;
+  readonly changedSelection: TableCellRange | undefined;
 }
 
 interface ValueWithColumnIndex {

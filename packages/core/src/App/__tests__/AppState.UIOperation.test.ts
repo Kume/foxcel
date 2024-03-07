@@ -143,7 +143,7 @@ describe('Unit tests for simple form', () => {
       ],
       root,
     );
-    const updatedState = applyAppActionToState(appState, paste!.action);
+    const updatedState = applyAppActionToState(appState, paste!.action!);
     const updatedModel = getUIModelByPathAndCheckType(updatedState.uiModel, uiPath, 'mappingTable');
     // pasteした値は3行だが、mapping元のデータが2行なのでこちらも2行のまま
     expect(updatedModel.rows.length).toBe(2);
