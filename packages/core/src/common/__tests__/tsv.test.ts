@@ -9,6 +9,7 @@ interface TestCase {
 
 const tsvCases: TestCase[] = [
   {label: 'empty string', tsv: '', data: []},
+  {label: 'empty column', tsv: '\n\n', data: [[''], [''], ['']]},
   {label: 'empty cells', tsv: '\t\t', data: [['', '', '']]},
   {
     label: 'empty rows',
@@ -26,11 +27,9 @@ const tsvCases: TestCase[] = [
       ['𦥯', '𦥯'],
     ],
   },
-  {label: 'LF char', tsv: '\n', forStringify: '', data: [['']]},
   {
     label: 'LF char',
     tsv: ['a\tb\t"c"', 'd\teee\t"fffff"'].join('\n'),
-    forStringify: ['a\tb\tc', 'd\teee\tfffff'].join('\n'),
     data: [
       ['a', 'b', 'c'],
       ['d', 'eee', 'fffff'],
