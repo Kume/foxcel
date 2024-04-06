@@ -68,6 +68,6 @@
     "dependencies": false
   },
   "volta": {
-    "node": "18.16.0"
+    "node": "20.12.1"
   }
 }

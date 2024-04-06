@@ -10,5 +10,8 @@
   },
   "dependencies": {
     "peggy": "^1.2.0"
+  },
+  "volta": {
+    "node": "20.12.1"
   }
 }
