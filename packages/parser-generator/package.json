@@ -9,7 +9,7 @@
     "generate": "peggy --format es -o ../core/src/DataModel/DataPath/DataPathParser.js data-path.peggy"
   },
   "dependencies": {
-    "peggy": "^1.2.0"
+    "peggy": "^4.0.2"
   },
   "volta": {
     "node": "20.12.1"
