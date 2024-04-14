@@ -15,8 +15,8 @@ import {
   RecursiveSchemaSample,
 } from '@foxcel/core';
 import {ThemeProvider} from 'styled-components';
-import {LoadedData, Theme} from '@foxcel/ui-react/dist/types';
-import {sampleConfig} from '@foxcel/ui-react/dist/sample';
+import {LoadedData, Theme} from '@foxcel/ui-react';
+import {sampleConfig} from '@foxcel/ui-react';
 import {createRoot} from 'react-dom/client';
 
 const loadedItemKey = 'DEBUG_loadedItem';

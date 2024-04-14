@@ -2,7 +2,7 @@ import * as React from 'react';
 import {useCallback, useEffect, useState} from 'react';
 import * as ReactDOM from 'react-dom';
 import {RootView} from '@foxcel/ui-react';
-import {Theme} from '@foxcel/ui-react/dist/types';
+import {Theme} from '@foxcel/ui-react';
 import {ThemeProvider} from 'styled-components';
 import {
   AppAction,

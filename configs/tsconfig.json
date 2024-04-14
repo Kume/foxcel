@@ -5,7 +5,7 @@
     "module": "ESNext",
     "downlevelIteration": true,
     "esModuleInterop": true,
-    "moduleResolution": "nodenext",
+    "moduleResolution": "NodeNext",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
@@ -20,5 +20,6 @@
     "noImplicitReturns": true,
     "noImplicitAny": true,
     "alwaysStrict": true,
+    "customConditions": ["source"]
   }
 }

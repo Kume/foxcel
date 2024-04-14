@@ -4,12 +4,9 @@
   "description": "Core module for foxcel",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "import": {
-        "types": "./src/index.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./src/index.ts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       }
     }

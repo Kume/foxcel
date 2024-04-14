@@ -7,6 +7,15 @@
   "author": "makoto.kume",
   "license": "MIT",
   "private": true,
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
   "scripts": {
     "test": "jest",
     "build": "tsc",
