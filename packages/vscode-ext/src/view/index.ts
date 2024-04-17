@@ -202,14 +202,14 @@ const App: React.FC = () => {
     [loaded, lastFileMap],
   );
 
-  return <RootView loaded={loaded} saveFile={save} onChangeState={saveState} />;
+  return React.createElement(RootView, {loaded, saveFile: save, onChangeState: saveState});
 };
 
 ReactDOM.render(
-  <React.StrictMode>
-    <ThemeProvider theme={defaultTheme}>
-      <App />
-    </ThemeProvider>
-  </React.StrictMode>,
+  React.createElement(
+    React.StrictMode,
+    {},
+    React.createElement(ThemeProvider, {theme: defaultTheme}, React.createElement(App)),
+  ),
   document.getElementById('root'),
 );
