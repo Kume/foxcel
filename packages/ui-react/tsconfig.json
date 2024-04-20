@@ -4,7 +4,8 @@
     "lib": ["dom", "es2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "composite": true
   },
   "include": ["./src/**/*.ts", "./src/**/*.tsx", "./src/**/*.js"]
 }

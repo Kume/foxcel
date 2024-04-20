@@ -10,3 +10,5 @@ packages/*/dist
 !.yarn/plugins
 
 WORKING.md
+
+*.tsbuildinfo

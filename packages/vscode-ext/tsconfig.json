@@ -6,7 +6,6 @@
     "noEmit": true,
     "jsx": "react"
   },
-  "include": [
-    "./"
-  ]
+  "include": ["./"],
+  "exclude": ["./dist", "./rollup.config.js"]
 }
