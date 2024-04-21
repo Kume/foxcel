@@ -9,9 +9,9 @@ import {
   getIdFromDataPointer,
 } from '@foxcel/core';
 import styled from 'styled-components';
-import {ContextMenu, ContextMenuProps} from './ContextMenu';
+import {ContextMenu, ContextMenuProps, makeClickPointVirtualElement} from './ContextMenu';
 import {labelTextStyle} from '../../../common/components/commonStyles';
-import {flip, shift, useFloating} from '@floating-ui/react-dom';
+import {flip, shift, useFloating} from '@floating-ui/react';
 
 const LayoutRoot = styled.div`
   display: flex;
@@ -44,7 +44,7 @@ interface Props extends UIViewProps {
 
 export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   const [contextMenuProp, setContextMenuProp] = useState<Pick<ContextMenuProps, 'isOpen' | 'items'>>();
-  const {x, y, reference, floating, strategy} = useFloating({
+  const {refs: floatingRefs, floatingStyles} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
@@ -63,21 +63,10 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
           {label: 'Delete', onClick: () => actionAndClose(contentListRemoveAtAction(model, index))},
         ],
       });
-      reference({
-        getBoundingClientRect: () => ({
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-          left: event.clientX,
-          right: event.clientX,
-          bottom: event.clientY,
-          top: event.clientY,
-        }),
-      });
+      floatingRefs.setPositionReference(makeClickPointVirtualElement(event));
       event.preventDefault();
     },
-    [model, onAction],
+    [model, onAction, floatingRefs],
   );
 
   return (
@@ -97,8 +86,8 @@ export const ContentListUIView: React.FC<Props> = ({model, onAction, getRoot}) =
           ))}
         </List>
         <ContextMenu
-          ref={floating}
-          style={{position: strategy, left: x ?? 0, top: y ?? 0}}
+          ref={floatingRefs.setFloating}
+          style={floatingStyles}
           {...contextMenuProp}
           onClose={closeContextMenu}
         />

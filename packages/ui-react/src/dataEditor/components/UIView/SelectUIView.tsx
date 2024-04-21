@@ -14,7 +14,7 @@ import {
 } from '@foxcel/core';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
-import {flip, shift, useFloating} from '@floating-ui/react-dom';
+import {flip, shift, useFloating} from '@floating-ui/react';
 import {VscClose} from 'react-icons/vsc';
 import {
   KeyValue_ArrowDown,
@@ -179,7 +179,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
     () => filterSelectUIOptionsByText(state.options, state.editingText),
     [state.options, state.editingText],
   );
-  const {x, y, reference, floating, strategy} = useFloating({
+  const {refs: floatingRefs, floatingStyles} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
@@ -228,7 +228,7 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
   };
   return (
     <LayoutRoot>
-      <InnerLayout ref={reference} onClick={openDropdown}>
+      <InnerLayout ref={floatingRefs.setReference} onClick={openDropdown}>
         <InputArea>
           {model.isMulti ? (
             <MultiSelectInput model={model} onAction={onAction} />
@@ -252,8 +252,8 @@ export const SelectUIView: React.FC<Props> = ({model, onAction, getRoot}) => {
         </div>
         {state.isOpen && (
           <DropDownMenuLayout
-            ref={floating}
-            style={{position: strategy, top: y ?? '', left: x ?? ''}}
+            ref={floatingRefs.setFloating}
+            style={floatingStyles}
             onMouseDown={preventDefaultCallback}>
             {renderDropDownItems(model.isMulti, state.currentIndex, filteredOptions, select)}
           </DropDownMenuLayout>
@@ -381,7 +381,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
     () => filterSelectUIOptionsByText(state.options, state.editingText),
     [state.options, state.editingText],
   );
-  const {x, y, reference, floating, strategy} = useFloating({
+  const {refs: floatingRefs, floatingStyles} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
@@ -451,7 +451,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
 
   return (
     <LayoutRootForTableCell
-      ref={reference}
+      ref={floatingRefs.setReference}
       onMouseDown={(e: React.MouseEvent) => callbacks.onMouseDown(e, row, col)}
       onMouseOver={(e: React.MouseEvent) => callbacks.onMouseOver(e, row, col)}
       onMouseUp={() => textAreaRef.current?.focus()}
@@ -479,7 +479,7 @@ export const SelectUIViewForTableCell: React.FC<PropsForTableCell> = ({
         <div />
       </DropDownButton>
       {state.isOpen && (
-        <DropDownMenuLayout ref={floating} style={{position: strategy, top: y ?? '', left: x ?? ''}}>
+        <DropDownMenuLayout ref={floatingRefs.setFloating} style={floatingStyles}>
           {renderDropDownItems(isMulti, state.currentIndex, filteredOptions, select)}
         </DropDownMenuLayout>
       )}

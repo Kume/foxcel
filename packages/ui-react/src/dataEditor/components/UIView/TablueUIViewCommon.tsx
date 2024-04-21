@@ -5,16 +5,7 @@ import {SelectUIViewForTableCell} from './SelectUIView';
 import {CheckboxUIViewForTableCell} from './CheckboxUIView';
 import {NumberUIViewForTableCell} from './NumberUIView';
 import React from 'react';
-import {
-  DataModel,
-  emptyMapModel,
-  SerializedDataModelContext,
-  setToMapDataModel,
-  TableUIModelMoveDirection,
-  TableUISelection,
-  UIModel,
-  UISchemaExcludeRecursive,
-} from '@foxcel/core';
+import {TableUIModelMoveDirection, TableUISelection, UIModel} from '@foxcel/core';
 import {
   KeyValue_ArrowDown,
   KeyValue_ArrowLeft,

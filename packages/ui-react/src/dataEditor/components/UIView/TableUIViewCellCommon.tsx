@@ -27,7 +27,7 @@ export interface UseTableCellEditStateReturn {
   dispatch(action: TableCellEditStateAction): void;
 }
 
-export function makeUseTableCellEditState<Model, Schema>(modelToText: (model: Model) => string) {
+export function makeUseTableCellEditState<Model>(modelToText: (model: Model) => string) {
   return (
     model: Model,
     isMainSelected: boolean,

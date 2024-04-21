@@ -10,8 +10,7 @@
     "plugin:@typescript-eslint/recommended",
     "plugin:@typescript-eslint/recommended-requiring-type-checking",
     "plugin:react-hooks/recommended",
-    "plugin:prettier/recommended",
-    "prettier/@typescript-eslint"
+    "prettier"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -20,6 +19,11 @@
     "project": "./tsconfig.json"
   },
   "plugins": ["@typescript-eslint", "react"],
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  },
   "rules": {
     // typescriptを使うのでprop-typesによるバリデーションは不要
     "react/prop-types": "off",
@@ -44,6 +48,10 @@
 
     // 型が分かっているが厳密なチェックを行う必要がない場合などに as any を使いたい。
     "@typescript-eslint/no-explicit-any": "off",
+
+    // onClickにasync関数を指定したい
+    "@typescript-eslint/no-misused-promises": ["error", {"checksVoidReturn": {"attributes": false}}],
+
 
     // 必要なこともたまにあり、その場合二重にコメントが必要なので無駄
     "@typescript-eslint/ban-ts-comment": "off",

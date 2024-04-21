@@ -1,4 +1,4 @@
-import {TextUIModel, textUIModelSetText, TextUISchema} from '@foxcel/core';
+import {TextUIModel, textUIModelSetText} from '@foxcel/core';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {TableUIViewCellProps} from './TableUIViewCell';
@@ -105,7 +105,7 @@ const LayoutRootForTableCell = styled.div`
   padding: 0 4px;
 `;
 
-const useTableCellEditState = makeUseTableCellEditState<TextUIModel, TextUISchema>((model) => model.value ?? '');
+const useTableCellEditState = makeUseTableCellEditState<TextUIModel>((model) => model.value ?? '');
 
 export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,

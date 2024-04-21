@@ -1,6 +1,6 @@
 import {UIViewProps} from './UIView';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {NumberUIModel, numberUIModelDisplayText, numberUIModelSetText, NumberUISchema} from '@foxcel/core';
+import {NumberUIModel, numberUIModelDisplayText, numberUIModelSetText} from '@foxcel/core';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState} from './TableUIViewCellCommon';
@@ -50,7 +50,7 @@ const LayoutRootForTableCell = styled.div`
   padding: 0 4px;
 `;
 
-const useTableCellEditState = makeUseTableCellEditState<NumberUIModel, NumberUISchema>(numberUIModelDisplayText);
+const useTableCellEditState = makeUseTableCellEditState<NumberUIModel>(numberUIModelDisplayText);
 
 export const NumberUIViewForTableCell: React.FC<PropsForTableCell> = ({model, isMainSelected, row, col, callbacks}) => {
   const change = useCallback(

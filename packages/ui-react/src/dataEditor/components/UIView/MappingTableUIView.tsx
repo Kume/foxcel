@@ -170,7 +170,8 @@ export const MappingTableUIView: React.FC<Props> = ({model, onAction, getRoot}) 
 
   useEffect(() => {
     const keyDownEventHandler = (e: KeyboardEvent) => {
-      if (!layoutRootRef.current?.contains(e.target as any)) {
+      // @ts-expect-error e.targetに最低限のメソッドを週出したinterface型がついているので型エラーが起こるが、実際の動作は問題ない
+      if (!layoutRootRef.current?.contains(e.target)) {
         handleKey(e, false);
       }
     };
@@ -321,13 +322,6 @@ const DanglingIndexCell = styled(TableUIViewIndexCell)`
 
 const MappingTableDanglingRowView = React.memo<MappingTableDanglingRowViewProps>(
   ({row, rowNumber, selectionRange, isSelectionStart, isSelectionEnd, mainSelectedColumn, callbacks}) => {
-    const headerCallbacks = useMemo(
-      () => ({
-        onMouseDown: (e: React.MouseEvent) => callbacks.onMouseDown(e, rowNumber, undefined),
-        onMouseOver: (e: React.MouseEvent) => callbacks.onMouseOver(e, rowNumber, undefined),
-      }),
-      [callbacks, rowNumber],
-    );
     const removeRow = () => callbacks.onAction({type: 'data', action: {type: 'delete', dataContext: row.dataContext}});
     return (
       <TableUIViewRow>

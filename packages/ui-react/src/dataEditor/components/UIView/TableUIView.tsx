@@ -34,7 +34,7 @@ import {
   TableUIViewState,
   updateTableUIViewStateSelection,
 } from './TablueUIViewCommon';
-import {flip, shift, useFloating} from '@floating-ui/react-dom';
+import {flip, shift, useFloating} from '@floating-ui/react';
 import {ContextMenu, ContextMenuProps, makeClickPointVirtualElement} from './ContextMenu';
 import styled from 'styled-components';
 import {inputTextStyle} from '../../../common/components/commonStyles';
@@ -82,7 +82,7 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
   actionRef.current = actionRef_;
 
   const [contextMenuProp, setContextMenuProp] = useState<Omit<ContextMenuProps, 'onClose'>>();
-  const {x, y, reference, floating, strategy} = useFloating({
+  const {refs: floatingRefs, floatingStyles} = useFloating({
     placement: 'bottom-start',
     middleware: [shift(), flip()],
   });
@@ -101,9 +101,9 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
           }),
         ),
       });
-      reference(makeClickPointVirtualElement(e));
+      floatingRefs.setPositionReference(makeClickPointVirtualElement(e));
     },
-    [onAction, reference],
+    [onAction, floatingRefs],
   );
   const closeContextMenu = useCallback(() => setContextMenuProp(undefined), []);
 
@@ -227,7 +227,8 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
 
   useEffect(() => {
     const keyDownEventHandler = (e: KeyboardEvent) => {
-      if (!layoutRootRef.current?.contains(e.target as any)) {
+      // @ts-expect-error e.targetに最低限のメソッドを週出したinterface型がついているので型エラーが起こるが、実際の動作は問題ない
+      if (!layoutRootRef.current?.contains(e.target)) {
         handleKey(e, false);
       }
     };
@@ -315,8 +316,8 @@ export const TableUIView = React.memo<Props>(({model, onAction, getRoot}) => {
         行<button onClick={addRows}>追加</button>
       </AdditionalRow>
       <ContextMenu
-        ref={floating}
-        style={{position: strategy, left: x ?? 0, top: y ?? 0}}
+        ref={floatingRefs.setFloating}
+        style={floatingStyles}
         {...contextMenuProp}
         onClose={closeContextMenu}
       />
