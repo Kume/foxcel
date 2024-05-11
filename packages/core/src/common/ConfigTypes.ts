@@ -42,9 +42,10 @@ export interface DataMapperConfig {
 // DataSchema Config
 ////////////////////////////////////////////////////////////////////////////
 export interface DataSchemaConfigBase {
-  label?: string;
-  dataLabel?: string;
-  dataDescription?: string;
+  readonly label?: string;
+  readonly dataLabel?: string;
+  readonly dataDescription?: string;
+  readonly required?: boolean;
 }
 
 export type DataSchemaConfig =
@@ -58,44 +59,120 @@ export type DataSchemaConfig =
 
 export type DataSchemaConfigType = DataSchemaConfig['type'];
 
+// TODO 引数名を指定しなくてよいか考える
+export type ScriptArgumentConfig = string | {readonly path: string; readonly withPath?: boolean};
+
+export type ScriptValidationConfig =
+  | string
+  | {
+      readonly code: string;
+      readonly args?: ScriptArgumentConfig | readonly ScriptArgumentConfig[];
+    };
+
+// TODO signedやfloatに対応
+export type NumberType = 'unsignedInteger';
+
 export interface NumberDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'number';
+  readonly type: 'number';
+
+  /**
+   * @default 'unsignedInteger'
+   */
+  readonly numberType?: NumberType;
+
+  readonly validation?: NumberDataSchemaValidationConfig;
+}
+
+export interface NumberDataSchemaValidationConfig {
+  readonly max?: number;
+  readonly min?: number;
+  readonly script?: ScriptValidationConfig;
 }
 
 export interface BooleanDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'boolean';
+  readonly type: 'boolean';
+  readonly validation?: BooleanDataSchemaValidationConfig;
+}
+
+export interface BooleanDataSchemaValidationConfig {
+  readonly script?: ScriptValidationConfig;
 }
 
 export interface StringDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'string';
-  in?: SelectOptionConfig<string>;
+  readonly type: 'string';
+  readonly in?: SelectOptionConfig<string>;
+  readonly validation?:
+    | StringDataSchemaValidationConfig
+    | StringDataSchemaValidationConfigPreset
+    | readonly StringDataSchemaValidationConfigPreset[];
+}
+
+export type StringDataSchemaValidationConfigPreset =
+  | 'camelCase'
+  | 'snake_case'
+  | 'PascalCase'
+  | 'UPPER_SNAKE_CASE'
+  | 'kebab-case'
+  | 'safe-identifier'
+  | 'alpha-num'
+  | 'alpha-num-underscore'
+  | 'alpha-num-hyphen';
+
+export interface StringDataSchemaValidationConfig {
+  readonly regexp?: string;
+  readonly preset?: StringDataSchemaValidationConfigPreset | readonly StringDataSchemaValidationConfigPreset[];
+  readonly script?: ScriptValidationConfig;
 }
 
 export interface MapDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'map';
-  item: DataSchemaConfig | string;
+  readonly type: 'map';
+  readonly contextKey?: string;
+  readonly item: DataSchemaConfig | string;
+  readonly mappedFrom?: string;
+  readonly validation?: MapDataSchemaValidationConfig;
+}
+
+export interface MapDataSchemaValidationConfig {
+  readonly script?: ScriptValidationConfig;
 }
 
 export interface FixedMapDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'fixed_map';
-  items: {[key: string]: DataSchemaConfig | string};
+  readonly type: 'fixed_map';
+  readonly contextKey?: string;
+  readonly items: {readonly [key: string]: DataSchemaConfig | string};
+  readonly validation?: FixedMapDataSchemaValidationConfig;
+}
+
+export interface FixedMapDataSchemaValidationConfig {
+  readonly script?: ScriptValidationConfig;
 }
 
 export interface ListDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'list';
-  item: DataSchemaConfig | string;
+  readonly type: 'list';
+  readonly contextKey?: string;
+  readonly item: DataSchemaConfig | string;
+  readonly validation?: ListDataSchemaValidationConfig;
+}
+
+export interface ListDataSchemaValidationConfig {
+  readonly script?: ScriptValidationConfig;
 }
 
 export interface ConditionalDataSchemaConfig extends DataSchemaConfigBase {
-  type: 'conditional';
-  defaultItem: DataSchemaConfig | string;
-  items: {[key: string]: ConditionalDataSchemaItemConfig};
+  readonly type: 'conditional';
+  readonly defaultItem: DataSchemaConfig | string;
+  readonly items: {readonly [key: string]: ConditionalDataSchemaItemConfig};
+  readonly validation?: ConditionalDataSchemaValidationConfig;
+}
+
+export interface ConditionalDataSchemaValidationConfig {
+  readonly script?: ScriptValidationConfig;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 // Conditional Config
 ////////////////////////////////////////////////////////////////////////////
-export type MatchConditionConfig<Path = string, Value = unknown> = {path: Path; readonly match: Value};
+export type MatchConditionConfig<Path = string, Value = unknown> = {readonly path: Path; readonly match: Value};
 export type OrConditionConfig<Path = string, Value = unknown> = {readonly or: readonly ConditionConfig<Path, Value>[]};
 export type AndConditionConfig<Path = string, Value = unknown> = {readonly and: readonly ConditionConfig<Path>[]};
 

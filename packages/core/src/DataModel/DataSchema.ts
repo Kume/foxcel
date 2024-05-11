@@ -15,6 +15,7 @@ import {
   SelectOptionConfigItem,
   SelectStaticOptionConfig,
   EditingForwardDataPathComponent,
+  NumberType,
 } from '..';
 import {MultiDataPath, parsePath} from './DataPath';
 import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
@@ -63,7 +64,7 @@ export interface DataSchemaBase<T> {
   readonly label?: string;
   readonly dataLabel?: TemplateLine;
   readonly dataDescription?: string;
-  readonly required?: boolean;
+  readonly required: boolean;
   readonly defaultToUndefined?: boolean;
   readonly default?: T;
   readonly filePath?: readonly string[];
@@ -71,7 +72,10 @@ export interface DataSchemaBase<T> {
 
 export interface NumberDataSchema extends DataSchemaBase<number> {
   readonly t: DataSchemaType.Number;
+  readonly numberType: NumberType;
   readonly contextKey?: never;
+  readonly min: number | undefined;
+  readonly max: number | undefined;
 }
 
 export interface BooleanDataSchema extends DataSchemaBase<boolean> {
@@ -101,20 +105,20 @@ export interface StringDataSchema extends DataSchemaBase<string> {
 
 export interface MapDataSchema extends DataSchemaBase<unknown> {
   readonly t: DataSchemaType.Map;
-  readonly contextKey?: string;
-  readonly sourcePath?: DataPath;
+  readonly contextKey: string | undefined;
+  readonly mappedFrom: DataPath | undefined;
   readonly item?: DataSchema;
 }
 
 export interface FixedMapDataSchema extends DataSchemaBase<{[key: string]: any}> {
   readonly t: DataSchemaType.FixedMap;
-  readonly contextKey?: string;
+  readonly contextKey: string | undefined;
   readonly items: {readonly [key: string]: DataSchema};
 }
 
 export interface ListDataSchema extends DataSchemaBase<any[]> {
   readonly t: DataSchemaType.List;
-  readonly contextKey?: string;
+  readonly contextKey: string | undefined;
   readonly item?: DataSchema;
 }
 
@@ -127,6 +131,7 @@ export interface RecursiveDataSchema {
 
 export interface ConditionalDataSchema {
   readonly t: DataSchemaType.Conditional;
+  readonly required: boolean;
   readonly contextKey?: never;
   readonly label: string | undefined;
   readonly defaultItem: DataSchemaExclude<DataSchemaType.Conditional>;
@@ -138,6 +143,7 @@ export interface ConditionalDataSchema {
 
 export interface KeyDataSchema {
   readonly t: DataSchemaType.Key;
+  readonly required?: never;
   readonly contextKey?: never;
   readonly label: string | undefined;
 }
@@ -360,6 +366,7 @@ function baseSchema<T extends DataSchemaType>(config: DataSchemaConfigBase, type
   return {
     t: type,
     label: config.label,
+    required: !!config.required,
     dataLabel: config.dataLabel === undefined ? undefined : parseTemplateLine(config.dataLabel),
     dataDescription: config.dataDescription,
   };
@@ -373,7 +380,12 @@ function parseDataSchemaConfig(
 ): DataSchema {
   switch (config.type) {
     case 'number': {
-      return {...baseSchema(config, DataSchemaType.Number)};
+      return {
+        ...baseSchema(config, DataSchemaType.Number),
+        numberType: config.numberType ?? 'unsignedInteger',
+        min: config.validation?.min,
+        max: config.validation?.max,
+      };
     }
     case 'boolean': {
       return {...baseSchema(config, DataSchemaType.Boolean)};
@@ -383,15 +395,20 @@ function parseDataSchemaConfig(
       for (const key of Object.keys(config.items)) {
         items[key] = parseChildDataSchemaConfig(config.items[key], pathConfigMap, filePath, loadedPath);
       }
-      return {...baseSchema(config, DataSchemaType.FixedMap), items};
+      return {...baseSchema(config, DataSchemaType.FixedMap), contextKey: config.contextKey, items};
     }
     case 'list': {
       const item = parseChildDataSchemaConfig(config.item, pathConfigMap, filePath, loadedPath);
-      return {...baseSchema(config, DataSchemaType.List), item};
+      return {...baseSchema(config, DataSchemaType.List), contextKey: config.contextKey, item};
     }
     case 'map': {
       const item = parseChildDataSchemaConfig(config.item, pathConfigMap, filePath, loadedPath);
-      return {...baseSchema(config, DataSchemaType.Map), item};
+      return {
+        ...baseSchema(config, DataSchemaType.Map),
+        contextKey: config.contextKey,
+        mappedFrom: config.mappedFrom === undefined ? undefined : parsePath(config.mappedFrom, 'single'),
+        item,
+      };
     }
     case 'string': {
       const option = config.in && parseOptionConfig(config.in);
