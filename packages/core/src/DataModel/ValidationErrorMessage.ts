@@ -3,6 +3,7 @@ export type ValidationErrorMessageKey =
   | 'map_key_is_null'
   | 'map_key_is_duplicated'
   | 'invalid_data_type'
+  | 'invalid_option'
   | 'is_not_nullable'
   | 'minus_number_is_not_arrowed'
   | 'number_must_be_integer'

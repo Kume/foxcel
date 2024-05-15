@@ -3,7 +3,6 @@ import {AppAction, AppDataModelAction} from '../App/AppState';
 import {DataModel} from '../DataModel/DataModelTypes';
 import {
   dataModelEquals,
-  dataModelEqualsToUnknown,
   dataModelIsList,
   dataModelToLabelString,
   dataModelToString,
@@ -19,8 +18,8 @@ import {collectDataModel, getDataModelBySinglePath} from '../DataModel/DataModel
 import {DataModelContext, DataModelContextWithoutSchema, DataModelRoot} from '../DataModel/DataModelContext';
 import {fillTemplateLineAndToString} from '../DataModel/TemplateEngine';
 import {dataSchemaIsString, SelectDynamicOptionSchema} from '../DataModel/DataSchema';
-import {findDataModel} from '../DataModel/DataModelSearcher';
 import {SelectUISchema} from './UISchemaTypes';
+import {selectOptionGetCurrent} from '../DataModel/SelectOption';
 
 export interface SelectUIOption {
   readonly label: string;
@@ -162,25 +161,15 @@ export function selectUIModelGetCurrent(
   if (dataModel === undefined) {
     return undefined;
   }
-  for (const option of schema.options) {
-    if (option.label === undefined) {
-      // Dynamic option
-      const findResult = findDataModel(
-        // TODO matcherは暫定対応なので、後でちゃんと実装する
-        {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: dataModel}},
-        context.toWithoutSchema(),
-      );
-      if (findResult) {
-        return formatDynamicSelectUIOption(option, findResult.data, findResult.context);
-      }
-    } else {
-      // Static option
-      if (dataModelEqualsToUnknown(dataModel, option.value)) {
-        return {label: option.label, value: option.value.toString(), data: dataModel};
-      }
-    }
+  const current = selectOptionGetCurrent(schema.options, dataModel, context);
+  switch (current?.t) {
+    case 'static':
+      return {label: current.label, value: current.option.value.toString(), data: dataModel};
+    case 'dynamic':
+      return formatDynamicSelectUIOption(current.option, current.data, current.context);
+    default:
+      return {isInvalid: true, data: dataModel};
   }
-  return {isInvalid: true, data: dataModel};
 }
 
 export function filterSelectUIOptionsByText(options: readonly SelectUIOption[], text: string): SelectUIOption[] {
@@ -205,25 +194,7 @@ export function selectUIModelHandleInputForSchema(
   if (valueDataModel === undefined) {
     return undefined;
   }
-  for (const option of schema.options) {
-    if (option.label === undefined) {
-      // Dynamic option
-      const findResult = findDataModel(
-        // TODO matcherは暫定対応なので、後でちゃんと実装する
-        {path: option.path, matcher: {type: 'equal', operand1: option.valuePath, operand2: valueDataModel}},
-        dataContext.toWithoutSchema(),
-      );
-      if (findResult) {
-        return valueDataModel;
-      }
-    } else {
-      // Static option
-      if (dataModelEqualsToUnknown(valueDataModel, option.value)) {
-        return valueDataModel;
-      }
-    }
-  }
-  return undefined;
+  return selectOptionGetCurrent(schema.options, valueDataModel, dataContext)?.data;
 }
 
 export function selectUIModelCurrentLabel(current: SelectUIModelCurrentValue | undefined): string | undefined {

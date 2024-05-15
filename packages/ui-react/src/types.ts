@@ -23,6 +23,8 @@ export interface FontColorTheme {
   readonly popup: string;
   readonly placeholder: string;
   readonly itemSelection: string;
+  readonly error: string;
+  readonly warning: string;
 }
 
 export interface BgColorTheme {

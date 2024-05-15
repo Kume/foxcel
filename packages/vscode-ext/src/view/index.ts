@@ -60,6 +60,8 @@ const defaultTheme: Theme = {
       popup: 'var(--vscode-editorWidget-foreground)',
       placeholder: 'var(--vscode-input-placeholderForeground)',
       itemSelection: 'var(--vscode-input-activeSelectionForeground)',
+      error: 'var(--vscode-editorError-foreground)',
+      warning: 'var(--vscode-editorWarning-foreground)',
     },
   },
 };

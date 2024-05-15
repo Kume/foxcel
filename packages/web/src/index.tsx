@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import ReactDOM from 'react-dom';
 import * as serviceWorker from './serviceWorker';
 import {RootView} from '@foxcel/ui-react';
 import {NativeFileSystemDataStorage} from './Models/NativeFileSystemDataStorage';
@@ -13,6 +12,10 @@ import {
   unknownToDataModel,
   YamlDataFormatter,
   RecursiveSchemaSample,
+  validateDataModel,
+  DataModelContext,
+  DataModelValidationErrors,
+  AppState,
 } from '@foxcel/core';
 import {ThemeProvider} from 'styled-components';
 import {LoadedData, Theme} from '@foxcel/ui-react';
@@ -113,76 +116,11 @@ const defaultTheme: Theme = {
       popup: 'black',
       placeholder: 'gray',
       itemSelection: 'lightblue',
+      error: 'red',
+      warning: 'yellow',
     },
   },
 };
-
-const vsCodeTheme: Theme = {
-  color: {
-    bg: {
-      // --vscode-editor-background
-      normal: '#1e1e1e',
-      // --vscode-editor-selectionBackground
-      active: '#264f78',
-      // --vscode-sideBar-background
-      label: '#252526',
-      // --vscode-tab-inactiveBackground
-      inactiveTab: '#2d2d2d',
-      // --vscode-input-background
-      input: '#3c3c3c',
-      // --vscode-editorWidget-background
-      popup: '#252526',
-      // --vscode-list-hoverBackground
-      itemHover: '#2a2d2e',
-      // --vscode-list-inactiveSelectionBackground
-      itemSelection: '#094771',
-    },
-    border: {
-      // --vscode-focusBorder
-      inputFocus: '#007fd4',
-      // --vscode-settings-textInputBorder
-      input: 'transparent',
-      // --vscode-editorWidget-border
-      popup: '#454545',
-      // 適切なスタイルが無いので、placeholderの色で代用
-      // --vscode-input-placeholderForeground
-      tab: '#a6a6a6',
-      // --vscode-panel-border
-      list: 'rgba(128, 128, 128, 0.35)',
-      // 適切なスタイルが無いので、placeholderの色で代用
-      // --vscode-input-placeholderForeground
-      table: '#a6a6a6',
-    },
-  },
-  font: {
-    size: {
-      // --vscode-font-size
-      label: '13px',
-      // --vscode-editor-font-size
-      input: '14px',
-    },
-    family: {
-      // --vscode-font-family
-      label: '"Segoe WPC", "Segoe UI", sans-serif',
-      // --vscode-editor-font-family
-      input: 'Consolas, "Courier New", monospace',
-    },
-    color: {
-      // --vscode-foreground
-      label: '#cccccc',
-      // --vscode-input-foreground
-      input: '#cccccc',
-      // --vscode-editorWidget-foreground
-      popup: '#cccccc',
-      // --vscode-input-placeholderForeground
-      placeholder: '#a6a6a6',
-      // --vscode-input-activeSelectionForeground
-      itemSelection: '#094771',
-    },
-  },
-};
-
-const currentTheme = vsCodeTheme;
 
 const samples = [
   {
@@ -244,10 +182,16 @@ const App: React.FC = () => {
     }
   }, [selectSample]);
 
+  const validate = useCallback(async (state: AppState): Promise<DataModelValidationErrors> => {
+    return validateDataModel(
+      DataModelContext.createRoot({model: state.data, schema: state.rootUISchemaContext.rootSchema.dataSchema}),
+    );
+  }, []);
+
   return (
-    <div style={{backgroundColor: currentTheme.color.bg.normal, height: '100%'}}>
-      <div style={{backgroundColor: currentTheme.color.bg.label}}>
-        <label style={{color: currentTheme.font.color.label}}>
+    <div style={{backgroundColor: defaultTheme.color.bg.normal, height: '100%'}}>
+      <div style={{backgroundColor: defaultTheme.color.bg.label}}>
+        <label style={{color: defaultTheme.font.color.label}}>
           サンプルデータ
           <select value={selectedSample} onChange={(e) => selectSample(e.target.value)}>
             <option value="">未選択</option>
@@ -262,7 +206,7 @@ const App: React.FC = () => {
           {lastLoaded && <button onClick={() => setLoaded(lastLoaded)}>リロード</button>}
         </label>
       </div>
-      <RootView loadFile={loadFile_} loaded={loaded} />
+      <RootView loadFile={loadFile_} loaded={loaded} validate={validate} />
     </div>
   );
 };
@@ -271,7 +215,7 @@ const root = createRoot(document.getElementById('root')!);
 
 root.render(
   <React.StrictMode>
-    <ThemeProvider theme={currentTheme}>
+    <ThemeProvider theme={defaultTheme}>
       <App />
     </ThemeProvider>
   </React.StrictMode>,

@@ -1,8 +1,21 @@
-import React, {useCallback, useEffect, useReducer, useRef} from 'react';
+import React, {useCallback, useEffect, useReducer, useRef, useState} from 'react';
 import {UIView} from './dataEditor/components/UIView/UIView';
-import {AppAction, AppInitializeAction, applyAppActionToState, AppState, DataModel, DataModelRoot} from '@foxcel/core';
+import {
+  AppAction,
+  AppInitializeAction,
+  applyAppActionToState,
+  AppState,
+  DataModel,
+  DataModelRoot,
+  DataModelValidationErrors,
+} from '@foxcel/core';
 import styled from 'styled-components';
 import {LoadedData} from './types';
+import {labelTextStyle} from './common/components/commonStyles';
+import {useFloating} from '@floating-ui/react';
+
+import {ErrorDisplay} from './dataEditor/components/ErrorDisplay';
+import {ErrorMenu} from './dataEditor/components/ErrorMenu';
 
 const LayoutRoot = styled.div`
   --basic-font-size: 16px;
@@ -10,10 +23,19 @@ const LayoutRoot = styled.div`
   background-color: ${({theme}) => theme.color.bg.normal};
 `;
 
+const Menu = styled.div`
+  ${({theme}) => labelTextStyle(theme)});
+  display: flex;
+  justify-content: space-between;
+`;
+
+const MenuLeft = styled.div``;
+
 interface Props {
   loadFile?(): Promise<AppInitializeAction>;
   saveFile?(model: DataModel | undefined): void;
   onChangeState?(state: AppState): void;
+  validate?(state: AppState): Promise<DataModelValidationErrors>;
   readonly loaded?: LoadedData;
 }
 
@@ -27,8 +49,10 @@ const initialState: AppState = {
   actions: [],
 };
 
-export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeState}) => {
+export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeState, validate}) => {
   const [state, dispatch] = useReducer(applyAppActionToState, initialState);
+  const [errors, setErrors] = useState<DataModelValidationErrors>();
+  const [errorMenuIsOpen, setErrorMenuIsOpen] = useState<boolean>(false);
   const execAction = useCallback((action: AppAction | undefined) => {
     if (action) {
       dispatch(action);
@@ -55,6 +79,11 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeS
   useEffect(() => {
     onChangeState?.(state);
   }, [onChangeState, state]);
+  useEffect(() => {
+    void validate?.(state).then((errors) => {
+      setErrors(errors);
+    });
+  }, [state.data]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -78,10 +107,32 @@ export const RootView: React.FC<Props> = ({loadFile, saveFile, loaded, onChangeS
     };
   }, []);
 
+  const {refs: floatingRefs, floatingStyles} = useFloating({
+    placement: 'bottom-end',
+  });
+
   return (
     <LayoutRoot>
-      {loadFile && <button onClick={async () => dispatch(await loadFile())}>LOAD</button>}
-      {saveFile && <button onClick={() => saveFile(state.data)}>SAVE</button>}
+      <Menu>
+        <MenuLeft>
+          {loadFile && <button onClick={async () => dispatch(await loadFile())}>LOAD</button>}
+          {saveFile && <button onClick={() => saveFile(state.data)}>SAVE</button>}
+        </MenuLeft>
+        {errors && (
+          <ErrorDisplay errors={errors} onErrorOpen={() => setErrorMenuIsOpen(true)} ref={floatingRefs.setReference} />
+        )}
+      </Menu>
+      <ErrorMenu
+        ref={floatingRefs.setFloating}
+        style={floatingStyles}
+        isOpen={errorMenuIsOpen}
+        onClose={() => setErrorMenuIsOpen(false)}
+        errors={errors ?? [[], []]}
+        onSelect={(error) => {
+          setErrorMenuIsOpen(false);
+          dispatch({type: 'focus', dataContext: error[1]});
+        }}
+      />
       {state.uiModel && <UIView model={state.uiModel} onAction={execAction} getRoot={getRoot} />}
     </LayoutRoot>
   );

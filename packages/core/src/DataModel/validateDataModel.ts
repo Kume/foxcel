@@ -13,16 +13,20 @@ import {
   mapDataModelKeys,
   mapOrListDataModelIsMap,
   numberDataModelToNumber,
+  stringDataModelToString,
 } from './DataModel';
 import {DataSchemaType} from './DataSchema';
 import {ValidationErrorMessageKey} from './ValidationErrorMessage';
 import {getDataModelBySinglePath} from './DataModelCollector';
+import {selectOptionGetCurrent} from './SelectOption';
 
 export type DataModelValidationError = readonly [key: ValidationErrorMessageKey, conetxt: SerializedDataModelContext];
+export type DataModelValidationErrors = readonly [
+  readonly DataModelValidationError[],
+  readonly DataModelValidationError[],
+];
 
-export async function validateDataModel(
-  context: DataModelContext,
-): Promise<[DataModelValidationError[], DataModelValidationError[]]> {
+export async function validateDataModel(context: DataModelContext): Promise<DataModelValidationErrors> {
   const errors: DataModelValidationError[] = [];
   const warnings: DataModelValidationError[] = [];
   await validateDataModelRecursive(context, errors, warnings);
@@ -97,6 +101,12 @@ async function validateDataModelRecursive(
       break;
     case DataSchemaType.String:
       if (dataModelIsString(model)) {
+        const stringValue = stringDataModelToString(model);
+        if (schema.in) {
+          if (!selectOptionGetCurrent(schema.in, model, context)) {
+            errors.push(['invalid_option', context.serialize()]);
+          }
+        }
         // TODO
       } else {
         errors.push(['invalid_data_type', context.serialize()]);

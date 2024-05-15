@@ -17,6 +17,7 @@ export * from './DataModel/DataPath';
 export * from './DataModel/errors';
 export * from './DataModel/DataModelContext';
 export * from './DataModel/DataModelStorageDataTrait';
+export * from './DataModel/validateDataModel';
 export * from './UIModel/CheckboxUIModel';
 export * from './UIModel/ContentListUIModel';
 export * from './UIModel/UISchema';

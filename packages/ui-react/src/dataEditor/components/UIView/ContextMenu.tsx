@@ -1,6 +1,7 @@
 import React, {CSSProperties, useCallback} from 'react';
 import styled from 'styled-components';
 import {VirtualElement} from '@floating-ui/dom';
+import {PopupBlanket} from '../../../common/components/PopupBlanket';
 
 export function makeClickPointVirtualElement(e: React.MouseEvent): VirtualElement {
   return {
@@ -41,15 +42,6 @@ const ContextMenuItemBox = styled.div`
     background-color: ${({theme}) => theme.color.bg.itemSelection};
     color: ${({theme}) => theme.font.color.itemSelection};
   }
-`;
-
-const PopupBlanket = styled.div<{isVisible?: boolean}>`
-  bottom: 0;
-  left: 0;
-  top: 0;
-  right: 0;
-  position: fixed;
-  z-index: 1;
 `;
 
 export interface ContextMenuItem {
