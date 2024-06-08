@@ -333,7 +333,7 @@ function parsedPathToDataPath(parsed: ParsedPath, pathType: 'forward' | 'single'
     case 'abs':
       return {isAbsolute: true, components};
     case 'ctx':
-      return {ctx: parsed.t, r: parsed.r, components};
+      return {ctx: parsed.key, r: parsed.r, components};
     case 'rel':
       return {r: parsed.r, components};
   }
