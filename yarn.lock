@@ -3988,10 +3988,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/vscode@npm:1.88.0":
-  version: 1.88.0
-  resolution: "@types/vscode@npm:1.88.0"
-  checksum: 5f42f07e42b6fa78b1bcb64e280c25cf03b8073e39962dc5db4109b8e88710979d15ab415920d1e52b26b86d3946282ba763fd6df20a31ba1ff97738806a9379
+"@types/vscode@npm:1.79.0":
+  version: 1.79.0
+  resolution: "@types/vscode@npm:1.79.0"
+  checksum: 74409a58fec216d8252585b1f9534b45133a820530a25a6c38f5f197a4a2e56df8b24282d6c7c5117d07fede9c4721180b0db3b45f6f99871059dac1a7e6cebc
   languageName: node
   linkType: hard
 
@@ -6901,7 +6901,7 @@ __metadata:
     "@types/node": ^20.12.5
     "@types/react": ^18.2.74
     "@types/react-dom": ^18.2.24
-    "@types/vscode": 1.88.0
+    "@types/vscode": 1.79.0
     "@types/vscode-webview": ^1.57.5
     "@vscode/vsce": ^2.24.0
     babel-loader: ^9.1.3
