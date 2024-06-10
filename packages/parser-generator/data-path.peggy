@@ -2,24 +2,23 @@ Expression
   = AbsolutePath / ContextPath / RelativePath
 
 AbsolutePath
-  = "/" path: (ForwardPath / KeyWord) {
+  = "/" path: (ForwardPath / KeyToken) {
     return {t: 'abs', ...path}
   }
 
 ContextPath
-  = key:Word ":" reverse:(ReverseWord "/")* path:(ForwardPath / KeyWord) {
+  = key:Word ":" reverse:(ReverseToken "/")* path:(ForwardPath / KeyToken) {
   	return {t: 'ctx', r: reverse.length, key, ...path}
   }
 
 RelativePath
-  = reverse:(ReverseWord "/")* path:(ForwardPath / KeyWord) {
+  = reverse:(ReverseToken "/")* path:(ForwardPath / KeyToken) {
   	return {t: 'rel', r: reverse.length, ...path}
   }
 
 
-
 ForwardPath
-  = path:JoinedPath pointsKey:("/" KeyWord)? {
+  = path:JoinedPath pointsKey:("/" KeyToken)? {
     return {...path, p: !!pointsKey || undefined};
   }
 
@@ -28,35 +27,44 @@ JoinedPath
     return {c: [first].concat(components.map(([_, w]) => w))}
   }
 
-GeneralPathComponent = WildWord / Word / PathVariable
+GeneralPathComponent = WildToken / Word / NestedPath / PathAlias / QuotedWord
 
-PathVariable
-  = "[" variable: (Expression) "]" {
+PathAlias
+  = "@" name:Word {
+    return {type: 'alias', name}
+  }
+
+NestedPath
+  = "[" nested: (Expression) "]" {
     return {
-      type: 'variable',
-      path: variable
+      type: 'nested',
+      path: nested
     }
   }
 
-KeyWord
+KeyToken
   = "$key" / "$" {
     return { p: true };
   }
 
-WildWord
-  = head:Word? "*" tail:Word? {
-    const words = [];
-    if (head) { words.push(head); }
-    if (tail) { words.push(tail); }
-    return {
-      type: 'wildcard',
-      words: words
-    }
+WildToken
+  = "*" {
+    return {type: 'wildcard'}
   }
 
-ReverseWord
+ReverseToken
   = ".." {
     return null
+  }
+
+QuotedWord
+  = components:QuotedWordComponent+ {
+    return components.join('"')
+  }
+
+QuotedWordComponent
+  = '"' word:[^"]+ '"' {
+    return word.join('');
   }
 
 Word

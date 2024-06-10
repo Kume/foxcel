@@ -69,6 +69,8 @@ export type ScriptValidationConfig =
       readonly args?: ScriptArgumentConfig | readonly ScriptArgumentConfig[];
     };
 
+export type PathAliasesConfig = Readonly<Record<string, string>>;
+
 // TODO signedやfloatに対応
 export type NumberType = 'unsignedInteger';
 
@@ -127,6 +129,7 @@ export interface StringDataSchemaValidationConfig {
 export interface MapDataSchemaConfig extends DataSchemaConfigBase {
   readonly type: 'map';
   readonly contextKey?: string;
+  readonly pathAlias?: PathAliasesConfig;
   readonly item: DataSchemaConfig | string;
   readonly mappedFrom?: string;
   readonly validation?: MapDataSchemaValidationConfig;
@@ -139,6 +142,7 @@ export interface MapDataSchemaValidationConfig {
 export interface FixedMapDataSchemaConfig extends DataSchemaConfigBase {
   readonly type: 'fixed_map';
   readonly contextKey?: string;
+  readonly pathAlias?: PathAliasesConfig;
   readonly items: {readonly [key: string]: DataSchemaConfig | string};
   readonly validation?: FixedMapDataSchemaValidationConfig;
 }
@@ -150,6 +154,7 @@ export interface FixedMapDataSchemaValidationConfig {
 export interface ListDataSchemaConfig extends DataSchemaConfigBase {
   readonly type: 'list';
   readonly contextKey?: string;
+  readonly pathAlias?: PathAliasesConfig;
   readonly item: DataSchemaConfig | string;
   readonly validation?: ListDataSchemaValidationConfig;
 }

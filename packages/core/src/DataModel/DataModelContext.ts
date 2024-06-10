@@ -27,9 +27,9 @@ import {
   SimplePathContainer,
   stringToDataModel,
 } from './DataModel';
-import {AnyDataPath} from './DataPath';
+import {AnyDataPath, DataPath} from './DataPath';
 import {getDataModelBySinglePath} from './DataModelCollector';
-import {isReadonlyArray} from '../common/utils';
+import {isReadonlyArray, mapObjectToObject} from '../common/utils';
 
 const enum PathComponentType {
   List,
@@ -61,9 +61,17 @@ export interface DataModelContextMapIndexPathComponent {
 
 type Keys = readonly (string | number)[];
 
+interface PathAlias {
+  readonly path: DataPath;
+  readonly context: SerializedDataModelContext;
+}
+
+type PathAliases = Readonly<Record<string, PathAlias>>;
+
+type PathAliasContext = readonly (PathAliases | undefined)[];
+
 export interface SerializedDataModelContext {
   readonly path: DataModelContextPath;
-  readonly keys: Keys;
   readonly isKey?: boolean;
 }
 
@@ -121,7 +129,7 @@ export function serializedDataModelContextEquals(
   a: SerializedDataModelContext,
   b: SerializedDataModelContext,
 ): boolean {
-  return !a.isKey === !b.isKey && serializedPathEquals(a.path, b.path) && keysEqual(a.keys, b.keys);
+  return !a.isKey === !b.isKey && serializedPathEquals(a.path, b.path);
 }
 
 export function relativeSerializedDataModelContextPath(
@@ -218,7 +226,10 @@ export class DataModelContextPathContainer implements PathContainer {
     return innerPath.length === 0 ? undefined : [new DataModelContextPathContainer(innerPath, 0), model];
   }
 
-  public constructor(private readonly path: readonly PathContainerPathComponent[], private readonly index: number) {}
+  public constructor(
+    private readonly path: readonly PathContainerPathComponent[],
+    private readonly index: number,
+  ) {}
 
   public get isLast(): boolean {
     return this.path.length - 1 === this.index;
@@ -379,6 +390,26 @@ function getParentKeyDataModel(path: DataModelContextPath): StringDataModel | un
   return undefined;
 }
 
+function resolveConditionKeyRecursive(
+  schemaContext: DataSchemaContext,
+  path: DataModelContextPath,
+  keys: Keys,
+  pathAliasContext: PathAliasContext,
+  root: DataModelRoot,
+): DataSchemaContext {
+  while (dataSchemaIsConditional(schemaContext.currentSchema)) {
+    // 以下の理由により、path, keys, pathAliasContextはループしてもそのままで良い
+    //   - conditionalはDataModelContextPathでは無視される
+    //   - ConditionalDataSchemaはcontextKey, pathAliasesを持てない
+    const conditionKey = resolveConditionKey(
+      schemaContext.currentSchema,
+      DataModelContextWithoutSchema.deserialize({path}, keys, pathAliasContext, root),
+    );
+    schemaContext = schemaContext.dig(conditionKey);
+  }
+  return schemaContext;
+}
+
 function resolveConditionKey(
   schema: ConditionalDataSchema,
   context: DataModelContextWithoutSchema,
@@ -387,6 +418,15 @@ function resolveConditionKey(
     return conditionIsMatch(item.condition, (path) => getDataModelBySinglePath(path, context));
   })?.[0];
   return result;
+}
+
+function nextPathAliases(
+  last: PathAliases | undefined,
+  currentConfig: Readonly<Record<string, DataPath>> | undefined,
+  context: SerializedDataModelContext,
+): PathAliases | undefined {
+  const currentAliases = currentConfig && mapObjectToObject(currentConfig, (path) => ({path, context}));
+  return last ? (currentAliases ? {...last, ...currentAliases} : last) : currentAliases;
 }
 
 function depthFromKey(keys: Keys, key: string): number {
@@ -425,21 +465,14 @@ export class DataModelContext {
   ): DataModelContext {
     let schemaContext = DataSchemaContext.createRootContext(root.schema);
     let currentKeys: Keys = [];
-    const currentPath: DataModelContextPathComponent[] = [];
+    let pathAliasContext: PathAliasContext = [];
+    let currentPath: readonly DataModelContextPathComponent[] = [];
     let currentModel = root.model;
+    schemaContext = resolveConditionKeyRecursive(schemaContext, currentPath, currentKeys, pathAliasContext, root);
     for (const pathComponent of serialized.path) {
-      // conditionalのスキーマはpathで表現されていないので、ループ毎にチェックしてconditionalなら自動で降下する。
-      if (dataSchemaIsConditional(schemaContext.currentSchema)) {
-        const conditionKey = resolveConditionKey(
-          schemaContext.currentSchema,
-          DataModelContextWithoutSchema.deserialize({path: currentPath, keys: currentKeys}, root),
-        );
-        schemaContext = schemaContext.dig(conditionKey);
-      }
-      // keysを一つ進める。contextKeyはconditionalが持つことはできないのでこの位置
-      currentKeys = addContextKey(currentKeys, schemaContext.contextKey());
       switch (pathComponent.type) {
         case PathComponentType.MapKey:
+          schemaContext = schemaContext.dig(pathComponent.key);
           break;
         case PathComponentType.MapIndex:
           // スキーマはkeyを優先して利用する
@@ -449,13 +482,28 @@ export class DataModelContext {
           schemaContext = schemaContext.dig(pathComponent.index);
           break;
       }
+      schemaContext = resolveConditionKeyRecursive(
+        schemaContext,
+        currentPath,
+        // conditionalを解決する際、正しい階層にするため一時的に空のkey/pathAliasをpushしておく
+        // conditional自身はcontextKeyもpathAliasも持てないのでこれで良いはず
+        addContextKey(currentKeys, undefined),
+        [...pathAliasContext, pathAliasContext.at(-1)],
+        root,
+      );
+      currentKeys = addContextKey(currentKeys, schemaContext.contextKey());
       currentModel = getModelByPathComponent(currentModel, pathComponent);
-      currentPath.push(pathComponent);
+      currentPath = [...currentPath, pathComponent];
+      pathAliasContext = [
+        ...pathAliasContext,
+        nextPathAliases(pathAliasContext.at(-1), schemaContext.currentSchema?.pathAliases, {path: currentPath}),
+      ];
     }
     const modelContext = new DataModelContext(
       schemaContext,
       serialized.path,
-      serialized.keys,
+      currentKeys,
+      pathAliasContext,
       currentModel,
       root,
       autoResolveConditional,
@@ -468,6 +516,7 @@ export class DataModelContext {
       DataSchemaContext.createRootContext(root.schema),
       [],
       [],
+      [],
       root.model,
       root,
       autoResolveConditional,
@@ -478,6 +527,7 @@ export class DataModelContext {
     public readonly schemaContext: DataSchemaContext,
     private readonly path: DataModelContextPath,
     private readonly keys: Keys,
+    public readonly pathAliasContext: PathAliasContext,
     public readonly currentModel: DataModel | undefined,
     public readonly root: DataModelRoot,
     private readonly autoResolveConditional: boolean,
@@ -486,7 +536,6 @@ export class DataModelContext {
   public serialize(): SerializedDataModelContext {
     return {
       path: this.path,
-      keys: this.keys,
       isKey: this.schemaContext.isParentKey,
     };
   }
@@ -513,10 +562,15 @@ export class DataModelContext {
   }
 
   private push(schemaContext: DataSchemaContext, pathComponent: DataModelContextPathComponent): DataModelContext {
+    const nextPath = [...this.path, pathComponent];
     return new DataModelContext(
       schemaContext,
-      [...this.path, pathComponent],
+      nextPath,
       addContextKey(this.keys, schemaContext.contextKey()),
+      [
+        ...this.pathAliasContext,
+        nextPathAliases(this.pathAliasContext.at(-1), schemaContext.currentSchema?.pathAliases, {path: nextPath}),
+      ],
       getModelByPathComponent(this.currentModel, pathComponent),
       this.root,
       this.autoResolveConditional,
@@ -524,7 +578,15 @@ export class DataModelContext {
   }
 
   public setAutoResolveConditional(value: boolean): DataModelContext {
-    return new DataModelContext(this.schemaContext, this.path, this.keys, this.currentModel, this.root, value);
+    return new DataModelContext(
+      this.schemaContext,
+      this.path,
+      this.keys,
+      this.pathAliasContext,
+      this.currentModel,
+      this.root,
+      value,
+    );
   }
 
   public assertAutoResolveConditional(value: boolean): void {
@@ -563,6 +625,7 @@ export class DataModelContext {
       this.schemaContext.dig({t: 'key'}),
       this.path,
       this.keys,
+      this.pathAliasContext,
       this.parentKeyDataModel,
       this.root,
       this.autoResolveConditional,
@@ -582,6 +645,7 @@ export class DataModelContext {
           this.schemaContext.dig(key),
           this.path,
           this.keys,
+          this.pathAliasContext,
           this.currentModel,
           this.root,
           this.autoResolveConditional,
@@ -598,6 +662,7 @@ export class DataModelContext {
       this.schemaContext.back(popCount),
       poppedPath,
       popKeys(this.keys, popCount),
+      this.pathAliasContext.slice(0, -popCount),
       getModelByPath(this.root.model, poppedPath),
       this.root,
       this.autoResolveConditional,
@@ -609,7 +674,7 @@ export class DataModelContext {
   }
 
   public toWithoutSchema(): DataModelContextWithoutSchema {
-    return DataModelContextWithoutSchema.deserialize(this.serialize(), this.root);
+    return DataModelContextWithoutSchema.deserialize(this.serialize(), this.keys, this.pathAliasContext, this.root);
   }
 
   public get parentKeyDataModel(): StringDataModel | undefined {
@@ -631,30 +696,25 @@ export type DataModelContextWithoutData = Pick<DataModelContext, 'assertAutoReso
 export class DataModelContextWithoutSchema {
   public static deserialize(
     serialized: SerializedDataModelContext,
+    keys: Keys,
+    pathAliasContext: PathAliasContext,
     root: DataModelRoot,
   ): DataModelContextWithoutSchema {
     return new DataModelContextWithoutSchema(
       serialized.path,
       getModelByPath(root.model, serialized.path),
-      serialized.keys,
+      keys,
+      pathAliasContext,
       root,
       serialized.isKey,
     );
   }
 
-  /**
-   *
-   * @param path
-   * @param currentModel
-   * @param keys DataModelContextと異なり、push時にkey情報が取得できないため、最初に作成した時点のkey情報を固定で持つ
-   *             DataPathの仕様上、この情報を利用するのは開始地点より上のものだけのはずなので、これで大丈夫なはず。
-   * @param root
-   * @param isKey
-   */
   public constructor(
     private readonly path: DataModelContextPath,
     public readonly currentModel: DataModel | undefined,
     public readonly keys: Keys,
+    private readonly pathAliasContext: PathAliasContext,
     public readonly root: DataModelRoot,
     public readonly isKey?: boolean,
   ) {}
@@ -663,7 +723,11 @@ export class DataModelContextWithoutSchema {
     return new DataModelContextWithoutSchema(
       [...this.path, pathComponent],
       getModelByPathComponent(this.currentModel, pathComponent),
-      this.keys,
+      // スキーマ情報を持っていないためundefinedを固定でpushする
+      // 基本的に開始点より上位のコンテキストしか利用しないはずなのでこれで大丈夫なはず
+      addContextKey(this.keys, undefined),
+      // keysと同様の理由で、一つ上位と同じpathAliasContextをpushする
+      [...this.pathAliasContext, this.pathAliasContext.at(-1)],
       this.root,
       false,
     );
@@ -681,8 +745,19 @@ export class DataModelContextWithoutSchema {
     return this.push({type: PathComponentType.List, index});
   }
 
+  get pathAliases(): PathAliases | undefined {
+    return this.pathAliasContext.at(-1);
+  }
+
   pushIsParentKey(): DataModelContextWithoutSchema {
-    return new DataModelContextWithoutSchema(this.path, this.parentKeyDataModel, this.keys, this.root, true);
+    return new DataModelContextWithoutSchema(
+      this.path,
+      this.parentKeyDataModel,
+      this.keys,
+      this.pathAliasContext,
+      this.root,
+      true,
+    );
   }
 
   public pop(popCount = 1): DataModelContextWithoutSchema {
@@ -695,6 +770,7 @@ export class DataModelContextWithoutSchema {
       poppedPath,
       getModelByPath(this.root.model, poppedPath),
       popKeys(this.keys, popCount),
+      this.pathAliasContext.slice(0, -popCount),
       this.root,
       false,
     );

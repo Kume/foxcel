@@ -24,7 +24,7 @@ import {DataFormatter} from '../Storage/DataFormatter';
 import {loadNestedConfigFile} from '../Storage/utils';
 import {LoadedSchemaPath, parseSchemaReferenceConfig, resolveConfigOrRecursive} from '../common/schemaCommon';
 import {dataPathToTemplateLine, parseTemplateLine, TemplateLine} from './TemplateEngine';
-import {isReadonlyArray} from '../common/utils';
+import {isReadonlyArray, mapObjectToObject} from '../common/utils';
 
 export enum DataSchemaType {
   Number,
@@ -74,6 +74,7 @@ export interface NumberDataSchema extends DataSchemaBase<number> {
   readonly t: DataSchemaType.Number;
   readonly numberType: NumberType;
   readonly contextKey?: never;
+  readonly pathAliases?: never;
   readonly min: number | undefined;
   readonly max: number | undefined;
 }
@@ -81,6 +82,7 @@ export interface NumberDataSchema extends DataSchemaBase<number> {
 export interface BooleanDataSchema extends DataSchemaBase<boolean> {
   readonly t: DataSchemaType.Boolean;
   readonly contextKey?: never;
+  readonly pathAliases?: never;
 }
 
 export interface SelectStaticOptionSchema<T> {
@@ -100,12 +102,14 @@ export type SelectOptionSchema<T> = SelectStaticOptionSchema<T> | SelectDynamicO
 export interface StringDataSchema extends DataSchemaBase<string> {
   readonly t: DataSchemaType.String;
   readonly contextKey?: never;
+  readonly pathAliases?: never;
   readonly in?: readonly SelectOptionSchema<string>[];
 }
 
 export interface MapDataSchema extends DataSchemaBase<unknown> {
   readonly t: DataSchemaType.Map;
   readonly contextKey: string | undefined;
+  readonly pathAliases: Readonly<Record<string, DataPath>> | undefined;
   readonly mappedFrom: DataPath | undefined;
   readonly item?: DataSchema;
 }
@@ -113,18 +117,20 @@ export interface MapDataSchema extends DataSchemaBase<unknown> {
 export interface FixedMapDataSchema extends DataSchemaBase<{[key: string]: any}> {
   readonly t: DataSchemaType.FixedMap;
   readonly contextKey: string | undefined;
+  readonly pathAliases: Readonly<Record<string, DataPath>> | undefined;
   readonly items: {readonly [key: string]: DataSchema};
 }
 
 export interface ListDataSchema extends DataSchemaBase<any[]> {
   readonly t: DataSchemaType.List;
   readonly contextKey: string | undefined;
+  readonly pathAliases: Readonly<Record<string, DataPath>> | undefined;
   readonly item?: DataSchema;
 }
 
 export interface RecursiveDataSchema {
   readonly t: DataSchemaType.Recursive;
-  // TODO recursiveのcontextKeyにアクセスさせては行けない気はする
+  // TODO recursiveのcontextKeyにアクセスさせてはいけない気はする
   readonly contextKey?: never;
   readonly depth: number;
 }
@@ -133,6 +139,7 @@ export interface ConditionalDataSchema {
   readonly t: DataSchemaType.Conditional;
   readonly required: boolean;
   readonly contextKey?: never;
+  readonly pathAliases?: never;
   readonly label: string | undefined;
   readonly defaultItem: DataSchemaExclude<DataSchemaType.Conditional>;
   readonly items: {
@@ -145,6 +152,7 @@ export interface KeyDataSchema {
   readonly t: DataSchemaType.Key;
   readonly required?: never;
   readonly contextKey?: never;
+  readonly pathAliases?: never;
   readonly label: string | undefined;
 }
 
@@ -331,8 +339,8 @@ function parseDynamicOptionConfigItem(config: SelectDynamicOptionConfig): Select
     labelTemplate: config.label
       ? parseTemplateLine(config.label)
       : config.labelPath
-      ? dataPathToTemplateLine(parsePath(config.labelPath, 'single'))
-      : undefined,
+        ? dataPathToTemplateLine(parsePath(config.labelPath, 'single'))
+        : undefined,
     valuePath: (config.valuePath && parsePath(config.valuePath, 'forward')) || undefined,
   };
 }
@@ -395,17 +403,28 @@ function parseDataSchemaConfig(
       for (const key of Object.keys(config.items)) {
         items[key] = parseChildDataSchemaConfig(config.items[key], pathConfigMap, filePath, loadedPath);
       }
-      return {...baseSchema(config, DataSchemaType.FixedMap), contextKey: config.contextKey, items};
+      return {
+        ...baseSchema(config, DataSchemaType.FixedMap),
+        contextKey: config.contextKey,
+        pathAliases: mapObjectToObject(config.pathAlias ?? {}, (pathString) => parsePath(pathString!, 'single')),
+        items,
+      };
     }
     case 'list': {
       const item = parseChildDataSchemaConfig(config.item, pathConfigMap, filePath, loadedPath);
-      return {...baseSchema(config, DataSchemaType.List), contextKey: config.contextKey, item};
+      return {
+        ...baseSchema(config, DataSchemaType.List),
+        contextKey: config.contextKey,
+        pathAliases: mapObjectToObject(config.pathAlias ?? {}, (pathString) => parsePath(pathString!, 'single')),
+        item,
+      };
     }
     case 'map': {
       const item = parseChildDataSchemaConfig(config.item, pathConfigMap, filePath, loadedPath);
       return {
         ...baseSchema(config, DataSchemaType.Map),
         contextKey: config.contextKey,
+        pathAliases: mapObjectToObject(config.pathAlias ?? {}, (pathString) => parsePath(pathString!, 'single')),
         mappedFrom: config.mappedFrom === undefined ? undefined : parsePath(config.mappedFrom, 'single'),
         item,
       };

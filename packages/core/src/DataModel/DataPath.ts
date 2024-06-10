@@ -11,11 +11,19 @@ export enum DataPathComponentType {
   Union,
   Key,
   Pointer,
+  Alias,
 }
 
 export type KeyPathComponent = {
   readonly t: DataPathComponentType.Key;
 };
+
+export type AliasPathComponent = {
+  readonly t: DataPathComponentType.Alias;
+  /** name */
+  readonly n: string;
+};
+
 export type PointerPathComponent = {
   readonly t: DataPathComponentType.Pointer;
   readonly i: number;
@@ -52,10 +60,11 @@ export type UnionPathComponent = {
   readonly t: DataPathComponentType.Union;
   readonly v: readonly ForwardDataPathComponent[];
 };
-export type DataPathComponent = ForwardDataPathComponent | KeyPathComponent | NestedPathComponent;
+export type DataPathComponent = ForwardDataPathComponent | KeyPathComponent | NestedPathComponent | AliasPathComponent;
 export type MultiDataPathComponent =
   | ForwardDataPathComponent
   | KeyPathComponent
+  | AliasPathComponent
   | WildCardPathComponent
   | MultiNestedPathComponent
   | UnionPathComponent;
@@ -316,11 +325,14 @@ function parsedPathToDataPath(parsed: ParsedPath, pathType: 'forward' | 'single'
             }
             return {t: DataPathComponentType.WildCard};
 
-          case 'variable':
+          case 'nested':
             if (pathType === 'forward') {
-              throw new Error(`${pathType} path cannot contain variable.`);
+              throw new Error(`${pathType} path cannot contain nested.`);
             }
             return {t: DataPathComponentType.Nested, v: parsedPathToDataPath(c.path, pathType)};
+
+          case 'alias':
+            return {t: DataPathComponentType.Alias, n: c.name};
         }
       }
     }) ?? [];
