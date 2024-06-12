@@ -442,7 +442,7 @@ function depthFromKey(keys: Keys, key: string): number {
       depth += keyItem;
     }
   }
-  // このエラーが発生しないようにスキーマ構築時にバリデーションする
+  // TODO このエラーが発生しないようにスキーマ構築時にバリデーションする
   return 0;
 }
 
