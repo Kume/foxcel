@@ -19,18 +19,27 @@ type TestDataParam = {readonly key?: string};
 
 const testDataCreator = {
   number: (): TestData => {
-    const dataSchema = {t: DataSchemaType.Number} as const;
+    const dataSchema = {
+      t: DataSchemaType.Number,
+      numberType: 'unsignedInteger',
+      required: false,
+      max: undefined,
+      min: undefined,
+    } as const;
     const uiSchema = {type: 'number', key: 'test_number', dataSchema} as const;
     return {uiSchema, dataSchema} as const;
   },
   text: (): TestData => {
-    const dataSchema = {t: DataSchemaType.String} as const;
+    const dataSchema = {t: DataSchemaType.String, required: false} as const;
     const uiSchema = {type: 'text', key: 'test_text', dataSchema, multiline: undefined} as const;
     return {uiSchema, dataSchema} as const;
   },
   form: (param: TestDataParam, children: readonly TestData[]): TestData => {
     const dataSchema = {
       t: DataSchemaType.FixedMap,
+      required: false,
+      contextKey: undefined,
+      pathAliases: undefined,
       items: mapToObject(children, (child) => {
         const key = getUiSchemaUniqueKeyOrUndefined(child.uiSchema);
         return key ? [key, child.dataSchema] : undefined;
@@ -47,6 +56,9 @@ const testDataCreator = {
   tab: (param: TestDataParam, children: readonly TestData[]): TestData => {
     const dataSchema = {
       t: DataSchemaType.FixedMap,
+      required: false,
+      contextKey: undefined,
+      pathAliases: undefined,
       items: mapToObject(children, (child) => {
         const key = getUiSchemaUniqueKeyOrUndefined(child.uiSchema);
         return key ? [key, child.dataSchema] : undefined;

@@ -44,7 +44,7 @@ import {
   stringToDataModel,
 } from './DataModel';
 import {DataSchema, DataSchemaContextKeyItem} from './DataSchema';
-import {DataModelContextWithoutSchema} from './DataModelContext';
+import {DataModelContext, DataModelContextWithoutSchema} from './DataModelContext';
 
 export interface CollectDataModelGlobal {
   readonly rootModel: DataModel;
@@ -193,6 +193,39 @@ function getDataModelBySinglePathImpl(
                 originalContext,
               );
             }
+          } else {
+            return undefined;
+          }
+        }
+        case DataPathComponentType.Alias: {
+          const alias = originalContext.pathAliases?.[otherPathComponent.n];
+          if (!alias) {
+            return undefined;
+          }
+          const pathComponentModel = getDataModelBySinglePath(
+            alias.path,
+            DataModelContext.deserialize(alias.context, originalContext.root).toWithoutSchema(),
+          );
+          if (dataModelIsString(pathComponentModel)) {
+            if (!dataModelIsMap(currentContext.currentModel)) {
+              return undefined;
+            }
+            const key = stringDataModelToString(pathComponentModel);
+            const index = getMapDataIndexAt(currentContext.currentModel, key);
+            if (index === undefined) {
+              return undefined;
+            }
+            return getDataModelBySinglePathImpl(
+              shiftDataPath(path),
+              currentContext.pushMapIndex(index, key),
+              originalContext,
+            );
+          } else if (dataModelIsInteger(pathComponentModel)) {
+            return getDataModelBySinglePathImpl(
+              shiftDataPath(path),
+              currentContext.pushListIndex(numberDataModelToNumber(pathComponentModel)),
+              originalContext,
+            );
           } else {
             return undefined;
           }
@@ -353,6 +386,35 @@ function collectDataModelImpl(
           return otherPathComponent.v.flatMap((pathComponent) => {
             return collectDataModelImpl(unshiftDataPath(shiftDataPath(path), pathComponent), currentContext, origin);
           });
+        case DataPathComponentType.Alias: {
+          const alias = origin.pathAliases?.[otherPathComponent.n];
+          if (!alias) {
+            return [];
+          }
+          const pathComponentModel = getDataModelBySinglePath(
+            alias.path,
+            DataModelContext.deserialize(alias.context, origin.root).toWithoutSchema(),
+          );
+          if (dataModelIsMap(model)) {
+            if (!dataModelIsString(pathComponentModel)) {
+              return [];
+            }
+            const key = stringDataModelToString(pathComponentModel);
+            const index = getMapDataIndexAt(model, key);
+            if (index === undefined) {
+              return [];
+            }
+            return collectDataModelImpl(shiftDataPath(path), currentContext.pushMapIndex(index, key), origin);
+          } else if (dataModelIsList(model)) {
+            if (!dataModelIsInteger(pathComponentModel)) {
+              return [];
+            }
+            const index = numberDataModelToNumber(pathComponentModel);
+            return collectDataModelImpl(shiftDataPath(path), currentContext.pushListIndex(index), origin);
+          } else {
+            return [];
+          }
+        }
       }
     },
   });

@@ -85,7 +85,10 @@ export const createRootUiSchemaParsingContext = (
 });
 
 class UISchemaParseError extends Error {
-  constructor(message: string, public readonly context: UISchemaParsingContext) {
+  constructor(
+    message: string,
+    public readonly context: UISchemaParsingContext,
+  ) {
     super(message);
   }
 }
@@ -373,20 +376,26 @@ function parseChildrenDataSchema(
       .map((content) => [getUiSchemaUniqueKeyOrUndefined(content) || '', content] as const)
       .filter(([key]) => key),
   );
-  const itemKeys = [...new Set([...Object.keys(childDataSchema?.items || {}), ...contentsByKey.keys()])];
-  const dataSchema = overwriteObject<FixedMapDataSchema>({t: DataSchemaType.FixedMap}, childDataSchema, {
-    items: mapToObject(
-      itemKeys,
-      (key) => {
-        const dataSchema = contentsByKey.get(key)?.dataSchema;
-        if (dataSchema?.t === DataSchemaType.Key) {
-          return [key, undefined];
-        } else {
-          return [key, dataSchema || childDataSchema?.items?.[key]];
+  const dataSchemaItems: Record<string, DataSchema> = {};
+  for (const [key, content] of contentsByKey.entries()) {
+    if ('keyFlatten' in content && content.keyFlatten) {
+      // 今のところkeyFlattenは1階層まで
+      // TODO 将来的にUISchemaからDataSchemaを生成するフェーズとUISchemaを生成するフェーズに分ける必要がある
+      if ('contents' in content) {
+        for (const nestedContent of content.contents) {
+          if (nestedContent.key && !uiSchemaKeyIsParentKey(nestedContent.key) && nestedContent.dataSchema) {
+            dataSchemaItems[nestedContent.key] = nestedContent.dataSchema;
+          }
         }
-      },
-      true,
-    ),
+      }
+    } else {
+      if (content.dataSchema) {
+        dataSchemaItems[key] = content.dataSchema;
+      }
+    }
+  }
+  const dataSchema = overwriteObject<FixedMapDataSchema>({t: DataSchemaType.FixedMap}, childDataSchema, {
+    items: dataSchemaItems,
   });
   return {dataSchema, contents};
 }

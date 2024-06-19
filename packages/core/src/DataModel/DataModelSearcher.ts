@@ -9,14 +9,19 @@ import {
   shiftDataPath,
   unshiftDataPath,
 } from './DataPath';
-import {DataModelContextWithoutSchema} from './DataModelContext';
+import {DataModelContext, DataModelContextWithoutSchema} from './DataModelContext';
 import {digForPathComponent, getDataModelBySinglePath, withNestedDataPath} from './DataModelCollector';
 import {
   dataModelEquals,
+  dataModelIsInteger,
   dataModelIsList,
   dataModelIsMap,
+  dataModelIsString,
   eachListDataItem,
   eachMapDataItem,
+  getMapDataIndexAt,
+  numberDataModelToNumber,
+  stringDataModelToString,
   stringToDataModel,
 } from './DataModel';
 
@@ -138,7 +143,6 @@ function findDataModelImpl(
             originalContext,
           )) {
             const findResult = findDataModelImpl(matcher, childPath, childContext, originalContext);
-            console.log('xxxx nested', childContext, findResult, childPath);
             if (findResult) {
               return findResult;
             }
@@ -158,6 +162,41 @@ function findDataModelImpl(
             }
           }
           return undefined;
+        case DataPathComponentType.Alias: {
+          const alias = originalContext.pathAliases?.[otherPathComponent.n];
+          if (!alias) {
+            return undefined;
+          }
+          const pathComponentModel = getDataModelBySinglePath(
+            alias.path,
+            DataModelContext.deserialize(alias.context, originalContext.root).toWithoutSchema(),
+          );
+          if (dataModelIsString(pathComponentModel)) {
+            if (!dataModelIsMap(data)) {
+              return undefined;
+            }
+            const key = stringDataModelToString(pathComponentModel);
+            const index = getMapDataIndexAt(data, key);
+            if (index === undefined) {
+              return undefined;
+            }
+            return findDataModelImpl(
+              matcher,
+              shiftDataPath(path),
+              currentContext.pushMapIndex(index, key),
+              originalContext,
+            );
+          } else if (dataModelIsInteger(pathComponentModel)) {
+            return findDataModelImpl(
+              matcher,
+              shiftDataPath(path),
+              currentContext.pushListIndex(numberDataModelToNumber(pathComponentModel)),
+              originalContext,
+            );
+          } else {
+            return undefined;
+          }
+        }
       }
     },
   });

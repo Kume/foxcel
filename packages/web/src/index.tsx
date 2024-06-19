@@ -16,6 +16,7 @@ import {
   DataModelContext,
   DataModelValidationErrors,
   AppState,
+  DBSchemaSample,
 } from '@foxcel/core';
 import {ThemeProvider} from 'styled-components';
 import {LoadedData, Theme} from '@foxcel/ui-react';
@@ -140,6 +141,12 @@ const samples = [
     name: '3',
     config: FullSpecSchemaSample.rootSchema(),
     data: FullSpecSchemaSample.basicInitialData(),
+  },
+  {
+    label: 'DB設計',
+    name: '4',
+    config: DBSchemaSample.rootSchema(),
+    data: DBSchemaSample.basicInitialData(),
   },
 ] as const;
 
