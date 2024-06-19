@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Webview</title>
-    <script defer src="${scriptUrl}"></script>
+    <script defer type="module" src="${scriptUrl}"></script>
     </head>
     <body><div id="root" /></body>
     </html>
