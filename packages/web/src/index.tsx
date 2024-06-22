@@ -1,6 +1,6 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import * as serviceWorker from './serviceWorker';
-import {RootView} from '@foxcel/ui-react';
+import {guessPlatformByUserAgent, PlatformContext, PlatformContextProps, RootView} from '@foxcel/ui-react';
 import {NativeFileSystemDataStorage} from './Models/NativeFileSystemDataStorage';
 import {
   ObjectDataStorage,
@@ -54,7 +54,7 @@ const initialDataModel = unknownToDataModel({
       testA5: {
         testA5_01: {testA5a: 'testA5a_01', testA5b: 'testA5b_01', testA5c: 'AAAA'},
         testA5_02: {testA5a: 'testA5a_02', testA5b: 'testA5b_02', testA5c: 'CCCC'},
-        testA5_03: {testA5a: 'testA5a_03', testA5b: 'testA5b_03'},
+        testA5_03: {testA5a: 'testA5a_03\nInvalid line break', testA5b: 'testA5b_03'},
       },
       testA8: {
         testA5_01: {testA8a: 'testA8a'},
@@ -67,7 +67,7 @@ const initialDataModel = unknownToDataModel({
       testA11: '改行ありの\nテキストです。',
     },
     testA_value2: {
-      testA1: 'aaa2',
+      testA1: 'aaa2\nbbb',
       testA3: {
         testA3b: {
           testA3b3: {
@@ -156,6 +156,12 @@ const App: React.FC = () => {
   const [loaded, setLoaded] = useState<LoadedData>();
   const [selectedSample, setSelectedSample] = useState<string>();
   const [lastLoaded, setLastLoaded] = useState<LoadedData>();
+  const platformProps = useMemo<PlatformContextProps>(
+    () => ({
+      platform: guessPlatformByUserAgent(window.navigator.userAgent),
+    }),
+    [],
+  );
 
   const selectSample = useCallback((selected: string) => {
     setSelectedSample((prev) => {
@@ -213,7 +219,9 @@ const App: React.FC = () => {
           {lastLoaded && <button onClick={() => setLoaded(lastLoaded)}>リロード</button>}
         </label>
       </div>
-      <RootView loadFile={loadFile_} loaded={loaded} validate={validate} />
+      <PlatformContext.Provider value={platformProps}>
+        <RootView loadFile={loadFile_} loaded={loaded} validate={validate} />
+      </PlatformContext.Provider>
     </div>
   );
 };

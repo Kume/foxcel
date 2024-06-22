@@ -19,4 +19,5 @@ export function inputTextStyle(theme: Theme): string {
 export const breakableTextStyle = `
   overflow-wrap: break-word;
   word-break: keep-all;
+  white-space: pre-wrap;
 `;
