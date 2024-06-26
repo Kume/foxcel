@@ -7,9 +7,9 @@ import {uiSchemaKeyIsParentKey} from './UISchema';
 import {isNullOrEmptyString} from '../common/utils';
 import {DataModelAtomicAction} from '../DataModel/DataModelAction';
 
-function formatTextUIInput(schema: TextUISchema, input: string): string;
-function formatTextUIInput(schema: TextUISchema, input: string | null): string | null;
-function formatTextUIInput(schema: TextUISchema, input: string | null): string | null {
+export function formatTextUIInput(schema: TextUISchema, input: string): string;
+export function formatTextUIInput(schema: TextUISchema, input: string | null): string | null;
+export function formatTextUIInput(schema: TextUISchema, input: string | null): string | null {
   if (input === null) {
     return null;
   }
@@ -51,6 +51,6 @@ export function textUIModelHandleInputForSchema(schema: TextUISchema, input: str
   return uiSchemaKeyIsParentKey(schema.key)
     ? {type: 'key', key: formatted}
     : isNullOrEmptyString(formatted)
-    ? {type: 'empty'}
-    : {type: 'value', value: stringToDataModel(formatted)};
+      ? {type: 'empty'}
+      : {type: 'value', value: stringToDataModel(formatted)};
 }

@@ -4,6 +4,7 @@ import {DataModel} from '../DataModel/DataModelTypes';
 import {
   dataModelEquals,
   dataModelIsList,
+  dataModelIsNull,
   dataModelToLabelString,
   dataModelToString,
   emptyListModel,
@@ -185,16 +186,22 @@ export function selectUIModelHandleInputForSchema(
   input: string | null,
   dataContext: DataModelContext,
 ): DataModel | undefined {
+  const valueDataModel = inputValueToDataModel(schema, input);
+  if (dataModelIsNull(valueDataModel)) {
+    return nullDataModel;
+  } else if (valueDataModel === undefined) {
+    return undefined;
+  }
+  // 入力データに対応する選択肢が存在すれば入力データをそのまま返す
+  // 見つかった選択肢のデータはvaluePathが未考慮のため、そのままセットできるデータとは限らないためあくまで入力可能かどうかを判断するためだけに利用する
+  return selectOptionGetCurrent(schema.options, valueDataModel, dataContext) ? valueDataModel : undefined;
+}
+
+function inputValueToDataModel(schema: SelectUISchema, input: string | null): DataModel | undefined {
   if (input === null) {
     return nullDataModel;
   }
-  const valueDataModel = dataSchemaIsString(schema.dataSchema)
-    ? stringToDataModel(input)
-    : stringToNumberDataModel(input);
-  if (valueDataModel === undefined) {
-    return undefined;
-  }
-  return selectOptionGetCurrent(schema.options, valueDataModel, dataContext)?.data;
+  return dataSchemaIsString(schema.dataSchema) ? stringToDataModel(input) : stringToNumberDataModel(input);
 }
 
 export function selectUIModelCurrentLabel(current: SelectUIModelCurrentValue | undefined): string | undefined {

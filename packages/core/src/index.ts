@@ -1,5 +1,6 @@
 export * from './common/ConfigTypes';
 export * from './common/tsv';
+export * from './common/utils';
 export * from './messages';
 export * from './samples';
 export * from './FileLoader';

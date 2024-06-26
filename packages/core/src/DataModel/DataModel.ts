@@ -9,12 +9,8 @@ import {
   dataPathComponentIsPointer,
   dataPathComponentToListIndex,
   dataPathComponentToMapKey,
-  dataPathLength,
   EditingForwardDataPathComponent,
-  ForwardDataPath,
   ForwardDataPathComponent,
-  headDataPathComponent,
-  shiftDataPath,
 } from './DataPath';
 import {
   BooleanDataModel,
@@ -444,7 +440,10 @@ export class SimplePathContainer implements PathContainer {
     return [model, key, index];
   }
 
-  private constructor(private readonly path: readonly (number | string)[], private readonly index: number) {}
+  private constructor(
+    private readonly path: readonly (number | string)[],
+    private readonly index: number,
+  ) {}
 
   public get isLast(): boolean {
     return this.path.length - 1 === this.index;

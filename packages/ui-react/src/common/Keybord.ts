@@ -18,6 +18,14 @@ export function withAltKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
   return !e.shiftKey && e.altKey && !e.ctrlKey && !e.metaKey;
 }
 
+export function withCtrlKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  return !e.shiftKey && !e.altKey && e.ctrlKey && !e.metaKey;
+}
+
+export function withMetaKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  return !e.shiftKey && !e.altKey && !e.ctrlKey && e.metaKey;
+}
+
 export function withoutModifierKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
   return !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
 }

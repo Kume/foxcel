@@ -117,12 +117,13 @@ export function applyDataModelAction(root: DataModelRoot, action: DataModelActio
     let tmpData: DataModel | undefined;
     if (action.setMultiple) {
       const path = DataModelContextPathContainer.createWithTargetModel(action.setMultiple.dataContext, root.model);
-      tmpData = setToDataModelRecursive(
-        root.model,
-        path?.[0],
-        context,
-        setMultipleDataActionToParams(action.setMultiple, path?.[1]),
-      );
+      tmpData =
+        setToDataModelRecursive(
+          root.model,
+          path?.[0],
+          context,
+          setMultipleDataActionToParams(action.setMultiple, path?.[1]),
+        ) ?? root.model;
     } else {
       tmpData = root.model;
     }

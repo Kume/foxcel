@@ -1,13 +1,16 @@
-import {TextUIModel, textUIModelSetText} from '@foxcel/core';
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {formatTextUIInput, TextUIModel, textUIModelSetText} from '@foxcel/core';
+import React, {useCallback, useContext, useEffect, useRef, useState} from 'react';
 import {UIViewProps} from './UIView';
 import {TableUIViewCellProps} from './TableUIViewCell';
 import styled from 'styled-components';
 import {TextWithBreak} from '../../../common/TextWithBreak';
 import {makeUseTableCellEditState} from './TableUIViewCellCommon';
-import {KeyValue_Enter, withAltKey} from '../../../common/Keybord';
+import {KeyValue_Enter, withAltKey, withCtrlKey, withMetaKey} from '../../../common/Keybord';
 import {BackgroundTextarea} from '../BackgroundTextarea';
 import {inputTextStyle} from '../../../common/components/commonStyles';
+import {PlatformContext} from '../../../common/PlatformContext';
+import {callStopPropagation} from '../../../common/utils';
+import {emptyFunction} from '@foxcel/core';
 
 const LayoutRoot = styled.div`
   display: flex;
@@ -105,7 +108,12 @@ const LayoutRootForTableCell = styled.div`
   padding: 0 4px;
 `;
 
-const useTableCellEditState = makeUseTableCellEditState<TextUIModel>((model) => model.value ?? '');
+const useTableCellEditState = makeUseTableCellEditState<TextUIModel>((model) => {
+  if (model.value == null) {
+    return '';
+  }
+  return formatTextUIInput(model.schema, model.value);
+});
 
 export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
   model,
@@ -115,6 +123,7 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
   col,
   callbacks,
 }) => {
+  const platform = useContext(PlatformContext);
   const {editingText, isEditing, dispatch, startEdit} = useTableCellEditState(
     model,
     isMainSelected,
@@ -138,9 +147,48 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
     }
   }, [isMainSelected]);
 
-  const stopPropagationIfEditing = useMemo(
-    () => (isEditing ? (e: React.BaseSyntheticEvent) => e.stopPropagation() : undefined),
-    [isEditing],
+  const paste = useCallback(
+    (e: React.ClipboardEvent) => {
+      if (isEditing) {
+        if (!model.schema?.multiline && e.clipboardData) {
+          // 複数行の入力を許容していない場合、改行を取り除いて貼り付ける
+          dispatch(['changeText', formatTextUIInput(model.schema, e.clipboardData.getData('text/plain'))]);
+          e.preventDefault();
+        }
+        // テーブル側のイベントは発生させない
+        e.stopPropagation();
+      }
+    },
+    [dispatch, isEditing, model.schema],
+  );
+
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // テーブルの上位操作が実行された場合は何もしない (Enterで下のセルに移動するなど)
+      if (callbacks.onKeyDown(e, isEditing)) {
+        return;
+      }
+
+      // 複数行入力可の場合のみ、Alt+Enter などで改行を入れる
+      if (model.schema.multiline && e.key === KeyValue_Enter && textAreaRef.current) {
+        // alt, ctrl はプラットフォーム共通で、MacなどではCmdキーとの組み合わせでもOK
+        const isBreakKey = withAltKey(e) || withCtrlKey(e) || (platform?.platform === 'apple' && withMetaKey(e));
+        if (isBreakKey) {
+          const start = textAreaRef.current.selectionStart;
+          const end = textAreaRef.current.selectionEnd;
+
+          // 値を更新したときにキャレットが最後に移動してしまう対策
+          // reactの値更新時に値を更新するとキャレット移動のタイミングが難しくなるので、この時点で値をセットしてキャレット移動してしまう
+          const nextText = editingText.slice(0, start) + '\n' + editingText.slice(end);
+          textAreaRef.current.setSelectionRange(start + 1, start + 1);
+
+          dispatch(['changeText', nextText]);
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    },
+    [callbacks, dispatch, editingText, isEditing, model.schema.multiline, platform],
   );
 
   return (
@@ -157,27 +205,10 @@ export const TextUIViewForTableCell: React.FC<PropsForTableCell> = ({
           onChange={change}
           onBlur={blur}
           value={(isEditing && editingText) || ''}
-          onCopy={stopPropagationIfEditing}
-          onPaste={stopPropagationIfEditing}
-          onCut={stopPropagationIfEditing}
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (!callbacks.onKeyDown(e, isEditing)) {
-              // TODO multilineのときのみこの操作を許可
-              if (e.key === KeyValue_Enter && withAltKey(e) && textAreaRef.current) {
-                const start = textAreaRef.current.selectionStart;
-                const end = textAreaRef.current.selectionEnd;
-
-                // 値を更新したときにキャレットが最後に移動してしまう対策
-                // reactの値更新時に値を更新するとキャレット移動のタイミングが難しくなるので、この時点で値をセットしてキャレット移動してしまう
-                const nextText = editingText.slice(0, start) + '\n' + editingText.slice(end);
-                textAreaRef.current.setSelectionRange(start + 1, start + 1);
-
-                dispatch(['changeText', nextText]);
-                e.preventDefault();
-                e.stopPropagation();
-              }
-            }
-          }}
+          onCopy={isEditing ? callStopPropagation : emptyFunction}
+          onPaste={paste}
+          onCut={isEditing ? callStopPropagation : emptyFunction}
+          onKeyDown={onKeyDown}
         />
       )}
     </LayoutRootForTableCell>
