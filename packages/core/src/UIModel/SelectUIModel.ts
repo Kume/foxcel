@@ -41,10 +41,11 @@ function getSelectUIOptionsImpl(
   const excludeOptions: DataModel[] =
     schema.isMulti && dataModelIsList(data) ? mapListDataModel(data, (data) => data) : [];
 
+  const collectStartContext = schema.isMulti && schema.digsOptionStartPath ? dataContext.pushListIndex(0) : dataContext;
   for (const optionSchema of schema.options) {
     if (optionSchema.label === undefined) {
       // Dynamic option
-      const collectResults = collectDataModel(optionSchema.path, dataContext.toWithoutSchema());
+      const collectResults = collectDataModel(optionSchema.path, collectStartContext.toWithoutSchema());
       for (const {data, context} of collectResults) {
         if (excludeOptions.every((excludeOption) => !dataModelEquals(excludeOption, data))) {
           options.push(formatDynamicSelectUIOption(optionSchema, data, context));
@@ -162,7 +163,8 @@ export function selectUIModelGetCurrent(
   if (dataModel === undefined) {
     return undefined;
   }
-  const current = selectOptionGetCurrent(schema.options, dataModel, context);
+  const collectStartContext = schema.isMulti && schema.digsOptionStartPath ? context.pushListIndex(0) : context;
+  const current = selectOptionGetCurrent(schema.options, dataModel, collectStartContext);
   switch (current?.t) {
     case 'static':
       return {label: current.label, value: current.option.value.toString(), data: dataModel};

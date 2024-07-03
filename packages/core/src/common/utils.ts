@@ -99,3 +99,17 @@ export function rangeInArrayEqual<Item>(
 export function isNullOrEmptyString(value: string | undefined | null): value is '' | null | undefined {
   return value == null || value === '';
 }
+
+export function compareVersion(a: `${number}.${number}`, b: `${number}.${number}`): -1 | 0 | 1 {
+  const [a1, a2] = a.split('.').map(Number);
+  const [b1, b2] = b.split('.').map(Number);
+  const sign1 = Math.sign(a1 - b1) as -1 | 0 | 1;
+  if (sign1 !== 0) {
+    return sign1;
+  }
+  return Math.sign(a2 - b2) as -1 | 0 | 1;
+}
+
+export function versionGte(a: `${number}.${number}`, b: `${number}.${number}`): boolean {
+  return compareVersion(a, b) >= 0;
+}

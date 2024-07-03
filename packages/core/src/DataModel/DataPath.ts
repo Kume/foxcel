@@ -284,6 +284,7 @@ export function shiftDataPath(path: MultiDataPath, count?: number): MultiDataPat
 export function shiftDataPath(path: AnyDataPath, count?: number): AnyDataPath;
 export function shiftDataPath(path: AnyDataPath, count = 1): AnyDataPath {
   // Don't copy isAbsolute.
+  // TODO reverseが別プロパティに分かれたので、その考慮が必要だが、そもそもこのメソッドを使わないようにするほうが正しい
   return {components: path.components.slice(count)} as AnyDataPath;
 }
 
@@ -292,6 +293,7 @@ export function safeShiftDataPath(path: EditingForwardDataPath | undefined): Edi
 export function safeShiftDataPath(path: DataPath | undefined): DataPath | undefined;
 export function safeShiftDataPath(path: MultiDataPath | undefined): MultiDataPath | undefined;
 export function safeShiftDataPath(path: AnyDataPath | undefined): AnyDataPath | undefined {
+  // TODO reverseが別プロパティに分かれたので、その考慮が必要だが、そもそもこのメソッドを使わないようにするほうが正しい
   return path === undefined || path.components.length === 0 ? undefined : shiftDataPath(path);
 }
 

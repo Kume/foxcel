@@ -12,7 +12,7 @@ import {ObjectDataStorage} from '../../Storage/ObjectDataStorage';
 import {YamlDataFormatter} from '../../Storage/YamlDataFormatter';
 import {configFixtures} from '../../common/testFixtures';
 
-const emptyRootContext = createRootUiSchemaParsingContext(undefined);
+const emptyRootContext = createRootUiSchemaParsingContext('2.0', undefined);
 
 type TestData = {readonly uiSchema: UISchemaOrRecursive; readonly dataSchema: DataSchema};
 type TestDataParam = {readonly key?: string};

@@ -1,4 +1,7 @@
+export type SchemaVersion = '2.0' | '1.0';
+
 export type RootSchemaConfig = {
+  readonly version?: SchemaVersion;
   readonly namedDataSchema?: SubDataSchemaConfig;
   // TODO optionalにする
   readonly dataSchema: DataSchemaConfig;
@@ -179,7 +182,9 @@ export interface ConditionalDataSchemaValidationConfig {
 ////////////////////////////////////////////////////////////////////////////
 export type MatchConditionConfig<Path = string, Value = unknown> = {readonly path: Path; readonly match: Value};
 export type OrConditionConfig<Path = string, Value = unknown> = {readonly or: readonly ConditionConfig<Path, Value>[]};
-export type AndConditionConfig<Path = string, Value = unknown> = {readonly and: readonly ConditionConfig<Path>[]};
+export type AndConditionConfig<Path = string, Value = unknown> = {
+  readonly and: readonly ConditionConfig<Path, Value>[];
+};
 
 export type ConditionConfig<Path = string, Value = unknown> =
   | MatchConditionConfig<Path, Value>

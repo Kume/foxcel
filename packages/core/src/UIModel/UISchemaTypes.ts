@@ -84,6 +84,7 @@ interface SingleSelectUISchema extends SelectUISchemaBase {
 interface MultiSelectUISchema extends SelectUISchemaBase {
   readonly dataSchema: ListDataSchema;
   readonly isMulti: true;
+  readonly digsOptionStartPath: boolean;
 }
 
 export interface NumberUISchema extends UISchemaBase {

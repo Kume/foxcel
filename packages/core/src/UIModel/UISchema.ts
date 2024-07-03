@@ -12,14 +12,16 @@ import {
   MappingTableUISchemaConfig,
   parsePath,
   RootSchemaConfig,
+  SchemaVersion,
   SelectUISchemaConfig,
   TableUISchemaConfig,
   UISchemaConfig,
   UISchemaConfigOrReference,
   UISchemaReference,
+  versionGte,
 } from '..';
 import pick from 'lodash.pick';
-import {mapObjectToObject, mapToObject} from '../common/utils';
+import {mapObjectToObject} from '../common/utils';
 import {DataStorage} from '../Storage/DataStorage';
 import {DataFormatter} from '../Storage/DataFormatter';
 import {FilePathConfigNamedItemMap, WritableFileBaseNamedItemNode} from '../common/commonTypes';
@@ -67,6 +69,7 @@ export type UISchemaType = UISchemaOrRecursive['type'];
 export type UISchemaKey = string | true;
 
 export interface UISchemaParsingContext {
+  readonly schemaVersion: SchemaVersion;
   readonly uiPath: ReadonlyArray<{key?: string; type: UISchemaType}>;
   // readonly dataPath: ReadonlyArray<{key: string | number | null; type: DataSchemaType}> | undefined;
   readonly dataSchemaContext: DataSchemaContext;
@@ -75,8 +78,10 @@ export interface UISchemaParsingContext {
 }
 
 export const createRootUiSchemaParsingContext = (
+  schemaVersion: SchemaVersion | undefined,
   dataSchema: DataSchemaExcludeRecursive | undefined,
 ): UISchemaParsingContext => ({
+  schemaVersion: schemaVersion ?? '1.0',
   uiPath: [],
   // dataPath: [],
   dataSchemaContext: DataSchemaContext.createRootContext(dataSchema),
@@ -208,6 +213,7 @@ function parseSelectUISchemaConfig(
       isMulti: true,
       dataSchema: overwriteObject<ListDataSchema>(dataSchema, {t: DataSchemaType.List, label: config.label}),
       options,
+      digsOptionStartPath: versionGte(context.schemaVersion, '2.0'),
     };
   } else {
     assertDataSchemaType(dataSchema, context, [DataSchemaType.String, DataSchemaType.Number]);
@@ -678,7 +684,7 @@ export async function buildUISchema(
     storage,
     formatter,
   );
-  const context = createRootUiSchemaParsingContext(rootDataSchema);
+  const context = createRootUiSchemaParsingContext(rootSchemaConfig.version, rootDataSchema);
   return parseUISchemaConfig(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
 }
 
@@ -689,7 +695,7 @@ export function buildSimpleUISchema(
   const rootUiSchemaConfig = 'uiSchema' in rootSchemaConfig ? rootSchemaConfig.uiSchema : rootSchemaConfig.uiRoot;
   const namedUiSchemaConfig: WritableFileBaseNamedItemNode<UISchemaConfig> = {filePath: []};
   const loadedUISchemaConfig = new Map([['', namedUiSchemaConfig]]);
-  const context = createRootUiSchemaParsingContext(rootDataSchema);
+  const context = createRootUiSchemaParsingContext(rootSchemaConfig.version, rootDataSchema);
   return parseUISchemaConfig(rootUiSchemaConfig, loadedUISchemaConfig, context, rootDataSchema);
 }
 

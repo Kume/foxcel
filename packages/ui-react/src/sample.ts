@@ -1,6 +1,7 @@
 import {RootSchemaConfig} from '@foxcel/core';
 
 export const sampleConfig: RootSchemaConfig = {
+  version: '2.0',
   namedDataSchema: {
     testA13_type: {
       type: 'string',
@@ -152,7 +153,7 @@ export const sampleConfig: RootSchemaConfig = {
               label: '複数選択',
               item: {
                 type: 'string',
-                in: ['testA9_one', {label: 'testA9_two', value: 'A9-2'}, {path: '../testA5/*/$key'}],
+                in: ['testA9_one', {label: 'testA9_two', value: 'A9-2'}, {path: '../../testA5/*/$key'}],
               },
             },
             testA10: {
